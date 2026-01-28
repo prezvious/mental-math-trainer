@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Mental Math Trainer - Practice mental arithmetic with timed challenges, speedcubing analytics, and progress tracking">
+    <title>Mental Math Trainer</title>
+    <title>Mental Math Trainer</title>
+    <!-- Fonts removed for offline usage -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Home Screen -->
+        <section id="home-screen" class="screen active">
+            <header class="main-header">
+                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle Dark Mode">
+                    <span class="icon">🌙</span>
+                </button>
+                <h1>Mental Math Trainer</h1>
+            </header>
+
+            <nav class="mode-selection">
+                <button class="mode-btn" data-mode="multiplication">Multiplication</button>
+                <button class="mode-btn" data-mode="addition">Addition</button>
+                <button class="mode-btn" data-mode="subtraction">Subtraction</button>
+                <button class="mode-btn" data-mode="division">Division</button>
+                <button class="mode-btn" data-mode="mixed">Mixed</button>
+                <button class="mode-btn" data-mode="chain">Chain Math (Flash Anzan)</button>
+            </nav>
+
+            <nav class="mode-selection reference-section">
+                <h3 class="section-title">Reference Tables</h3>
+                <div class="button-grid">
+                    <button class="mode-btn tool-btn" id="power-table-btn">Power Table (xⁿ)</button>
+                    <button class="mode-btn tool-btn" id="multiplication-table-btn">Multiplication (1-40)</button>
+                </div>
+            </nav>
+
+            <div class="time-limit-selection">
+                <h3>Time Limit</h3>
+                <div class="time-options">
+                    <button class="time-btn" data-time="10">10s Speed</button>
+                    <button class="time-btn active" data-time="30">30s Moderate</button>
+                    <button class="time-btn" data-time="0">∞ Unlimited</button>
+                </div>
+            </div>
+
+            <div class="bottom-nav">
+                <button class="nav-btn" id="view-analytics-btn">
+                    <span class="icon">📊</span>
+                    Analytics
+                </button>
+                <button class="nav-btn" id="view-history-btn">
+                    <span class="icon">📜</span>
+                    History
+                </button>
+                <button class="nav-btn" id="view-settings-btn">
+                    <span class="icon">⚙️</span>
+                    Settings
+                </button>
+            </div>
+        </section>
+
+        <!-- Practice Screen -->
+        <section id="practice-screen" class="screen">
+            <header class="practice-header">
+                <button class="back-btn" id="back-to-home">← Back</button>
+                <div class="session-info">
+                    <span id="current-mode">Multiplication</span>
+                    <span class="separator">•</span>
+                    <span id="session-progress">0 / 0</span>
+                </div>
+            </header>
+
+            <div class="timer-display">
+                <div class="timer-bar">
+                    <div class="timer-fill" id="timer-fill"></div>
+                </div>
+                <div class="timer-text" id="timer-text">0.00s</div>
+            </div>
+
+            <div class="problem-area">
+                <div class="problem" id="problem-display">
+                    <span class="problem-text">12 × 8</span>
+                </div>
+
+                <div class="chain-display" id="chain-display" style="display: none;">
+                    <div class="chain-numbers" id="chain-numbers"></div>
+                    <div class="chain-progress" id="chain-progress"></div>
+                </div>
+
+                <div class="answer-section">
+                    <input type="number" id="answer-input" class="answer-input" placeholder="?" autocomplete="off"
+                        inputmode="numeric">
+                    <div class="answer-feedback" id="answer-feedback"></div>
+                </div>
+            </div>
+
+            <div class="session-stats">
+                <div class="stat">
+                    <span class="stat-value" id="stat-correct">0</span>
+                    <span class="stat-label">Correct</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="stat-accuracy">0%</span>
+                    <span class="stat-label">Accuracy</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="stat-avg-time">0.0s</span>
+                    <span class="stat-label">Avg Time</span>
+                </div>
+            </div>
+
+            <div class="practice-controls">
+                <button class="control-btn" id="skip-btn">Skip</button>
+                <button class="control-btn primary" id="submit-btn">Submit</button>
+            </div>
+        </section>
+
+        <!-- Session Complete Screen -->
+        <section id="complete-screen" class="screen">
+            <div class="complete-content">
+                <h2>Session Complete!</h2>
+
+                <div class="complete-stats">
+                    <div class="complete-stat big">
+                        <span class="value" id="complete-score">0</span>
+                        <span class="label">Problems Solved</span>
+                    </div>
+                    <div class="complete-stats-row">
+                        <div class="complete-stat">
+                            <span class="value" id="complete-accuracy">0%</span>
+                            <span class="label">Accuracy</span>
+                        </div>
+                        <div class="complete-stat">
+                            <span class="value" id="complete-avg-time">0.0s</span>
+                            <span class="label">Average Time</span>
+                        </div>
+                        <div class="complete-stat">
+                            <span class="value" id="complete-best-time">0.0s</span>
+                            <span class="label">Best Time</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="complete-actions">
+                    <button class="action-btn" id="try-again-btn">Try Again</button>
+                    <button class="action-btn primary" id="go-home-btn">Home</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Screen -->
+        <section id="analytics-screen" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="analytics-back">← Back</button>
+                <h2>Analytics</h2>
+            </header>
+
+            <div class="analytics-content">
+                <div class="analytics-section">
+                    <h3>Speedcubing Averages</h3>
+                    <div class="analytics-info">
+                        <p class="explanation">These averages remove the best and worst times to reduce outlier impact.
+                        </p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-value" id="ao5-value">--</span>
+                            <span class="stat-label">Ao5</span>
+                            <span class="stat-description">Last 5 (minus best/worst)</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="ao12-value">--</span>
+                            <span class="stat-label">Ao12</span>
+                            <span class="stat-description">Last 12 (minus best/worst)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-section">
+                    <h3>Overall Performance</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-value" id="total-problems">0</span>
+                            <span class="stat-label">Total Problems</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="overall-accuracy">0%</span>
+                            <span class="stat-label">Overall Accuracy</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="overall-avg-time">--</span>
+                            <span class="stat-label">Average Time</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="personal-best">--</span>
+                            <span class="stat-label">Personal Best</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-section">
+                    <h3>Performance by Operation</h3>
+                    <div class="operation-stats" id="operation-stats">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="analytics-section">
+                    <h3>How Metrics Are Calculated</h3>
+                    <div class="metrics-explanation">
+                        <div class="metric-card">
+                            <h4>Accuracy</h4>
+                            <code>(Correct ÷ Total) × 100%</code>
+                            <p>Percentage of problems answered correctly.</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Average Time</h4>
+                            <code>Σ(times) ÷ n</code>
+                            <p>Arithmetic mean of all solve times.</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Ao5 (Average of 5)</h4>
+                            <code>mean(last5 - best - worst)</code>
+                            <p>Take last 5 times, remove fastest & slowest, average the remaining 3.</p>
+                        </div>
+                        <div class="metric-card">
+                            <h4>Ao12 (Average of 12)</h4>
+                            <code>mean(last12 - best - worst)</code>
+                            <p>Take last 12 times, remove fastest & slowest, average the remaining 10.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Screen -->
+        <section id="history-screen" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="history-back">← Back</button>
+                <h2>History</h2>
+            </header>
+
+            <div class="history-tabs">
+                <button class="tab-btn active" data-tab="sessions">Sessions</button>
+                <button class="tab-btn" data-tab="wrong">Wrong Answers</button>
+            </div>
+
+            <div class="history-content">
+                <div class="history-tab-content active" id="sessions-tab">
+                    <div class="history-list" id="sessions-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div class="history-tab-content" id="wrong-tab">
+                    <div class="history-list" id="wrong-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Screen -->
+        <section id="settings-screen" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="settings-back">← Back</button>
+                <h2>Settings</h2>
+            </header>
+
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h3>Difficulty</h3>
+                    <div class="setting-item">
+                        <label for="digit-range">Number Range</label>
+                        <select id="digit-range">
+                            <option value="1">1-9 (Easy)</option>
+                            <option value="2" selected>1-99 (Medium)</option>
+                            <option value="3">1-999 (Hard)</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="chain-length">Chain Length</label>
+                        <select id="chain-length">
+                            <option value="3">3 numbers</option>
+                            <option value="5" selected>5 numbers</option>
+                            <option value="7">7 numbers</option>
+                            <option value="10">10 numbers</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Personal Challenge</h3>
+                    <div class="setting-item">
+                        <label for="target-time">Target Time (seconds)</label>
+                        <input type="number" id="target-time" value="5" min="1" max="60">
+                    </div>
+                    <div class="setting-item">
+                        <label for="target-streak">Target Streak</label>
+                        <input type="number" id="target-streak" value="10" min="1" max="100">
+                    </div>
+                </div>
+
+
+
+                <div class="settings-section">
+                    <h3>Display</h3>
+                    <div class="setting-item toggle-row">
+                        <label for="vertical-align-toggle">Vertical Alignment</label>
+                        <label class="switch">
+                            <input type="checkbox" id="vertical-align-toggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section danger">
+                    <h3>Data Management</h3>
+                    <button class="danger-btn" id="clear-all-data">Clear All Data</button>
+                    <p class="warning-text">This will permanently delete all your progress and cannot be undone.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Power Table Screen -->
+        <section id="power-screen" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="power-back">← Back</button>
+                <h2>Power Table (xⁿ)</h2>
+            </header>
+
+            <div class="power-table-container">
+                <table class="power-table">
+                    <thead>
+                        <tr id="power-header-row">
+                            <th>x \ n</th>
+                            <!-- Header Columns injected here -->
+                        </tr>
+                    </thead>
+                    <tbody id="power-table-body">
+                        <!-- Data Rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="footer-info"
+                style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem; text-align: center;">
+                <span>Rows: Base Number (x)</span> • <span>Columns: Exponent (n)</span>
+            </div>
+        </section>
+
+        <!-- Multiplication Table Screen -->
+        <section id="multiplication-screen" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="multiplication-back">← Back</button>
+                <h2>Multiplication Table</h2>
+            </header>
+
+            <div class="power-table-container"> <!-- Reusing container class for consistent styling -->
+                <table class="power-table" id="multiplication-table-el">
+                    <thead>
+                        <tr id="multi-header-row">
+                            <th>×</th>
+                            <!-- Header Columns injected here -->
+                        </tr>
+                    </thead>
+                    <tbody id="multi-table-body">
+                        <!-- Data Rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="footer-info"
+                style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem; text-align: center;">
+                <span>Rows: Multiplicand</span> • <span>Columns: Multiplier</span>
+            </div>
+        </section>
+
+        <!-- Mixed Config Modal -->
+        <div id="mixed-config-modal" class="modal-overlay" style="display: none;">
+            <div class="mixed-modal">
+                <h2>Your Selection</h2>
+                <div class="mixed-config-rows">
+                    <div class="mixed-row">
+                        <span class="mixed-label">( )²</span>
+                        <select id="mixed-exponent" class="mixed-select">
+                            <option value="0">Don't Train</option>
+                            <option value="1">Warm Up</option>
+                            <option value="2" selected>Easy</option>
+                            <option value="3">Medium</option>
+                            <option value="4">Hard</option>
+                            <option value="5">Extra Hard</option>
+                        </select>
+                    </div>
+                    <div class="mixed-row">
+                        <span class="mixed-label">×</span>
+                        <select id="mixed-multiplication" class="mixed-select">
+                            <option value="0">Don't Train</option>
+                            <option value="1">Warm Up</option>
+                            <option value="2" selected>Easy</option>
+                            <option value="3">Medium</option>
+                            <option value="4">Hard</option>
+                            <option value="5">Extra Hard</option>
+                        </select>
+                    </div>
+                    <div class="mixed-row">
+                        <span class="mixed-label">+</span>
+                        <select id="mixed-addition" class="mixed-select">
+                            <option value="0">Don't Train</option>
+                            <option value="1">Warm Up</option>
+                            <option value="2" selected>Easy</option>
+                            <option value="3">Medium</option>
+                            <option value="4">Hard</option>
+                            <option value="5">Extra Hard</option>
+                        </select>
+                    </div>
+                    <div class="mixed-row">
+                        <span class="mixed-label">−</span>
+                        <select id="mixed-subtraction" class="mixed-select">
+                            <option value="0">Don't Train</option>
+                            <option value="1">Warm Up</option>
+                            <option value="2" selected>Easy</option>
+                            <option value="3">Medium</option>
+                            <option value="4">Hard</option>
+                            <option value="5">Extra Hard</option>
+                        </select>
+                    </div>
+                    <div class="mixed-row">
+                        <span class="mixed-label">÷</span>
+                        <select id="mixed-division" class="mixed-select">
+                            <option value="0">Don't Train</option>
+                            <option value="1">Warm Up</option>
+                            <option value="2" selected>Easy</option>
+                            <option value="3">Medium</option>
+                            <option value="4">Hard</option>
+                            <option value="5">Extra Hard</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mixed-modal-actions">
+                    <button class="action-btn" id="mixed-cancel-btn">Cancel</button>
+                    <button class="action-btn primary" id="mixed-start-btn">Start</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Modal (Digits / Division Level) -->
+    <div id="setup-modal" class="modal-overlay" style="display: none;">
+        <div class="setup-modal-content">
+            <h2 id="setup-title">Configure</h2>
+
+            <!-- Digit Selection Grid -->
+            <div id="digit-selection-container" style="display: none;">
+                <p class="setup-subtitle">Digit Selection</p>
+                <div class="digit-grid" id="digit-grid">
+                    <!-- Generated by JS: 1by1, 2by1, etc. -->
+                </div>
+            </div>
+
+            <!-- Division Level Selection -->
+            <div id="division-level-container" style="display: none;">
+                <p class="setup-subtitle">Select Difficulty</p>
+                <div class="level-list">
+                    <button class="level-btn" data-level="1">Warm Up</button>
+                    <button class="level-btn" data-level="2">Easy</button>
+                    <button class="level-btn" data-level="3">Medium</button>
+                    <button class="level-btn" data-level="4">Hard</button>
+                    <button class="level-btn" data-level="5">Extra Hard</button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="action-btn" id="setup-cancel-btn">Cancel</button>
+                <button class="action-btn primary" id="setup-start-btn">Start</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
