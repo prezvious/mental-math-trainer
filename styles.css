@@ -244,12 +244,24 @@ body {
     letter-spacing: -0.02em;
 }
 
-/* Mode Selection */
+/* Mode Selection - Responsive Grid Fix */
 .mode-selection {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: 1fr;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-xl);
+}
+
+@media (min-width: 480px) {
+    .mode-selection {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .mode-selection {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .mode-btn {
@@ -292,8 +304,14 @@ body {
 
 .button-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: var(--spacing-sm);
+}
+
+@media (min-width: 480px) {
+    .button-grid {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 .tool-btn {
