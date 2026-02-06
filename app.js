@@ -169,7 +169,8 @@ const elements = {
     divisionLevelContainer: document.getElementById('division-level-container'),
     setupStartBtn: document.getElementById('setup-start-btn'),
     setupCancelBtn: document.getElementById('setup-cancel-btn'),
-    levelButtons: document.querySelectorAll('.level-btn')
+    levelButtons: document.querySelectorAll('.level-btn'),
+    themeButtons: document.querySelectorAll('.theme-btn')
 };
 
 // ============================================
@@ -1345,20 +1346,45 @@ function renderMultiplicationTable() {
 /**
  * Update settings UI from state
  */
+
+/**
+ * Apply a theme to the application
+ */
+function applyTheme(themeName) {
+    if (!themeName) return;
+
+    // Update state
+    state.settings.theme = themeName;
+    saveSettings();
+
+    // Apply to DOM
+    document.body.setAttribute('data-theme', themeName);
+
+    // Update active button state
+    if (elements.themeButtons) {
+        elements.themeButtons.forEach(btn => {
+            if (btn.dataset.theme === themeName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+}
+
 function updateSettingsUI() {
     elements.digitRange.value = state.settings.digitRange;
     elements.chainLength.value = state.settings.chainLength;
-    elements.targetTime.value = state.settings.targetTime;
     elements.targetTime.value = state.settings.targetTime;
     elements.targetStreak.value = state.settings.targetStreak;
 
     // Apply theme
     if (state.settings.darkMode) {
         document.body.classList.add('dark-mode');
-        document.querySelector('.theme-toggle .icon').textContent = '☀️';
+
     } else {
         document.body.classList.remove('dark-mode');
-        document.querySelector('.theme-toggle .icon').textContent = '🌙';
+
     }
 }
 
@@ -1379,7 +1405,6 @@ function handleSettingChange(event) {
             state.settings.targetTime = parseInt(value);
             break;
         case 'target-streak':
-        case 'target-streak':
             state.settings.targetStreak = parseInt(value);
             break;
     }
@@ -1387,22 +1412,7 @@ function handleSettingChange(event) {
     saveSettings();
 }
 
-/**
- * Toggle Dark Mode
- */
-function toggleTheme() {
-    state.settings.darkMode = !state.settings.darkMode;
 
-    if (state.settings.darkMode) {
-        document.body.classList.add('dark-mode');
-        document.querySelector('.theme-toggle .icon').textContent = '☀️';
-    } else {
-        document.body.classList.remove('dark-mode');
-        document.querySelector('.theme-toggle .icon').textContent = '🌙';
-    }
-
-    saveSettings();
-}
 
 // ============================================
 // Mixed Config Modal
@@ -1509,18 +1519,7 @@ function initEventListeners() {
         });
     });
 
-    // Mixed Config Modal
-    document.getElementById('mixed-start-btn').addEventListener('click', () => {
-        // ... (Existing mixed logic)
-        state.mixedConfig.exponent = parseInt(document.getElementById('mixed-exponent').value);
-        state.mixedConfig.multiplication = parseInt(document.getElementById('mixed-multiplication').value);
-        state.mixedConfig.addition = parseInt(document.getElementById('mixed-addition').value);
-        state.mixedConfig.subtraction = parseInt(document.getElementById('mixed-subtraction').value);
-        state.mixedConfig.division = parseInt(document.getElementById('mixed-division').value);
 
-        document.getElementById('mixed-config-modal').style.display = 'none';
-        startSession('mixed');
-    });
 
     document.getElementById('mixed-cancel-btn').addEventListener('click', () => {
         document.getElementById('mixed-config-modal').style.display = 'none';
@@ -1563,17 +1562,7 @@ function initEventListeners() {
         }
     });
 
-    elements.answerInput.addEventListener('input', (e) => {
-        // Mandatory Auto-Submit
-        const val = parseInt(e.target.value);
-        // Check if current problem exists and value matches
-        if (state.session.currentProblem && val === state.session.currentProblem.answer) {
-            // Prevent double submission if user types fast
-            if (!state.session.submitting) {
-                submitAnswer();
-            }
-        }
-    });
+
 
     // Complete screen buttons
     document.getElementById('try-again-btn').addEventListener('click', () => {
@@ -1595,8 +1584,7 @@ function initEventListeners() {
     // Settings changes
     elements.digitRange.addEventListener('change', handleSettingChange);
     elements.chainLength.addEventListener('change', handleSettingChange);
-    elements.targetTime.addEventListener('change', handleSettingChange);
-    elements.targetTime.addEventListener('change', handleSettingChange);
+    elements.targetTime.addEventListener("change", handleSettingChange);
     elements.targetStreak.addEventListener('change', handleSettingChange);
 
     // Theme toggle
@@ -1657,6 +1645,11 @@ function initEventListeners() {
 function init() {
     // Load saved settings
     state.settings = loadSettings();
+
+    // Restore Vertical Align config
+    if (state.settings.verticalAlign !== undefined) {
+        state.config.verticalAlign = state.settings.verticalAlign;
+    }
 
     // Apply saved theme
     if (state.settings.theme) {
