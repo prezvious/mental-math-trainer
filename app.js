@@ -88,7 +88,7 @@ const state = {
 
     // Advanced Configuration
     config: {
-        verticalAlign: false,
+        verticalAlign: true,
         digitA: 1, // Number of digits for first operand
         digitB: 1, // Number of digits for second operand
         divisionLevel: 2, // 1=WarmUp, ... 5=ExtraHard
@@ -159,7 +159,6 @@ const elements = {
     chainLength: document.getElementById('chain-length'),
     targetTime: document.getElementById('target-time'),
     targetStreak: document.getElementById('target-streak'),
-    verticalAlignToggle: document.getElementById('vertical-align-toggle'),
 
     // Setup Modal
     setupModal: document.getElementById('setup-modal'),
@@ -1442,17 +1441,6 @@ function readMixedConfig() {
 
 function initEventListeners() {
     // Initialize Vertical Toggle state
-    if (elements.verticalAlignToggle) {
-        elements.verticalAlignToggle.addEventListener('change', (e) => {
-            state.config.verticalAlign = e.target.checked;
-            saveSettings();
-            // Manually update settings if it's not linked by reference
-            state.settings.verticalAlign = state.config.verticalAlign;
-            localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(state.settings));
-        });
-        // Initial state
-        elements.verticalAlignToggle.checked = state.config.verticalAlign;
-    }
 
 
     // Mode Selection
@@ -1558,6 +1546,20 @@ function initEventListeners() {
     elements.answerInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            submitAnswer();
+        }
+    });
+    // Auto-Submit on correct answer
+    elements.answerInput.addEventListener('input', () => {
+        if (!state.session.active || state.session.submitting || !state.session.currentProblem) return;
+
+        const val = elements.answerInput.value.trim();
+        if (val === '') return;
+
+        const userAnswer = parseInt(val);
+        const correctAnswer = state.session.currentProblem.answer;
+
+        if (userAnswer === correctAnswer) {
             submitAnswer();
         }
     });
