@@ -17,9 +17,7 @@
         <!-- Home Screen -->
         <section id="home-screen" class="screen active">
             <header class="main-header">
-                <button class="theme-toggle" id="theme-toggle" aria-label="Toggle Dark Mode">
-                    <span class="icon">🌙</span>
-                </button>
+<!-- Theme toggle removed -->
                 <h1>Mental Math Trainer</h1>
             </header>
 
@@ -309,13 +307,40 @@
 
 
                 <div class="settings-section">
-                    <h3>Display</h3>
+                    <h3>Display & Theme</h3>
                     <div class="setting-item toggle-row">
                         <label for="vertical-align-toggle">Vertical Alignment</label>
                         <label class="switch">
                             <input type="checkbox" id="vertical-align-toggle">
                             <span class="slider round"></span>
                         </label>
+                    </div>
+
+                    <div class="theme-grid" id="theme-grid">
+                        <button class="theme-btn active" data-theme="default">
+                            <div class="theme-preview default"></div>
+                            <span class="theme-name">Clean</span>
+                        </button>
+                        <button class="theme-btn" data-theme="night-owl">
+                            <div class="theme-preview night-owl"></div>
+                            <span class="theme-name">Night Owl</span>
+                        </button>
+                        <button class="theme-btn" data-theme="chalkboard">
+                            <div class="theme-preview chalkboard"></div>
+                            <span class="theme-name">Chalkboard</span>
+                        </button>
+                        <button class="theme-btn" data-theme="swiss">
+                            <div class="theme-preview swiss"></div>
+                            <span class="theme-name">Swiss</span>
+                        </button>
+                        <button class="theme-btn" data-theme="solarized">
+                            <div class="theme-preview solarized"></div>
+                            <span class="theme-name">Solarized</span>
+                        </button>
+                        <button class="theme-btn" data-theme="vaporwave">
+                            <div class="theme-preview vaporwave"></div>
+                            <span class="theme-name">Vaporwave</span>
+                        </button>
                     </div>
                 </div>
 

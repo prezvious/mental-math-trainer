@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS = {
     chainLength: 5,
     targetTime: 5,
     targetStreak: 10,
-    darkMode: false
+    theme: "default"
 };
 
 // Mixed mode difficulty levels: maps level -> max number
@@ -298,14 +298,14 @@ function generateProblem(mode) {
                 b = randomInt(rangeB.min, rangeB.max);
 
                 // For subtraction, ensure non-negative if desired, although "NbyM" implies structure.
-                // Usually big - small is preferred to keep digits consistent? 
+                // Usually big - small is preferred to keep digits consistent?
                 // However 2by2 subtraction (10-99) - (10-99) could be negative.
                 // Let's allow negative for now unless stated otherwise, OR swap if A < B to keep it positive but "clean".
-                // Simple math trainer usually avoids negative unless specified. 
+                // Simple math trainer usually avoids negative unless specified.
                 // Let's swap to ensure positive result, but keep digit structure roughly correct.
                 // But wait, if I select 2by1 (e.g. 50 - 5), it's fine.
                 // If I select 1by2 (rejected by UI gen loop, but possible via logic), it would be negative.
-                // The UI logic guarantees A >= B in digit count (e.g. 3by2). 
+                // The UI logic guarantees A >= B in digit count (e.g. 3by2).
                 // So at worst (100 - 99) = 1 (positive).
                 // But (100 - 999) = negative.
                 // Since our UI is "N by M" where N >= M, usually A is the larger magnitude.
@@ -334,7 +334,7 @@ function generateProblem(mode) {
                     // Medium: 2 digit dividend / 1 digit divisor
                     // Requirement: "pembagian dua digit dengan satu digit"
                     // Dividend: 10-99. Divisor: 2-9.
-                    // To ensure clean division, we pick divisor (b) and quotient (answer) 
+                    // To ensure clean division, we pick divisor (b) and quotient (answer)
                     // such that a = b * answer is within range [10, 99].
 
                     b = randomInt(2, 9); // Divisor (1 digit)
@@ -358,7 +358,7 @@ function generateProblem(mode) {
                     // Requirement: "pembagian 4 digit dengan range antara 2 digit dan 1 digit"
                     // Dividend: 1000-9999. Divisor: 2-99.
 
-                    // Pick meaningful divisor 
+                    // Pick meaningful divisor
                     b = randomInt(2, 99);
 
                     // Determine valid quotient range so 'a' is 4 digits [1000, 9999]
@@ -437,7 +437,7 @@ function generateProblem(mode) {
             if (operation === 'division') { symbol = '÷'; /* Answer calc'd above */ }
 
             // Vertical Layout Check
-            // We can return a flag or formatted HTML. 
+            // We can return a flag or formatted HTML.
             // Since display is textContent usually, we might need a separate render path.
 
             displayText = `${a} ${symbol} ${b}`;
@@ -654,7 +654,7 @@ function nextProblem() {
         // We need to inject HTML structure for vertical
         const p = state.session.currentProblem;
         elements.problemDisplay.innerHTML = `
-            <div class="vertical-struct">
+            <div class="vertical-struct fade-in">
                 <div class="vertical-operand">${p.a}</div>
                 <div class="vertical-operator-row">
                     <span class="operator">${p.symbol}</span>
@@ -665,7 +665,7 @@ function nextProblem() {
     } else {
         elements.problemDisplay.classList.remove('vertical-layout');
         // Reset to simple span
-        elements.problemDisplay.innerHTML = `<span class="problem-text">${state.session.currentProblem.displayText}</span>`;
+        elements.problemDisplay.innerHTML = `<span class="problem-text fade-in">${state.session.currentProblem.displayText}</span>`;
     }
 
     // Show problem display, hide chain display
@@ -799,7 +799,7 @@ function submitAnswer() {
             nextProblem();
         }
         state.session.submitting = false;
-    }, 800);
+    }, 250);
 }
 
 /**
@@ -1600,7 +1600,14 @@ function initEventListeners() {
     elements.targetStreak.addEventListener('change', handleSettingChange);
 
     // Theme toggle
-    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+    // Theme Selection
+    if (elements.themeButtons) {
+        elements.themeButtons.forEach(btn => {
+            btn.addEventListener("click", () => {
+                applyTheme(btn.dataset.theme);
+            });
+        });
+    }
 
     // Clear data button
     document.getElementById('clear-all-data').addEventListener('click', clearAllData);
@@ -1650,6 +1657,12 @@ function initEventListeners() {
 function init() {
     // Load saved settings
     state.settings = loadSettings();
+
+    // Apply saved theme
+    if (state.settings.theme) {
+        document.body.setAttribute("data-theme", state.settings.theme);
+    }
+
     updateSettingsUI();
 
     // Initialize event listeners
