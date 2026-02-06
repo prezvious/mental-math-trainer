@@ -649,7 +649,7 @@ function nextProblem() {
     state.session.currentProblem = generateProblem(state.currentMode);
 
     // Display problem
-    if (state.config.verticalAlign && ['multiplication', 'addition', 'subtraction'].includes(state.session.currentProblem.operation)) {
+    if (state.config.verticalAlign && ['multiplication', 'addition', 'subtraction', 'division'].includes(state.session.currentProblem.operation)) {
         elements.problemDisplay.classList.add('vertical-layout');
         // We need to inject HTML structure for vertical
         const p = state.session.currentProblem;
@@ -1647,11 +1647,6 @@ function initEventListeners() {
 function init() {
     // Load saved settings
     state.settings = loadSettings();
-
-    // Restore Vertical Align config
-    if (state.settings.verticalAlign !== undefined) {
-        state.config.verticalAlign = state.settings.verticalAlign;
-    }
 
     // Apply saved theme
     if (state.settings.theme) {

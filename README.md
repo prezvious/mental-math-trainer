@@ -17,7 +17,7 @@ A comprehensive Single Page Application (SPA) designed to improve mental arithme
 
 ### Customization & UX
 * **Smart Division Logic:** Uses reverse-multiplication generation to ensure clean integer results (e.g., 2-digit dividend / 1-digit divisor).
-* **Vertical Alignment:** Toggle between standard line equation format ($12 \times 8$) and vertical "school-style" layout.
+* **Vertical Alignment:** Standard vertical "school-style" layout for all arithmetic operations.
 * **Dark Mode:** A fully responsive dark theme with neon accents for comfortable night practice.
 * **Reference Tables:** Built-in Power Tables ($x^n$) and Multiplication Tables (up to 40x40).
 
