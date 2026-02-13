@@ -974,8 +974,6 @@ function recordAnswer(isCorrect, time) {
  */
 function updateSessionStats() {
     const { correct, total, times } = state.session;
-        maxStreak: state.session.maxStreak || 0,
-        score: state.session.score || 0,
 
     elements.statCorrect.textContent = correct;
     elements.sessionProgress.textContent = `${total} solved`;
@@ -1007,8 +1005,6 @@ function endSession() {
     }
 
     const { correct, total, times } = state.session;
-        maxStreak: state.session.maxStreak || 0,
-        score: state.session.score || 0,
 
     // Calculate final stats
     const accuracy = total > 0 ? ((correct / total) * 100).toFixed(0) : 0;
@@ -1026,8 +1022,6 @@ function endSession() {
         mode: state.currentMode,
         correct,
         total,
-        maxStreak: state.session.maxStreak || 0,
-        score: state.session.score || 0,
         accuracy: parseFloat(accuracy),
         avgTime,
         bestTime,
