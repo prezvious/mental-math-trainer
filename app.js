@@ -22,8 +22,9 @@ const OPERATIONS = {
     division: { symbol: '÷', name: 'Division' },
     mixed: { symbol: '?', name: 'Mixed' },
     chain: { symbol: '⟶', name: 'Chain Math' },
-    survival: { symbol: '☠', name: 'Survival' },
-    algebra: { symbol: 'x', name: 'Algebra' }
+    algebra: { symbol: 'x', name: 'Algebra' },
+    square: { symbol: '²', name: 'Square' },
+    sqrt: { symbol: '√', name: 'Square Root' }
 };
 
 const DEFAULT_SETTINGS = {
@@ -289,90 +290,75 @@ function generateProblem(mode) {
 
             // Boss Level (Every 50 points)
             if (score > 0 && score % 50 === 0) {
-                 const bossType = Math.random() > 0.5 ? 'modulo' : 'square';
-                 if (bossType === 'modulo') {
-                     b = randomInt(3, 12);
-                     a = randomInt(b + 1, b * 5);
-                     answer = a % b;
-                     symbol = '%';
-                     displayText = `${a} mod ${b}`;
-                 } else {
-                     a = randomInt(11, 25);
-                     b = 2;
-                     answer = a * a;
-                     symbol = '²';
-                     displayText = `${a}²`;
-                 }
-            } else {
-                let subOp;
-                if (score <= 10) {
-                    subOp = Math.random() > 0.5 ? 'addition' : 'subtraction';
-                    a = randomInt(1, 10); b = randomInt(1, 10);
-                } else if (score <= 20) {
-                    subOp = 'multiplication';
-                    a = randomInt(2, 12); b = randomInt(2, 12);
-                } else if (score <= 49) {
-                    const ops = ['addition', 'subtraction', 'multiplication', 'division'];
-                    subOp = ops[randomInt(0, 3)];
-                    if (subOp === 'multiplication') { a = randomInt(2, 15); b = randomInt(2, 12); }
-                    else if (subOp === 'division') { b = randomInt(2, 9); answer = randomInt(2, 12); a = b * answer; }
-                    else { a = randomInt(10, 50); b = randomInt(5, 40); }
-                } else {
-                    const ops = ['addition', 'subtraction', 'multiplication', 'division'];
-                    subOp = ops[randomInt(0, 3)];
-                    if (subOp === 'multiplication') { a = randomInt(5, 20); b = randomInt(5, 20); }
-                    else if (subOp === 'division') { b = randomInt(2, 15); answer = randomInt(5, 20); a = b * answer; }
-                    else { a = randomInt(20, 100); b = randomInt(10, 90); }
-                }
-
-                if (subOp === 'addition') { answer = a + b; symbol = '+'; }
-                if (subOp === 'subtraction') {
-                    if (score < 21 && a < b) [a, b] = [b, a];
-                    answer = a - b; symbol = '−';
-                }
-                if (subOp === 'multiplication') { answer = a * b; symbol = '×'; }
-                if (subOp === 'division') { symbol = '÷'; }
-
-                displayText = `${a} ${symbol} ${b}`;
-            }
+        } else if (operation === 'square') {
+            a = randomInt(2, 35);
+            b = 2;
+            answer = a * a;
+            symbol = '²';
+            displayText = `${a}²`;
+        } else if (operation === 'sqrt') {
+            const root = randomInt(2, 35);
+            a = root * root;
+            b = 2; // Not really used but good for consistency
+            answer = root;
+            symbol = '√';
+            displayText = `√${a}`;
         } else if (operation === 'algebra') {
-            const ops = ['addition', 'subtraction', 'multiplication'];
+            const ops = ['addition', 'subtraction', 'multiplication', 'division'];
             const subOp = ops[randomInt(0, ops.length - 1)];
 
             if (subOp === 'multiplication') {
-                a = randomInt(2, 12); b = randomInt(2, 12);
-                answer = a * b; symbol = '×';
+                a = randomInt(2, 12);
+                b = randomInt(2, 12);
+                answer = a * b;
+                symbol = '×';
+            } else if (subOp === 'division') {
+                b = randomInt(2, 12);
+                const result = randomInt(2, 12);
+                a = b * result;
+                answer = result;
+                symbol = '÷';
             } else {
-                a = randomInt(5, 50); b = randomInt(2, a);
-                if (subOp === 'subtraction') { answer = a - b; symbol = '−'; }
-                else { answer = a + b; symbol = '+'; }
+                a = randomInt(5, 50);
+                b = randomInt(2, a);
+                if (subOp === 'subtraction') {
+                    answer = a - b;
+                    symbol = '−';
+                } else {
+                    // Addition
+                    answer = a + b;
+                    symbol = '+';
+                }
             }
 
-            const result = answer;
-            const missing = randomInt(0, 1);
+            // For algebra, 'answer' variable holds the hidden value we want the user to find.
+            // But currently 'answer' holds the result of the operation.
+            // We need to restructure this.
+
+            const result = (subOp === 'division') ? a / b :
+                           (subOp === 'multiplication') ? a * b :
+                           (subOp === 'subtraction') ? a - b :
+                           a + b;
+
+            const missing = randomInt(0, 1); // 0 = hide a, 1 = hide b
+
             if (missing === 0) {
-                answer = a; displayText = `? ${symbol} ${b} = ${result}`;
+                // Hide a
+                // e.g. ? + 5 = 12 -> Answer is 7
+                // e.g. ? - 5 = 12 -> Answer is 17
+                // e.g. ? * 5 = 20 -> Answer is 4
+                // e.g. ? / 5 = 4  -> Answer is 20
+                answer = a;
+                displayText = `? ${symbol} ${b} = ${result}`;
             } else {
-                answer = b; displayText = `${a} ${symbol} ? = ${result}`;
+                // Hide b
+                // e.g. 7 + ? = 12 -> Answer is 5
+                // e.g. 17 - ? = 12 -> Answer is 5
+                // e.g. 4 * ? = 20 -> Answer is 5
+                // e.g. 20 / ? = 4 -> Answer is 5
+                answer = b;
+                displayText = `${a} ${symbol} ? = ${result}`;
             }
-        } else {
-            // Determine max based on mode configuration
-            if (['multiplication', 'addition', 'subtraction'].includes(operation) && mode !== 'mixed') {
-                // Use custom digit settings: 1by1 means 1-9 by 1-9. 2by2 means 10-99 by 10-99.
-                // Helper to get range: (digits) -> {min, max}
-                const getRange = (d) => ({
-                    min: Math.pow(10, d - 1),
-                    max: Math.pow(10, d) - 1
-                });
-
-                const rangeA = getRange(state.config.digitA);
-                const rangeB = getRange(state.config.digitB);
-
-                a = randomInt(rangeA.min, rangeA.max);
-                b = randomInt(rangeB.min, rangeB.max);
-
-                // For subtraction, ensure non-negative if desired, although "NbyM" implies structure.
-                // Usually big - small is preferred to keep digits consistent?
                 // However 2by2 subtraction (10-99) - (10-99) could be negative.
                 // Let's allow negative for now unless stated otherwise, OR swap if A < B to keep it positive but "clean".
                 // Simple math trainer usually avoids negative unless specified.
@@ -451,23 +437,26 @@ function generateProblem(mode) {
 
                 } else if (level === 5) {
                     // Extra Hard: 5 digit dividend / divisor range 4 digit - 1 digit
-                    // Requirement: "pembagian 5 digit dengan range antara 4 digit hingga 1 digit"
-                    // Dividend: 10000-99999. Divisor: 2-9999.
-
-                    b = randomInt(2, 9999);
-
-                    const minQ = Math.ceil(10000 / b);
-                    const maxQ = Math.floor(99999 / b);
-
-                    if (minQ <= maxQ) {
-                        answer = randomInt(minQ, maxQ);
+                    // Modulo Integration: 20% chance
+                    if (Math.random() < 0.2) {
+                        b = randomInt(3, 12);
+                        a = randomInt(b + 1, b * 5);
+                        answer = a % b;
+                        symbol = '%';
+                        displayText = `${a} mod ${b}`;
+                        // Prevent symbol override
+                        operation = 'modulo';
                     } else {
-                        answer = randomInt(1, 100);
+                        b = randomInt(2, 9999);
+                        const minQ = Math.ceil(10000 / b);
+                        const maxQ = Math.floor(99999 / b);
+                        if (minQ <= maxQ) {
+                            answer = randomInt(minQ, maxQ);
+                        } else {
+                            answer = randomInt(1, 100);
+                        }
+                        a = b * answer;
                     }
-
-                    a = b * answer;
-
-                } else if (level <= 2) {
                     // Level 1 & 2 (Tables)
                     b = randomInt(2, maxDivisor);
                     answer = randomInt(2, maxQuotient);
@@ -514,7 +503,7 @@ function generateProblem(mode) {
             // We can return a flag or formatted HTML.
             // Since display is textContent usually, we might need a separate render path.
 
-            displayText = `${a} ${symbol} ${b}`;
+            if (!displayText) displayText = `${a} ${symbol} ${b}`;
         }
 
     } while (attempts < 50 && state.session && state.session.usedProblems && state.session.usedProblems.has(displayText));
