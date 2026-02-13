@@ -21,7 +21,9 @@ const OPERATIONS = {
     subtraction: { symbol: '−', name: 'Subtraction' },
     division: { symbol: '÷', name: 'Division' },
     mixed: { symbol: '?', name: 'Mixed' },
-    chain: { symbol: '⟶', name: 'Chain Math' }
+    chain: { symbol: '⟶', name: 'Chain Math' },
+    survival: { symbol: '☠', name: 'Survival' },
+    algebra: { symbol: 'x', name: 'Algebra' }
 };
 
 const DEFAULT_SETTINGS = {
@@ -281,6 +283,78 @@ function generateProblem(mode) {
             b = problem.b;
             answer = problem.answer;
             symbol = problem.symbol;
+        } else if (operation === 'survival') {
+            // Survival Mode Logic
+            const score = state.session.correct || 0;
+
+            // Boss Level (Every 50 points)
+            if (score > 0 && score % 50 === 0) {
+                 const bossType = Math.random() > 0.5 ? 'modulo' : 'square';
+                 if (bossType === 'modulo') {
+                     b = randomInt(3, 12);
+                     a = randomInt(b + 1, b * 5);
+                     answer = a % b;
+                     symbol = '%';
+                     displayText = `${a} mod ${b}`;
+                 } else {
+                     a = randomInt(11, 25);
+                     b = 2;
+                     answer = a * a;
+                     symbol = '²';
+                     displayText = `${a}²`;
+                 }
+            } else {
+                let subOp;
+                if (score <= 10) {
+                    subOp = Math.random() > 0.5 ? 'addition' : 'subtraction';
+                    a = randomInt(1, 10); b = randomInt(1, 10);
+                } else if (score <= 20) {
+                    subOp = 'multiplication';
+                    a = randomInt(2, 12); b = randomInt(2, 12);
+                } else if (score <= 49) {
+                    const ops = ['addition', 'subtraction', 'multiplication', 'division'];
+                    subOp = ops[randomInt(0, 3)];
+                    if (subOp === 'multiplication') { a = randomInt(2, 15); b = randomInt(2, 12); }
+                    else if (subOp === 'division') { b = randomInt(2, 9); answer = randomInt(2, 12); a = b * answer; }
+                    else { a = randomInt(10, 50); b = randomInt(5, 40); }
+                } else {
+                    const ops = ['addition', 'subtraction', 'multiplication', 'division'];
+                    subOp = ops[randomInt(0, 3)];
+                    if (subOp === 'multiplication') { a = randomInt(5, 20); b = randomInt(5, 20); }
+                    else if (subOp === 'division') { b = randomInt(2, 15); answer = randomInt(5, 20); a = b * answer; }
+                    else { a = randomInt(20, 100); b = randomInt(10, 90); }
+                }
+
+                if (subOp === 'addition') { answer = a + b; symbol = '+'; }
+                if (subOp === 'subtraction') {
+                    if (score < 21 && a < b) [a, b] = [b, a];
+                    answer = a - b; symbol = '−';
+                }
+                if (subOp === 'multiplication') { answer = a * b; symbol = '×'; }
+                if (subOp === 'division') { symbol = '÷'; }
+
+                displayText = `${a} ${symbol} ${b}`;
+            }
+        } else if (operation === 'algebra') {
+            const ops = ['addition', 'subtraction', 'multiplication'];
+            const subOp = ops[randomInt(0, ops.length - 1)];
+
+            if (subOp === 'multiplication') {
+                a = randomInt(2, 12); b = randomInt(2, 12);
+                answer = a * b; symbol = '×';
+            } else {
+                a = randomInt(5, 50); b = randomInt(2, a);
+                if (subOp === 'subtraction') { answer = a - b; symbol = '−'; }
+                else { answer = a + b; symbol = '+'; }
+            }
+
+            const result = answer;
+            const missing = randomInt(0, 1);
+            if (missing === 0) {
+                answer = a; displayText = `? ${symbol} ${b} = ${result}`;
+            } else {
+                answer = b; displayText = `${a} ${symbol} ? = ${result}`;
+            }
         } else {
             // Determine max based on mode configuration
             if (['multiplication', 'addition', 'subtraction'].includes(operation) && mode !== 'mixed') {
@@ -574,12 +648,13 @@ function updateTimerDisplay() {
  */
 function handleTimeout() {
     const elapsed = stopTimer();
+    stopComboTimer();
+    resetStreak();
 
     // Record as wrong answer
     recordAnswer(false, elapsed);
 
     // Show feedback
-    elements.answerInput.classList.add('incorrect');
     elements.answerFeedback.textContent = `Time's up! Answer: ${state.session.currentProblem.answer}`;
     elements.answerFeedback.className = 'answer-feedback incorrect';
 
@@ -608,7 +683,11 @@ function startSession(mode) {
         startTime: null,
         timerInterval: null,
         sessionStart: Date.now(),
-        usedProblems: new Set()
+        usedProblems: new Set(),
+        streak: 0,
+        maxStreak: 0,
+        score: 0,
+        comboTimer: null
     };
 
     // Update UI
@@ -759,6 +838,8 @@ function submitAnswer() {
     const userAnswer = parseInt(elements.answerInput.value);
     const correctAnswer = state.session.currentProblem.answer;
     const elapsed = stopTimer();
+    stopComboTimer();
+    resetStreak();
 
     if (isNaN(userAnswer)) {
         elements.answerInput.focus();
@@ -773,10 +854,33 @@ function submitAnswer() {
 
     // Show feedback
     if (isCorrect) {
+        state.session.streak++;
+        if (state.session.streak > state.session.maxStreak) state.session.maxStreak = state.session.streak;
+        const multiplier = 1 + (state.session.streak / 10);
+        const points = Math.round(10 * multiplier);
+        state.session.score += points;
+        updateStreakUI();
+        startComboTimer();
+
+        const rect = elements.answerInput.getBoundingClientRect();
+        const floatEl = document.createElement('span');
+        floatEl.className = 'floating-text';
+        floatEl.textContent = `+${points}`;
+        floatEl.style.left = `${rect.left + rect.width / 2}px`;
+        floatEl.style.top = `${rect.top - 20}px`;
+        document.body.appendChild(floatEl);
+        setTimeout(() => floatEl.remove(), 800);
+
+        elements.answerInput.classList.add('correct');
         elements.answerInput.classList.add('correct');
         elements.answerFeedback.textContent = `Correct! ${formatTime(elapsed)}`;
         elements.answerFeedback.className = 'answer-feedback correct';
     } else {
+        resetStreak();
+        if (elements.problemDisplay) {
+            elements.problemDisplay.classList.add('shake');
+            setTimeout(() => elements.problemDisplay.classList.remove('shake'), 500);
+        }
         elements.answerInput.classList.add('incorrect');
         elements.answerFeedback.textContent = `Wrong! Answer: ${correctAnswer}`;
         elements.answerFeedback.className = 'answer-feedback incorrect';
@@ -809,6 +913,8 @@ function skipProblem() {
     if (state.chain.isDisplaying) return;
 
     const elapsed = stopTimer();
+    stopComboTimer();
+    resetStreak();
     recordAnswer(false, elapsed);
 
     elements.answerFeedback.textContent = `Skipped. Answer: ${state.session.currentProblem.answer}`;
@@ -829,6 +935,24 @@ function skipProblem() {
 function recordAnswer(isCorrect, time) {
     state.session.total++;
     if (isCorrect) {
+        state.session.streak++;
+        if (state.session.streak > state.session.maxStreak) state.session.maxStreak = state.session.streak;
+        const multiplier = 1 + (state.session.streak / 10);
+        const points = Math.round(10 * multiplier);
+        state.session.score += points;
+        updateStreakUI();
+        startComboTimer();
+
+        const rect = elements.answerInput.getBoundingClientRect();
+        const floatEl = document.createElement('span');
+        floatEl.className = 'floating-text';
+        floatEl.textContent = `+${points}`;
+        floatEl.style.left = `${rect.left + rect.width / 2}px`;
+        floatEl.style.top = `${rect.top - 20}px`;
+        document.body.appendChild(floatEl);
+        setTimeout(() => floatEl.remove(), 800);
+
+        elements.answerInput.classList.add('correct');
         state.session.correct++;
         state.session.times.push(time);
 
@@ -850,6 +974,8 @@ function recordAnswer(isCorrect, time) {
  */
 function updateSessionStats() {
     const { correct, total, times } = state.session;
+        maxStreak: state.session.maxStreak || 0,
+        score: state.session.score || 0,
 
     elements.statCorrect.textContent = correct;
     elements.sessionProgress.textContent = `${total} solved`;
@@ -874,12 +1000,15 @@ function updateSessionStats() {
  */
 function endSession() {
     stopTimer();
+    stopComboTimer();
 
     if (state.chain.displayInterval) {
         clearInterval(state.chain.displayInterval);
     }
 
     const { correct, total, times } = state.session;
+        maxStreak: state.session.maxStreak || 0,
+        score: state.session.score || 0,
 
     // Calculate final stats
     const accuracy = total > 0 ? ((correct / total) * 100).toFixed(0) : 0;
@@ -897,6 +1026,8 @@ function endSession() {
         mode: state.currentMode,
         correct,
         total,
+        maxStreak: state.session.maxStreak || 0,
+        score: state.session.score || 0,
         accuracy: parseFloat(accuracy),
         avgTime,
         bestTime,
@@ -972,6 +1103,7 @@ function updateAnalytics() {
         elements.overallAvgTime.textContent = '--';
         elements.personalBest.textContent = '--';
     }
+    renderAnalyticsChart(sessions);
 
     // Calculate per-operation stats
     updateOperationStats(sessions, solveTimes);
@@ -1725,4 +1857,161 @@ function createDigitBtn(a, b) {
     });
 
     elements.digitGrid.appendChild(btn);
+}
+
+// ============================================
+// Combo & Streak System
+// ============================================
+
+function startComboTimer() {
+    // Only for practice modes
+    if (!state.session.active) return;
+
+    const container = document.getElementById('combo-container');
+    const bar = document.getElementById('combo-bar');
+
+    if (state.currentMode === 'chain') {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+
+    // Reset bar
+    bar.style.transition = 'none';
+    bar.style.width = '100%';
+
+    // Clear existing
+    if (state.session.comboTimer) clearTimeout(state.session.comboTimer);
+
+    // Force reflow
+    void bar.offsetHeight;
+
+    // Duration: 5 seconds (adjust as needed)
+    // Maybe make it shorter as streak increases?
+    // Base: 5000ms. -100ms per streak? Min 2000ms.
+    let duration = 5000 - (state.session.streak * 100);
+    if (duration < 2000) duration = 2000;
+
+    // Start decay
+    bar.style.transition = `width ${duration}ms linear`;
+    bar.style.width = '0%';
+
+    state.session.comboTimer = setTimeout(() => {
+        resetStreak();
+    }, duration);
+}
+
+function resetStreak() {
+    if (!state.session.active) return;
+
+    state.session.streak = 0;
+    updateStreakUI();
+
+    // Visual feedback
+    const container = document.getElementById('combo-container');
+    container.classList.add('shake');
+    setTimeout(() => container.classList.remove('shake'), 500);
+}
+
+function updateStreakUI() {
+    const multiplier = 1 + (state.session.streak / 10);
+    document.getElementById('combo-multiplier').textContent = multiplier.toFixed(1);
+    const comboText = document.getElementById('combo-multiplier').parentElement;
+    if (state.session.streak >= 5) {
+        comboText.classList.add('high-streak');
+    } else {
+        comboText.classList.remove('high-streak');
+    }
+}
+
+function stopComboTimer() {
+    if (state.session.comboTimer) {
+        clearTimeout(state.session.comboTimer);
+        state.session.comboTimer = null;
+    }
+    // Stop animation
+    const bar = document.getElementById('combo-bar');
+    const currentWidth = bar.offsetWidth;
+    bar.style.transition = 'none';
+    bar.style.width = `${currentWidth}px`;
+}
+
+// ============================================
+// Analytics Chart
+// ============================================
+
+function renderAnalyticsChart(sessions) {
+    const chart = document.getElementById('weekly-chart');
+    if (!chart) return;
+    chart.innerHTML = '';
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    // Initialize last 7 days map
+    const daysMap = {};
+    const labels = [];
+
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+        daysMap[key] = { count: 0, label: dayLabel };
+        labels.push(key);
+    }
+
+    // Aggregate data
+    sessions.forEach(s => {
+        if (!s.timestamp) return;
+        const date = new Date(s.timestamp);
+        const key = date.toISOString().split('T')[0];
+        if (daysMap[key]) {
+            daysMap[key].count += (s.total || 0);
+        }
+    });
+
+    // Find max for scaling
+    let maxVal = 0;
+    Object.values(daysMap).forEach(d => {
+        if (d.count > maxVal) maxVal = d.count;
+    });
+    if (maxVal === 0) maxVal = 10;
+
+    // Render bars
+    labels.forEach(key => {
+        const day = daysMap[key];
+        const height = (day.count / maxVal) * 100;
+
+        const col = document.createElement('div');
+        col.className = 'chart-bar-col';
+
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar';
+        bar.style.height = `${height}%`;
+        bar.title = `${day.count} questions`;
+
+        const label = document.createElement('div');
+        label.className = 'chart-label';
+        label.textContent = day.label;
+
+        col.appendChild(bar);
+        col.appendChild(label);
+        chart.appendChild(col);
+    });
+
+    // Update summary cards
+    let totalQs = 0;
+    let totalCorrect = 0;
+    sessions.forEach(s => {
+        totalQs += (s.total || 0);
+        totalCorrect += (s.correct || 0);
+    });
+
+    const totalEl = document.getElementById('total-questions');
+    if (totalEl) totalEl.textContent = totalQs;
+
+    const accEl = document.getElementById('accuracy-stat');
+    if (accEl) accEl.textContent = totalQs > 0 ? ((totalCorrect / totalQs) * 100).toFixed(1) + '%' : '0%';
 }
