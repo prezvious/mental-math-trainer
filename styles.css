@@ -705,7 +705,7 @@ body {
 }
 
 .complete-stats-row .complete-stat .value { font-size: 1.5rem; }
-.complete-actions { display: flex; gap: var(--spacing-md); }
+.complete-actions { display: flex; gap: var(--spacing-md); justify-content: center; }
 
 /* ============================================
    Analytics Screen
@@ -858,10 +858,10 @@ body {
 .level-btn:hover { border-color: var(--accent-primary); background: rgba(99, 102, 241, 0.05); }
 .level-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
 .modal-actions { display: flex; justify-content: center; gap: var(--spacing-md); margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--border-color); }
-.modal-actions .action-btn { min-width: 120px; padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); border: 2px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); }
-.modal-actions .action-btn:hover { border-color: var(--text-primary); color: var(--text-primary); }
-.modal-actions .action-btn.primary { background: var(--accent-primary); border-color: var(--accent-primary); color: white; }
-.modal-actions .action-btn.primary:hover { background: var(--accent-secondary); border-color: var(--accent-secondary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
+.modal-actions .action-btn, .complete-actions .action-btn { min-width: 120px; padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--radius-md); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); border: 2px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); }
+.modal-actions .action-btn:hover, .complete-actions .action-btn:hover { border-color: var(--text-primary); color: var(--text-primary); }
+.modal-actions .action-btn.primary, .complete-actions .action-btn.primary { background: var(--accent-primary); border-color: var(--accent-primary); color: white; }
+.modal-actions .action-btn.primary:hover, .complete-actions .action-btn.primary:hover { background: var(--accent-secondary); border-color: var(--accent-secondary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); }
 
 .problem-area.vertical-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .problem-area.vertical-layout .problem-text { display: none; }
