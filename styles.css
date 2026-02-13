@@ -40,6 +40,9 @@
     --radius-xl: 16px;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --pastel-teal: #99f2e2;
+    --pastel-indigo: #a2a8d3;
+    --pastel-pink: #ffc4d6;
     --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
@@ -349,6 +352,20 @@ body {
     border-color: var(--pastel-purple);
     background: linear-gradient(to right, var(--bg-card), rgba(224, 187, 228, 0.1));
 }
+.mode-btn[data-mode="algebra"] {
+    border-color: var(--pastel-teal);
+    background: linear-gradient(to right, var(--bg-card), rgba(153, 242, 226, 0.1));
+}
+
+.mode-btn[data-mode="square"] {
+    border-color: var(--pastel-indigo);
+    background: linear-gradient(to right, var(--bg-card), rgba(162, 168, 211, 0.1));
+}
+
+.mode-btn[data-mode="sqrt"] {
+    border-color: var(--pastel-pink);
+    background: linear-gradient(to right, var(--bg-card), rgba(255, 196, 214, 0.1));
+}
 
 .mode-btn[id="power-table-btn"] {
     border-color: var(--accent-primary);
@@ -368,6 +385,9 @@ body {
 .mode-btn[data-mode="mixed"]:hover { background: var(--pastel-orange); color: var(--text-primary); }
 .mode-btn[data-mode="chain"]:hover { background: var(--pastel-purple); color: var(--text-primary); }
 .mode-btn[id="power-table-btn"]:hover { background: var(--accent-primary); color: #fff; }
+.mode-btn[data-mode="algebra"]:hover { background: var(--pastel-teal); color: var(--text-primary); }
+.mode-btn[data-mode="square"]:hover { background: var(--pastel-indigo); color: var(--text-primary); }
+.mode-btn[data-mode="sqrt"]:hover { background: var(--pastel-pink); color: var(--text-primary); }
 .mode-btn[id="multiplication-table-btn"]:hover { background: var(--accent-secondary); color: #fff; }
 
 /* In Dark/Night Owl themes, ensure text is readable on hover */
