@@ -10,6 +10,10 @@
 
     <!-- Fonts removed for offline usage -->
     <link rel="stylesheet" href="styles.css">
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyFAMyFwhgL+EPtMsiI+KaEVv+3fdInCq5VU0C23p6ZqHeK9K3K95bwHI3Trc+" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -38,6 +42,7 @@
                 <div class="button-grid">
                     <button class="mode-btn tool-btn" id="power-table-btn">Power Table (xⁿ)</button>
                     <button class="mode-btn tool-btn" id="multiplication-table-btn">Multiplication (1-40)</button>
+                    <button class="mode-btn tool-btn" id="algebra-formula-btn">Algebra Formulas</button>
                 </div>
             </nav>
 
@@ -424,6 +429,77 @@
             </div>
         </section>
 
+        <!-- Algebra Formulas Screen -->
+        <section id="algebra-screen" class="screen">
+            <header class="screen-header">
+                <button class="back-btn" id="algebra-back">← Back</button>
+                <h2>Algebra Formulas</h2>
+            </header>
+
+            <div class="algebra-content">
+                <div class="formula-section">
+                    <h3>Square Formulas</h3>
+                    <p class="section-desc">Binomial Expansions and Identities</p>
+                    <ul class="formula-list">
+                        <li>\((a + b)^2 = a^2 + 2ab + b^2\)</li>
+                        <li>\((a - b)^2 = a^2 - 2ab + b^2\)</li>
+                        <li>\(a^2 - b^2 = (a + b)(a - b)\)</li>
+                        <li>\(a^2 + b^2 = (a + b)^2 - 2ab\)</li>
+                        <li>\(a^2 + b^2 = (a - b)^2 + 2ab\)</li>
+                        <li>\(2(a^2 + b^2) = (a + b)^2 + (a - b)^2\)</li>
+                        <li>\((a + b)^2 - (a - b)^2 = 4ab\)</li>
+                        <li>\((a - b)^2 = (a + b)^2 - 4ab\)</li>
+                        <li>\((a + b)^2 = (a - b)^2 + 4ab\)</li>
+                    </ul>
+                </div>
+
+                <div class="formula-section">
+                    <h3>Cube Formulas</h3>
+                    <p class="section-desc">Binomial and Trinomial Expansions</p>
+                    <ul class="formula-list">
+                        <li>\((a + b)^3 = a^3 + 3a^2b + 3ab^2 + b^3\)</li>
+                        <li>\((a + b)^3 = a^3 + b^3 + 3ab(a + b)\)</li>
+                        <li>\((a - b)^3 = a^3 - 3a^2b + 3ab^2 - b^3\)</li>
+                        <li>\((a - b)^3 = a^3 - b^3 - 3ab(a - b)\)</li>
+                        <li>\(a^3 + b^3 = (a + b)(a^2 - ab + b^2)\)</li>
+                        <li>\(a^3 - b^3 = (a - b)(a^2 + ab + b^2)\)</li>
+                        <li>\((a + b + c)^3 = a^3 + b^3 + c^3 + 3(a + b)(b + c)(c + a)\)</li>
+                        <li>\(a^3 + b^3 + c^3 - 3abc = (a + b + c)(a^2 + b^2 + c^2 - ab - bc - ca)\)</li>
+                    </ul>
+                </div>
+
+                <div class="formula-section">
+                    <h3>Higher Power Formulas</h3>
+                    <p class="section-desc">Fourth and Eighth Powers</p>
+                    <ul class="formula-list">
+                        <li>\(a^4 + b^4 = (a + b)(a - b)[(a + b)^2 - 2ab]\)</li>
+                        <li>\(a^4 + b^4 = [(a + b)^2 - 2ab]^2 - 2(ab)^2\)</li>
+                        <li>\(a^4 + a^2 b^2 + b^4 = (a^2 + ab + b^2)(a^2 - ab + b^2)\)</li>
+                        <li>\(a^4 + a^2 + 1 = (a^2 + a + 1)(a^2 - a + 1)\)</li>
+                        <li>\(a^8 - b^8 = (a^4 + b^4)(a^2 + b^2)(a + b)(a - b)\)</li>
+                    </ul>
+                </div>
+
+                <div class="formula-section">
+                    <h3>Trinomial Square Formulas</h3>
+                    <p class="section-desc">Squares of expressions with three variables</p>
+                    <ul class="formula-list">
+                        <li>\((a + b + c)^2 = a^2 + b^2 + c^2 + 2ab + 2bc + 2ca\)</li>
+                        <li>\((a + b - c)^2 = a^2 + b^2 + c^2 + 2ab - 2bc - 2ca\)</li>
+                        <li>\((a - b - c)^2 = a^2 + b^2 + c^2 - 2ab + 2bc - 2ca\)</li>
+                    </ul>
+                </div>
+
+                <div class="formula-section">
+                    <h3>Conditional and Special Case Formulas</h3>
+                    <p class="section-desc">Identities under specific conditions</p>
+                    <ul class="formula-list">
+                        <li>If \(a + b + c = 0\), then \(a^3 + b^3 + c^3 = 3abc\)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
         <!-- Mixed Config Modal -->
         <div id="mixed-config-modal" class="modal-overlay" style="display: none;">
             <div class="mixed-modal">
@@ -526,6 +602,21 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof renderMathInElement !== "undefined") {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false},
+                        {left: "\\(", right: "\\)", display: false},
+                        {left: "\\[", right: "\\]", display: true}
+                    ],
+                    throwOnError : false
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>

@@ -105,6 +105,7 @@ const state = {
 
 const elements = {
     screens: {
+        algebra: document.getElementById("algebra-screen"),
         home: document.getElementById('home-screen'),
         practice: document.getElementById('practice-screen'),
         complete: document.getElementById('complete-screen'),
@@ -1538,6 +1539,12 @@ function initEventListeners() {
             showScreen('multiplication');
         });
     }
+    const algebraBtn = document.getElementById('algebra-formula-btn');
+    if (algebraBtn) {
+        algebraBtn.addEventListener('click', () => {
+            showScreen('algebra');
+        });
+    }
 
 
     // Back buttons
@@ -1563,6 +1570,7 @@ function initEventListeners() {
     document.getElementById('settings-back').addEventListener('click', () => showScreen('home'));
     document.getElementById('power-back').addEventListener('click', () => showScreen('home'));
     document.getElementById('multiplication-back').addEventListener('click', () => showScreen('home'));
+    document.getElementById('algebra-back').addEventListener('click', () => showScreen('home'));
 
     // Practice controls
     document.getElementById('submit-btn').addEventListener('click', submitAnswer);

@@ -1050,3 +1050,80 @@ body {
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: inline-block;
 }
+
+/* ============================================
+   Algebra Formulas Screen
+   ============================================ */
+
+.algebra-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+    padding-bottom: var(--spacing-2xl);
+}
+
+@media (min-width: 768px) {
+    .algebra-content {
+        grid-template-columns: repeat(2, 1fr);
+        align-items: start;
+    }
+}
+
+.formula-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.formula-section:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent-primary);
+}
+
+.formula-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    border-bottom: 2px solid var(--accent-light);
+    padding-bottom: var(--spacing-xs);
+    display: inline-block;
+}
+
+.section-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    font-style: italic;
+}
+
+.formula-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.formula-list li {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px dashed var(--border-light);
+    display: flex;
+    justify-content: center;
+}
+
+.formula-list li:last-child {
+    border-bottom: none;
+}
+
+/* KaTeX Overrides */
+.katex {
+    font-size: 1.1em;
+}
