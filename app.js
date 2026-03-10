@@ -1281,7 +1281,15 @@ function goHome() {
         if (!confirm('End current session?')) {
             return;
         }
-        endSession();
+
+        // Exit session directly to home instead of showing completion stats
+        // for a manually aborted run.
+        state.session.active = false;
+        state.chain.isDisplaying = false;
+        elements.answerInput.disabled = false;
+        stopTimer();
+        stopComboTimer();
+        showScreen('home');
         return;
     }
     // Clean up any stale timers even if session is not active
@@ -1486,11 +1494,11 @@ function hideMixedModal() {
 }
 
 function readMixedConfig() {
-    state.mixedConfig.exponent = parseInt(document.getElementById('mixed-exponent').value);
-    state.mixedConfig.multiplication = parseInt(document.getElementById('mixed-multiplication').value);
-    state.mixedConfig.addition = parseInt(document.getElementById('mixed-addition').value);
-    state.mixedConfig.subtraction = parseInt(document.getElementById('mixed-subtraction').value);
-    state.mixedConfig.division = parseInt(document.getElementById('mixed-division').value);
+    state.mixedConfig.exponent = parseInt(document.getElementById('mixed-exponent').value) || 0;
+    state.mixedConfig.multiplication = parseInt(document.getElementById('mixed-multiplication').value) || 0;
+    state.mixedConfig.addition = parseInt(document.getElementById('mixed-addition').value) || 0;
+    state.mixedConfig.subtraction = parseInt(document.getElementById('mixed-subtraction').value) || 0;
+    state.mixedConfig.division = parseInt(document.getElementById('mixed-division').value) || 0;
 }
 
 // ============================================
