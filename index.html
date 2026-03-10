@@ -17,10 +17,13 @@
         <!-- Home Screen -->
         <section id="home-screen" class="screen active">
             <header class="main-header">
-                <!-- Theme toggle removed -->
+                <p class="eyebrow">Daily Brain Workout</p>
                 <h1>Mental Math Trainer</h1>
+                <p class="hero-subtitle">Train speed, accuracy, and confidence with focused arithmetic sessions.</p>
             </header>
 
+            <section class="home-panel">
+                <h2 class="panel-title">Practice Modes</h2>
             <nav class="mode-selection">
                 <button class="mode-btn" data-mode="addition">Addition</button>
                 <button class="mode-btn" data-mode="subtraction">Subtraction</button>
@@ -32,8 +35,9 @@
                 <button class="mode-btn" data-mode="square">Square</button>
                 <button class="mode-btn" data-mode="sqrt">Square Root</button>
             </nav>
+            </section>
 
-            <nav class="mode-selection reference-section">
+            <nav class="mode-selection reference-section home-panel">
                 <h3 class="section-title">Reference Tables</h3>
                 <div class="button-grid">
                     <button class="mode-btn tool-btn" id="power-table-btn">Power Table (xⁿ)</button>
@@ -101,8 +105,9 @@
                 </div>
 
                 <div class="answer-section">
+                    <label for="answer-input" class="sr-only">Answer input</label>
                     <input type="number" id="answer-input" class="answer-input" placeholder="?" autocomplete="off"
-                        inputmode="numeric">
+                        inputmode="numeric" aria-label="Answer input">
                     <div class="answer-feedback" id="answer-feedback"></div>
                 </div>
             </div>
@@ -392,8 +397,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="footer-info"
-                style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem; text-align: center;">
+            <div class="footer-info">
                 <span>Rows: Base Number (x)</span> • <span>Columns: Exponent (n)</span>
             </div>
         </section>
@@ -418,8 +422,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="footer-info"
-                style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.8rem; text-align: center;">
+            <div class="footer-info">
                 <span>Rows: Multiplicand</span> • <span>Columns: Multiplier</span>
             </div>
         </section>
@@ -427,7 +430,7 @@
         <!-- Mixed Config Modal -->
         <div id="mixed-config-modal" class="modal-overlay" style="display: none;">
             <div class="mixed-modal">
-                <h2>Your Selection</h2>
+                <h2>Customize Mixed Mode</h2>
                 <div class="mixed-config-rows">
                     <div class="mixed-row">
                         <span class="mixed-label">( )²</span>

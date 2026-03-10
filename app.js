@@ -80,6 +80,7 @@ const state = {
         numbers: [],
         currentIndex: 0,
         displayInterval: null,
+        displayTimeout: null,
         isDisplaying: false
     },
 
@@ -625,6 +626,7 @@ function handleTimeout() {
  * Start a new practice session
  */
 function startSession(mode) {
+    clearChainDisplayTimer();
     state.currentMode = mode;
     state.session = {
         active: true,
@@ -713,12 +715,14 @@ function nextProblem() {
  * Start a chain math round
  */
 function startChainRound() {
+    clearChainDisplayTimer();
     // Generate chain
     const chain = generateChain();
     state.chain = {
         numbers: chain.numbers,
         answer: chain.answer,
         currentIndex: 0,
+        displayTimeout: null,
         isDisplaying: true
     };
 
@@ -776,10 +780,18 @@ function displayChainNumbers() {
             if (i === index) dot.classList.add('active');
         });
 
-        setTimeout(() => showNumber(index + 1), displayTime);
+        state.chain.displayTimeout = setTimeout(() => showNumber(index + 1), displayTime);
     }
 
     showNumber(0);
+}
+
+
+function clearChainDisplayTimer() {
+    if (state.chain && state.chain.displayTimeout) {
+        clearTimeout(state.chain.displayTimeout);
+        state.chain.displayTimeout = null;
+    }
 }
 
 /**
@@ -932,8 +944,7 @@ function updateSessionStats() {
 function endSession() {
     stopTimer();
     stopComboTimer();
-
-    // Chain uses recursive setTimeout, no interval to clear
+    clearChainDisplayTimer();
 
     const { correct, total, times } = state.session;
 
@@ -1281,7 +1292,17 @@ function goHome() {
         if (!confirm('End current session?')) {
             return;
         }
-        endSession();
+
+        // Exit session directly to home instead of showing completion stats
+        // for a manually aborted run.
+        state.session.active = false;
+        state.chain.isDisplaying = false;
+        elements.answerInput.disabled = false;
+        clearChainDisplayTimer();
+        stopTimer();
+        stopComboTimer();
+        elements.answerFeedback.textContent = '';
+        showScreen('home');
         return;
     }
     // Clean up any stale timers even if session is not active
@@ -1486,11 +1507,11 @@ function hideMixedModal() {
 }
 
 function readMixedConfig() {
-    state.mixedConfig.exponent = parseInt(document.getElementById('mixed-exponent').value);
-    state.mixedConfig.multiplication = parseInt(document.getElementById('mixed-multiplication').value);
-    state.mixedConfig.addition = parseInt(document.getElementById('mixed-addition').value);
-    state.mixedConfig.subtraction = parseInt(document.getElementById('mixed-subtraction').value);
-    state.mixedConfig.division = parseInt(document.getElementById('mixed-division').value);
+    state.mixedConfig.exponent = parseInt(document.getElementById('mixed-exponent').value, 10) || 0;
+    state.mixedConfig.multiplication = parseInt(document.getElementById('mixed-multiplication').value, 10) || 0;
+    state.mixedConfig.addition = parseInt(document.getElementById('mixed-addition').value, 10) || 0;
+    state.mixedConfig.subtraction = parseInt(document.getElementById('mixed-subtraction').value, 10) || 0;
+    state.mixedConfig.division = parseInt(document.getElementById('mixed-division').value, 10) || 0;
 }
 
 // ============================================
@@ -1634,7 +1655,14 @@ function initEventListeners() {
     // Mixed config modal buttons
     document.getElementById('mixed-cancel-btn').addEventListener('click', hideMixedModal);
     document.getElementById('mixed-start-btn').addEventListener('click', () => {
-        readMixedConfig(); // Ensure this function exists or is defined
+        readMixedConfig();
+
+        const enabledCount = Object.values(state.mixedConfig).filter(level => level > 0).length;
+        if (enabledCount === 0) {
+            alert('Please enable at least one operation for Mixed mode.');
+            return;
+        }
+
         hideMixedModal();
         startSession('mixed');
     });
@@ -1690,7 +1718,6 @@ function init() {
     // Show home screen
     showScreen('home');
 
-    console.log('Mental Math Trainer initialized!');
 }
 
 // Start the app when DOM is ready
