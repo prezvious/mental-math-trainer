@@ -1,0 +1,90 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  displayName   String?
+  accounts      Account[]
+  problems      Problem[]
+  records       Record[]
+}
+
+model Problem {
+  id              String    @id @default(cuid())
+  userId          String
+  operation       Operation
+  operandLengths  Int[]
+  operands        Int[]
+  centiseconds    Int
+  timestamp       DateTime  @db.Timestamptz(3)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  excludedRecords Record[]  @relation("RecordExcludedProblems")
+  records         Record[]  @relation("RecordProblems")
+}
+
+model Record {
+  id                String            @id @default(cuid())
+  timestamp         DateTime          @default(now()) @db.Timestamptz(3)
+  userId            String
+  operation         Operation
+  operandLengths    Int[]
+  calculationMethod CalculationMethod
+  problemCount      Int
+  centiseconds      Int
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  excludedProblems  Problem[]         @relation("RecordExcludedProblems")
+  problems          Problem[]         @relation("RecordProblems")
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  refresh_token_expires_in Int?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  oauth_token_secret       String?
+  oauth_token              String?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum Operation {
+  ADDITION
+  SUBTRACTION
+  MULTIPLICATION
+  DIVISION
+}
+
+enum CalculationMethod {
+  MEAN
+  AVERAGE
+}
