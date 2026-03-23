@@ -1,32 +1,41 @@
 # Mental Math Studio
 
-A full redesign of the original trainer with a new layout, Supabase auth, and Supabase-backed progress logging.
+A focused mental arithmetic trainer with user accounts, progress tracking, and multiple visual themes.
 
 ## Stack
-- Next.js
-- Supabase Auth + Postgres
-- Plain semantic HTML in React pages
-- Custom CSS design system
+- **Next.js 14** — pages router, API routes
+- **Prisma** — database ORM
+- **NextAuth** — authentication
+- **Tailwind CSS** — utility styling
+- **Chart.js** — progress visualisation
+
+## Features
+- Timed training rounds across arithmetic operations
+- Per-round results with accuracy and speed breakdown
+- Progress dashboard with historical charts
+- User accounts — login and signup with password strength validation
+- Multiple visual themes (Velvet Circuit, Paper Lantern, Acid Lemon Lobby, Apothecary Glass, Vinyl After Rain, and more)
+- Theme switcher persisted to localStorage
 
 ## Setup
 1. Install dependencies:
    ```bash
    npm install
    ```
-2. Add environment values (see `.env.example`):
+2. Copy `.env.example` to `.env.local` and fill in the required values.
+3. Run database migrations:
    ```bash
-   NEXT_PUBLIC_SUPABASE_URL=...
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+   npx prisma migrate deploy
    ```
-3. In Supabase SQL editor, run:
-   - `supabase/migrations/20260313_create_progress_logs.sql`
-4. Start the app:
+4. Start the development server:
    ```bash
    npm run dev
    ```
 
 ## Routes
-- `/` Trainer and round runner
-- `/stats` Progress dashboard from Supabase logs
-- `/login` Supabase email/password login
-- `/signup` Supabase email/password signup
+| Path | Description |
+|------|-------------|
+| `/` | Trainer — configure and run arithmetic rounds |
+| `/stats` | Progress dashboard — charts and history |
+| `/login` | Email/password login |
+| `/signup` | Account creation with password strength meter |
