@@ -11,12 +11,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const suggestedEmail =
+    typeof router.query.email === 'string' ? router.query.email : '';
 
   useEffect(() => {
     if (user) {
       router.replace('/');
     }
   }, [user, router]);
+
+  useEffect(() => {
+    if (!suggestedEmail) {
+      return;
+    }
+    setEmail((currentEmail) => currentEmail || suggestedEmail);
+  }, [suggestedEmail]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -57,6 +66,11 @@ export default function LoginPage() {
       </section>
 
       <section className='panel paper-panel auth-panel appear-up'>
+        {suggestedEmail && (
+          <p className='inline-warning'>
+            This email is already registered. Enter your password to log in.
+          </p>
+        )}
         {!isConfigured && (
           <p className='inline-warning'>
             Configure <code>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
