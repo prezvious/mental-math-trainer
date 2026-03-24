@@ -198,6 +198,11 @@ code {
   display: grid;
   justify-items: end;
   gap: 0.55rem;
+  pointer-events: none;
+}
+
+.theme-floating-layer > * {
+  pointer-events: auto;
 }
 
 .theme-fab {
