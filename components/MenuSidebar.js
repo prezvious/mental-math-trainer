@@ -26,10 +26,10 @@ export default function MenuSidebar({
   const focusRef = useRef();
 
   return (
-    <Disclosure as='div' onClick={onClick} className='flex items-center'>
+    <Disclosure as='div' onClick={onClick} className='pointer-events-none flex items-center'>
       <Disclosure.Button
         aria-label='Show menu'
-        className='fixed top-1.5 left-1.5'
+        className='pointer-events-auto fixed top-1.5 left-1.5'
       >
         <MenuIcon className='h-9 w-9 text-zinc-300' />
       </Disclosure.Button>
