@@ -17,35 +17,6 @@ model User {
   image         String?
   displayName   String?
   accounts      Account[]
-  problems      Problem[]
-  records       Record[]
-}
-
-model Problem {
-  id              String    @id @default(cuid())
-  userId          String
-  operation       Operation
-  operandLengths  Int[]
-  operands        Int[]
-  centiseconds    Int
-  timestamp       DateTime  @db.Timestamptz(3)
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  excludedRecords Record[]  @relation("RecordExcludedProblems")
-  records         Record[]  @relation("RecordProblems")
-}
-
-model Record {
-  id                String            @id @default(cuid())
-  timestamp         DateTime          @default(now()) @db.Timestamptz(3)
-  userId            String
-  operation         Operation
-  operandLengths    Int[]
-  calculationMethod CalculationMethod
-  problemCount      Int
-  centiseconds      Int
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  excludedProblems  Problem[]         @relation("RecordExcludedProblems")
-  problems          Problem[]         @relation("RecordProblems")
 }
 
 model Account {
@@ -75,16 +46,4 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-enum Operation {
-  ADDITION
-  SUBTRACTION
-  MULTIPLICATION
-  DIVISION
-}
-
-enum CalculationMethod {
-  MEAN
-  AVERAGE
 }

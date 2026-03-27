@@ -30,7 +30,7 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!client) {
-      setErrorMessage('Supabase is not configured.');
+      setErrorMessage('Account services are not configured.');
       return;
     }
 
@@ -56,7 +56,7 @@ export default function LoginPage() {
         <title>Log In | Mental Math Studio</title>
         <meta
           name='description'
-          content='Log in to Mental Math Studio and sync your progress with Supabase.'
+          content='Log in to Mental Math Studio and continue your saved training.'
         />
       </Head>
       <section className='hero-panel appear-up'>
@@ -73,8 +73,8 @@ export default function LoginPage() {
         )}
         {!isConfigured && (
           <p className='inline-warning'>
-            Configure <code>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> before using auth.
+            Account features are not configured yet, so login is unavailable right
+            now.
           </p>
         )}
         <form className='auth-form' onSubmit={handleSubmit}>

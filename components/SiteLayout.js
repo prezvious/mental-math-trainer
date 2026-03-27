@@ -150,7 +150,7 @@ export default function SiteLayout({ children }) {
             })}
           </nav>
           <div className='site-actions'>
-            {!isConfigured && <span className='status-badge'>Supabase not set</span>}
+            {!isConfigured && <span className='status-badge'>Account sync unavailable</span>}
             {user ? (
               <>
                 <span className='user-pill'>{user.email}</span>

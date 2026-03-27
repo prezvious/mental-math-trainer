@@ -10,6 +10,7 @@ export const OPERATION_META = {
 };
 
 const VALID_OPERATIONS = Object.keys(OPERATION_META);
+const ORDERED_DIGIT_OPERATIONS = ['SUBTRACTION', 'DIVISION'];
 
 export function getOperationOptions() {
   return VALID_OPERATIONS.map((operation) => ({
@@ -18,8 +19,17 @@ export function getOperationOptions() {
   }));
 }
 
+export function operationRequiresOrderedDigits(operation) {
+  return ORDERED_DIGIT_OPERATIONS.includes(operation);
+}
+
 function clampNumber(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function parseNumberOrFallback(value, fallback) {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
 }
 
 function randomInteger(minInclusive, maxExclusive) {
@@ -149,9 +159,13 @@ export function sanitizeSettings(settings) {
     ? settings.operation
     : 'MULTIPLICATION';
 
-  const leftDigits = clampNumber(Number(settings.leftDigits) || 2, 1, MAX_DIGITS);
-  let rightDigits = clampNumber(Number(settings.rightDigits) || 2, 1, MAX_DIGITS);
-  if (['SUBTRACTION', 'DIVISION'].includes(operation) && rightDigits > leftDigits) {
+  const leftDigits = clampNumber(parseNumberOrFallback(settings.leftDigits, 2), 1, MAX_DIGITS);
+  let rightDigits = clampNumber(
+    parseNumberOrFallback(settings.rightDigits, 2),
+    1,
+    MAX_DIGITS
+  );
+  if (operationRequiresOrderedDigits(operation) && rightDigits > leftDigits) {
     rightDigits = leftDigits;
   }
 
@@ -160,7 +174,7 @@ export function sanitizeSettings(settings) {
     leftDigits,
     rightDigits,
     roundSize: clampNumber(
-      Number(settings.roundSize) || 10,
+      parseNumberOrFallback(settings.roundSize, 10),
       MIN_ROUND_SIZE,
       MAX_ROUND_SIZE
     )

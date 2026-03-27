@@ -177,7 +177,7 @@ export default function StatsPage() {
         <title>Progress Dashboard | Mental Math Studio</title>
         <meta
           name='description'
-          content='Explore Supabase-backed progress analytics for your math training.'
+          content='Explore your mental math progress analytics, recent sessions, and speed trends.'
         />
       </Head>
 
@@ -185,17 +185,16 @@ export default function StatsPage() {
         <p className='hero-tag'>Progress Dashboard</p>
         <h1>Session Analytics</h1>
         <p>
-          Review every submission captured in Supabase, including speed,
-          correctness, and operation-level consistency.
+          Review every submission, including speed, correctness, and operation-level
+          consistency.
         </p>
       </section>
 
       {!isConfigured && (
         <section className='panel warning-panel appear-up'>
-          <h2>Supabase Configuration Missing</h2>
+          <h2>Account Setup Missing</h2>
           <p>
-            Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to load progress data.
+            Progress data is unavailable until account features are configured.
           </p>
         </section>
       )}

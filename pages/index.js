@@ -1,16 +1,23 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   computeRoundStats,
   createProblem,
   formatDuration,
   getOperationOptions,
   OPERATION_META,
+  operationRequiresOrderedDigits,
   parseIntegerInput,
   sanitizeSettings
 } from 'utils/mathEngine';
+import {
+  createActiveRound,
+  processRoundSubmission,
+  shouldAutoSubmitAnswer
+} from 'utils/trainerRound';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
+import { DIGIT_OPTIONS } from 'utils/utils';
 
 const DEFAULT_SETTINGS = {
   operation: 'MULTIPLICATION',
@@ -36,8 +43,9 @@ export default function TrainerPage() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [activeRound, setActiveRound] = useState(null);
   const [answerInput, setAnswerInput] = useState('');
-  const [feedback, setFeedback] = useState(null);
   const [lastRound, setLastRound] = useState(null);
+  const answerInputRef = useRef(null);
+  const handledQuestionIdRef = useRef(null);
 
   useEffect(() => {
     if (user) {
@@ -46,13 +54,25 @@ export default function TrainerPage() {
     setActiveRound(null);
     setAnswerInput('');
     setLastRound(null);
-    setFeedback(null);
+    handledQuestionIdRef.current = null;
   }, [user]);
+
+  useEffect(() => {
+    if (!activeRound || !answerInputRef.current) {
+      return;
+    }
+
+    answerInputRef.current.focus();
+  }, [activeRound]);
 
   const activeStats = useMemo(
     () => computeRoundStats(activeRound?.attempts || []),
     [activeRound]
   );
+  const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
+  const availableRightDigits = isOrderedDigitOperation
+    ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
+    : DIGIT_OPTIONS;
 
   const startRound = (event) => {
     event.preventDefault();
@@ -62,17 +82,13 @@ export default function TrainerPage() {
       sanitizedSettings.leftDigits,
       sanitizedSettings.rightDigits
     );
+    const questionStartedAt = Date.now();
 
     setSettings(sanitizedSettings);
     setLastRound(null);
-    setFeedback(null);
     setAnswerInput('');
-    setActiveRound({
-      settings: sanitizedSettings,
-      attempts: [],
-      currentProblem: firstProblem,
-      questionStartedAt: Date.now()
-    });
+    handledQuestionIdRef.current = null;
+    setActiveRound(createActiveRound(sanitizedSettings, firstProblem, questionStartedAt));
   };
 
   const persistRound = async (attempts, roundSettings) => {
@@ -116,81 +132,96 @@ export default function TrainerPage() {
     );
   };
 
-  const handleAnswerSubmit = async (event) => {
-    event.preventDefault();
+  const submitAnswer = async (submittedAnswer, submittedAt = Date.now()) => {
     if (!activeRound) {
       return;
     }
 
-    const submittedAnswer = parseIntegerInput(answerInput);
-    if (submittedAnswer === null) {
-      setFeedback({
-        tone: 'warning',
-        message: 'Enter a whole number before submitting.'
-      });
+    const roundSnapshot = activeRound;
+    const submission = processRoundSubmission(
+      roundSnapshot,
+      submittedAnswer,
+      submittedAt,
+      handledQuestionIdRef.current
+    );
+
+    if (submission.ignored) {
       return;
     }
 
-    const responseMs = Math.max(1, Date.now() - activeRound.questionStartedAt);
-    const { currentProblem } = activeRound;
-    const isCorrect = submittedAnswer === currentProblem.correctAnswer;
-    const attempt = {
-      operation: currentProblem.operation,
-      leftOperand: currentProblem.leftOperand,
-      rightOperand: currentProblem.rightOperand,
-      correctAnswer: currentProblem.correctAnswer,
-      submittedAnswer,
-      isCorrect,
-      responseMs,
-      createdAt: new Date().toISOString()
-    };
-
-    const attempts = [...activeRound.attempts, attempt];
-    const isComplete = attempts.length >= activeRound.settings.roundSize;
+    handledQuestionIdRef.current = submission.handledQuestionId;
+    const { attempts, isComplete, nextActiveRound } = submission;
 
     if (isComplete) {
       setActiveRound(null);
       setAnswerInput('');
-      setFeedback({
-        tone: isCorrect ? 'success' : 'warning',
-        message: isCorrect
-          ? 'Round complete. Nice finish.'
-          : `Round complete. Final correct answer was ${currentProblem.correctAnswer.toString()}.`
-      });
       setLastRound({
         ...computeRoundStats(attempts),
         attempts,
-        settings: activeRound.settings,
+        settings: roundSnapshot.settings,
         finishedAt: new Date().toISOString(),
         saveState: user ? 'saving' : 'idle',
         saveError: ''
       });
-      await persistRound(attempts, activeRound.settings);
+      await persistRound(attempts, roundSnapshot.settings);
       return;
     }
 
-    const nextProblem = createProblem(
-      activeRound.settings.operation,
-      activeRound.settings.leftDigits,
-      activeRound.settings.rightDigits
-    );
-    setActiveRound({
-      ...activeRound,
-      attempts,
-      currentProblem: nextProblem,
-      questionStartedAt: Date.now()
-    });
     setAnswerInput('');
-    setFeedback({
-      tone: isCorrect ? 'success' : 'warning',
-      message: isCorrect
-        ? 'Correct. Next question loaded.'
-        : `Answer recorded. Correct was ${currentProblem.correctAnswer.toString()}.`
-    });
+    setActiveRound(nextActiveRound);
+  };
+
+  const handleAnswerSubmit = async (event) => {
+    event.preventDefault();
+
+    const submittedAnswer = parseIntegerInput(answerInputRef.current?.value ?? answerInput);
+    if (submittedAnswer === null) {
+      return;
+    }
+
+    await submitAnswer(submittedAnswer, Date.now());
+  };
+
+  const handleAnswerChange = (event) => {
+    const nextValue = event.target.value;
+    setAnswerInput(nextValue);
+
+    if (!activeRound) {
+      return;
+    }
+
+    const autoSubmittedAnswer = shouldAutoSubmitAnswer(
+      nextValue,
+      activeRound.currentProblem.correctAnswer
+    );
+    if (autoSubmittedAnswer === null) {
+      return;
+    }
+
+    void submitAnswer(autoSubmittedAnswer, Date.now());
   };
 
   const updateSetting = (key, value) => {
-    setSettings((currentSettings) => sanitizeSettings({ ...currentSettings, [key]: value }));
+    const normalizedValue =
+      ['leftDigits', 'rightDigits', 'roundSize'].includes(key) ? Number(value) : value;
+
+    setSettings((currentSettings) => {
+      const nextSettings = {
+        ...currentSettings,
+        [key]: normalizedValue
+      };
+      const nextOperation =
+        key === 'operation' ? normalizedValue : currentSettings.operation;
+
+      if (operationRequiresOrderedDigits(nextOperation)) {
+        nextSettings.rightDigits = Math.min(
+          Number(nextSettings.rightDigits),
+          Number(nextSettings.leftDigits)
+        );
+      }
+
+      return sanitizeSettings(nextSettings);
+    });
   };
 
   return (
@@ -199,7 +230,7 @@ export default function TrainerPage() {
         <title>Mental Math Studio</title>
         <meta
           name='description'
-          content='A redesigned mental math trainer with Supabase login, signup, and progress tracking.'
+          content='A redesigned mental math trainer with account login, timed rounds, and progress tracking.'
         />
       </Head>
       <section className='hero-panel appear-up'>
@@ -207,13 +238,12 @@ export default function TrainerPage() {
         <h1>Mental Math Studio</h1>
         <p>
           Sprint through targeted arithmetic rounds, keep every attempt, and track
-          your long-term speed inside Supabase.
+          your long-term speed over time.
         </p>
         {!isConfigured && (
           <p className='inline-warning'>
-            Add <code>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> to connect auth and progress
-            tracking.
+            Account features are not configured yet, so saved progress is currently
+            unavailable.
           </p>
         )}
       </section>
@@ -230,7 +260,7 @@ export default function TrainerPage() {
           <article className='feature-card'>
             <h2>Track Real Progress</h2>
             <p>
-              Every answer is stored to your Supabase account so you can inspect
+              Every submitted answer is saved to your account so you can inspect
               accuracy, pacing, and session history.
             </p>
           </article>
@@ -269,24 +299,30 @@ export default function TrainerPage() {
                 </select>
 
                 <label htmlFor='leftDigits'>Left number digits</label>
-                <input
+                <select
                   id='leftDigits'
-                  type='number'
-                  min='1'
-                  max='8'
                   value={settings.leftDigits}
                   onChange={(event) => updateSetting('leftDigits', event.target.value)}
-                />
+                >
+                  {DIGIT_OPTIONS.map((digits) => (
+                    <option key={digits} value={digits}>
+                      {`${digits} digit${digits === 1 ? '' : 's'}`}
+                    </option>
+                  ))}
+                </select>
 
                 <label htmlFor='rightDigits'>Right number digits</label>
-                <input
+                <select
                   id='rightDigits'
-                  type='number'
-                  min='1'
-                  max='8'
                   value={settings.rightDigits}
                   onChange={(event) => updateSetting('rightDigits', event.target.value)}
-                />
+                >
+                  {availableRightDigits.map((digits) => (
+                    <option key={digits} value={digits}>
+                      {`${digits} digit${digits === 1 ? '' : 's'}`}
+                    </option>
+                  ))}
+                </select>
 
                 <label htmlFor='roundSize'>Questions per round</label>
                 <input
@@ -331,12 +367,13 @@ export default function TrainerPage() {
                   <form className='answer-form' onSubmit={handleAnswerSubmit}>
                     <label htmlFor='answerInput'>Your answer</label>
                     <input
+                      ref={answerInputRef}
                       id='answerInput'
                       type='text'
                       inputMode='numeric'
                       autoComplete='off'
                       value={answerInput}
-                      onChange={(event) => setAnswerInput(event.target.value)}
+                      onChange={handleAnswerChange}
                       placeholder='Type integer answer'
                     />
                     <button type='submit' className='button button-strong button-full'>
@@ -346,11 +383,10 @@ export default function TrainerPage() {
                 </>
               ) : (
                 <p className='placeholder-text'>
-                  Start a round to receive timed questions. Each submission is logged,
-                  scored, and ready for analysis.
+                  Start a round to receive timed questions. Each submission is
+                  tracked, scored, and ready for review.
                 </p>
               )}
-              {feedback && <p className={`feedback ${feedback.tone}`}>{feedback.message}</p>}
             </article>
           </section>
 
@@ -378,11 +414,11 @@ export default function TrainerPage() {
                 </article>
               </div>
               <p className='save-status'>
-                {lastRound.saveState === 'saving' && 'Saving this round to Supabase...'}
-                {lastRound.saveState === 'saved' && 'Round saved to Supabase progress logs.'}
-                {lastRound.saveState === 'idle' && 'Sign in to store rounds in Supabase.'}
+                {lastRound.saveState === 'saving' && 'Saving this round...'}
+                {lastRound.saveState === 'saved' && 'Round saved to your progress history.'}
+                {lastRound.saveState === 'idle' && 'Sign in to store completed rounds.'}
                 {lastRound.saveState === 'error' &&
-                  `Supabase save failed: ${lastRound.saveError}`}
+                  `Could not save this round: ${lastRound.saveError}`}
               </p>
               <Link href='/stats' className='button button-quiet'>
                 Open progress dashboard

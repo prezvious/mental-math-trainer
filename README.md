@@ -1,41 +1,75 @@
 # Mental Math Studio
 
-A focused mental arithmetic trainer with user accounts, progress tracking, and multiple visual themes.
+Mental Math Studio is a focused arithmetic practice app for fast reps, clean pacing, and visible progress. The current version keeps the experience simple: one trainer engine, one progress dashboard, and a rotating set of visual themes if you want the app to feel different without changing how it works.
 
-## Stack
-- **Next.js 14** — pages router, API routes
-- **Prisma** — database ORM
-- **NextAuth** — authentication
-- **Tailwind CSS** — utility styling
-- **Chart.js** — progress visualisation
+## What It Does
 
-## Features
-- Timed training rounds across arithmetic operations
-- Per-round results with accuracy and speed breakdown
-- Progress dashboard with historical charts
-- User accounts — login and signup with password strength validation
-- Multiple visual themes (Velvet Circuit, Paper Lantern, Acid Lemon Lobby, Apothecary Glass, Vinyl After Rain, and more)
-- Theme switcher persisted to localStorage
+You build a round by choosing an operation, digit lengths, and the number of questions. The trainer then generates arithmetic prompts and times every response.
 
-## Setup
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Copy `.env.example` to `.env.local` and fill in the required values.
-3. Run database migrations:
-   ```bash
-   npx prisma migrate deploy
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+The current trainer supports:
 
-## Routes
-| Path | Description |
-|------|-------------|
-| `/` | Trainer — configure and run arithmetic rounds |
-| `/stats` | Progress dashboard — charts and history |
-| `/login` | Email/password login |
-| `/signup` | Account creation with password strength meter |
+- Addition, subtraction, multiplication, and division
+- Left and right digit lengths from 1 to 8
+- Safe subtraction and division rules so the right side never exceeds the left side
+- Hybrid answer flow
+- Type the exact correct answer and the app moves to the next question immediately
+- Press Enter or use the submit button to record the current answer and move on, even if it is wrong
+- End-of-round summaries for accuracy, average response time, and total time
+- A progress page with recent attempts, recent sessions, and operation breakdowns
+- Login and sign-up screens with password guidance
+- Theme switching stored in local storage
+
+## What Changed
+
+This repo no longer includes the old set-based trainer. The website now runs on one streamlined trainer flow:
+
+- Correct input auto-advances right away
+- Feedback banners between questions are gone, so timing stays tighter
+- Digit selection is explicit and consistent from 1 to 8
+- The active app uses one trainer path instead of split old and new flows
+
+If you used an older version of this project before, the biggest difference is that the round now feels more continuous. You can keep typing, get instant advancement on correct answers, and finish a full session without the old stop-and-confirm rhythm.
+
+## Running It Locally
+
+If you want to run the website on your own computer:
+
+```bash
+npm install
+```
+
+Copy `.env.example` to `.env.local`, then fill in the values your local setup expects.
+
+Start the app with:
+
+```bash
+npm run dev
+```
+
+Then open [http://localhost:3000](http://localhost:3000).
+
+## Using It Offline
+
+If by "offline" you mean "run it locally on your own machine without deploying it," that works fine.
+
+- For a full local setup, add your environment values in `.env.local` and start the app with `npm run dev`.
+- For a quick offline UI check, you can still boot the site locally and inspect the layout, themes, and page flow.
+- Account-based features and saved history depend on your local environment being configured correctly.
+
+## Quick Checks
+
+Before pushing changes, these are the two checks worth running:
+
+```bash
+npm run lint
+node --test --no-warnings .\tests\mathEngine.test.cjs .\tests\trainerRound.test.cjs
+```
+
+## Main Routes
+
+| Path | Purpose |
+|------|---------|
+| `/` | Trainer setup and live rounds |
+| `/stats` | Progress dashboard and recent history |
+| `/login` | Account login |
+| `/signup` | Account creation |

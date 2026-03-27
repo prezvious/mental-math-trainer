@@ -66,7 +66,7 @@ export default function SignupPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!client) {
-      setErrorMessage('Supabase is not configured.');
+      setErrorMessage('Account services are not configured.');
       return;
     }
 
@@ -124,20 +124,20 @@ export default function SignupPage() {
         <title>Sign Up | Mental Math Studio</title>
         <meta
           name='description'
-          content='Create your account for Mental Math Studio with Supabase authentication.'
+          content='Create your account for Mental Math Studio and keep your training history.'
         />
       </Head>
       <section className='hero-panel appear-up'>
         <p className='hero-tag'>Create Account</p>
         <h1>Sign Up</h1>
-        <p>Store every round in Supabase and build a long-term progress history.</p>
+        <p>Save your rounds, build consistency, and keep your long-term progress history.</p>
       </section>
 
       <section className='panel paper-panel auth-panel appear-up'>
         {!isConfigured && (
           <p className='inline-warning'>
-            Configure <code>NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> before using auth.
+            Account features are not configured yet, so sign-up is unavailable right
+            now.
           </p>
         )}
         <form className='auth-form' onSubmit={handleSubmit}>
