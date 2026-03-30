@@ -1,75 +1,71 @@
 # Mental Math Studio
 
-Mental Math Studio is a focused arithmetic practice app for fast reps, clean pacing, and visible progress. The current version keeps the experience simple: one trainer engine, one progress dashboard, and a rotating set of visual themes if you want the app to feel different without changing how it works.
-
-## What It Does
-
-You build a round by choosing an operation, digit lengths, and the number of questions. The trainer then generates arithmetic prompts and times every response.
-
-The current trainer supports:
-
-- Addition, subtraction, multiplication, and division
-- Left and right digit lengths from 1 to 8
-- Safe subtraction and division rules so the right side never exceeds the left side
-- Hybrid answer flow
-- Type the exact correct answer and the app moves to the next question immediately
-- Press Enter or use the submit button to record the current answer and move on, even if it is wrong
-- End-of-round summaries for accuracy, average response time, and total time
-- A progress page with recent attempts, recent sessions, and operation breakdowns
-- Login and sign-up screens with password guidance
-- Theme switching stored in local storage
+Mental Math Studio is a focused arithmetic trainer built for short, fast rounds and clean progress tracking. The current version trims away the old split flows and keeps everything centered on one practice loop: set the round up, answer quickly, and review how you actually performed.
 
 ## What Changed
 
-This repo no longer includes the old set-based trainer. The website now runs on one streamlined trainer flow:
+This build is more direct than the older version of the site.
 
-- Correct input auto-advances right away
-- Feedback banners between questions are gone, so timing stays tighter
-- Digit selection is explicit and consistent from 1 to 8
-- The active app uses one trainer path instead of split old and new flows
+- There is one main trainer flow now instead of multiple overlapping practice modes.
+- Correct answers can move the round forward immediately, which keeps the rhythm tighter.
+- Digit controls are clearer and stay within sensible limits for subtraction and division.
+- Round preferences and visual theme choices can stick to your account.
+- The progress page is built around recent attempts, recent sessions, and operation-by-operation summaries.
 
-If you used an older version of this project before, the biggest difference is that the round now feels more continuous. You can keep typing, get instant advancement on correct answers, and finish a full session without the old stop-and-confirm rhythm.
+## What The Site Does
+
+Once you are signed in, you can:
+
+- choose addition, subtraction, multiplication, or division
+- set left and right digit sizes
+- choose how many questions belong in a round
+- run a timed session and see accuracy, total time, and average response speed
+- revisit saved attempts on the progress page
+- switch themes without changing how the trainer works
+
+The app currently includes these main routes:
+
+- `/` for the trainer and round setup
+- `/stats` for session history and breakdowns
+- `/login` for sign-in
+- `/signup` for account creation
 
 ## Running It Locally
 
-If you want to run the website on your own computer:
+Install dependencies first:
 
 ```bash
 npm install
 ```
 
-Copy `.env.example` to `.env.local`, then fill in the values your local setup expects.
+Then create a local environment file from the example:
 
-Start the app with:
+```bash
+cp .env.example .env.local
+```
+
+If you are on PowerShell, the same step is:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Start the site with:
 
 ```bash
 npm run dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) after the server starts.
 
 ## Using It Offline
 
-If by "offline" you mean "run it locally on your own machine without deploying it," that works fine.
+If you just want to open the project on your own machine, check the layout, and click through the pages, running it locally is enough.
 
-- For a full local setup, add your environment values in `.env.local` and start the app with `npm run dev`.
-- For a quick offline UI check, you can still boot the site locally and inspect the layout, themes, and page flow.
-- Account-based features and saved history depend on your local environment being configured correctly.
+If you want the full experience with sign-in, saved rounds, and progress history, you also need valid values in `.env.local` for your local setup. Without that, the site still opens, but account-based parts of the experience will stay unavailable.
 
-## Quick Checks
+## Quick Notes
 
-Before pushing changes, these are the two checks worth running:
-
-```bash
-npm run lint
-node --test --no-warnings .\tests\mathEngine.test.cjs .\tests\trainerRound.test.cjs
-```
-
-## Main Routes
-
-| Path | Purpose |
-|------|---------|
-| `/` | Trainer setup and live rounds |
-| `/stats` | Progress dashboard and recent history |
-| `/login` | Account login |
-| `/signup` | Account creation |
+- The trainer is designed for fast repetition, so the current UI avoids extra confirmation steps between questions.
+- The stats page is meant to show what actually happened in your recent work, not just a single end-of-round snapshot.
+- The included icon set now points at the new SVG favicon provided for this version of the site.

@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAccountPreferences } from 'utils/accountPreferencesContext';
 import {
   computeRoundStats,
   createProblem,
@@ -12,19 +13,16 @@ import {
   sanitizeSettings
 } from 'utils/mathEngine';
 import {
+  buildProgressLogRows,
+  persistProgressLogBatches
+} from 'utils/progressLogs';
+import {
   createActiveRound,
   processRoundSubmission,
   shouldAutoSubmitAnswer
 } from 'utils/trainerRound';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
 import { DIGIT_OPTIONS } from 'utils/utils';
-
-const DEFAULT_SETTINGS = {
-  operation: 'MULTIPLICATION',
-  leftDigits: 2,
-  rightDigits: 2,
-  roundSize: 10
-};
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -40,10 +38,12 @@ function createSessionId() {
 
 export default function TrainerPage() {
   const { client, user, isConfigured } = useSupabaseAuth();
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const { trainerSettings: settings, isLoadingPreferences, upsertPreferences } =
+    useAccountPreferences();
   const [activeRound, setActiveRound] = useState(null);
   const [answerInput, setAnswerInput] = useState('');
   const [lastRound, setLastRound] = useState(null);
+  const settingsFormRef = useRef(null);
   const answerInputRef = useRef(null);
   const handledQuestionIdRef = useRef(null);
 
@@ -65,17 +65,11 @@ export default function TrainerPage() {
     answerInputRef.current.focus();
   }, [activeRound]);
 
-  const activeStats = useMemo(
-    () => computeRoundStats(activeRound?.attempts || []),
-    [activeRound]
-  );
-  const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
-  const availableRightDigits = isOrderedDigitOperation
-    ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
-    : DIGIT_OPTIONS;
+  const beginRound = useCallback(() => {
+    if (isLoadingPreferences) {
+      return;
+    }
 
-  const startRound = (event) => {
-    event.preventDefault();
     const sanitizedSettings = sanitizeSettings(settings);
     const firstProblem = createProblem(
       sanitizedSettings.operation,
@@ -84,12 +78,82 @@ export default function TrainerPage() {
     );
     const questionStartedAt = Date.now();
 
-    setSettings(sanitizedSettings);
+    void upsertPreferences({ trainerSettings: sanitizedSettings });
     setLastRound(null);
     setAnswerInput('');
     handledQuestionIdRef.current = null;
-    setActiveRound(createActiveRound(sanitizedSettings, firstProblem, questionStartedAt));
-  };
+    setActiveRound(
+      createActiveRound(sanitizedSettings, firstProblem, questionStartedAt)
+    );
+  }, [isLoadingPreferences, settings, upsertPreferences]);
+
+  const startRound = useCallback(
+    (event) => {
+      event.preventDefault();
+      beginRound();
+    },
+    [beginRound]
+  );
+
+  useEffect(() => {
+    if (!user || activeRound || isLoadingPreferences || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleStartShortcut = (event) => {
+      if (
+        event.defaultPrevented ||
+        event.key !== 'Enter' ||
+        event.repeat ||
+        event.isComposing ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      if (
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLButtonElement ||
+        target instanceof HTMLAnchorElement
+      ) {
+        return;
+      }
+
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || target.tagName === 'TEXTAREA')
+      ) {
+        return;
+      }
+
+      if (
+        settingsFormRef.current &&
+        target instanceof Node &&
+        settingsFormRef.current.contains(target)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      beginRound();
+    };
+
+    window.addEventListener('keydown', handleStartShortcut);
+    return () => window.removeEventListener('keydown', handleStartShortcut);
+  }, [activeRound, beginRound, isLoadingPreferences, user]);
+
+  const activeStats = useMemo(
+    () => computeRoundStats(activeRound?.attempts || []),
+    [activeRound]
+  );
+  const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
+  const availableRightDigits = isOrderedDigitOperation
+    ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
+    : DIGIT_OPTIONS;
 
   const persistRound = async (attempts, roundSettings) => {
     if (!client || !user) {
@@ -101,27 +165,18 @@ export default function TrainerPage() {
     );
 
     const sessionId = createSessionId();
-    const rows = attempts.map((attempt, index) => ({
-      user_id: user.id,
-      session_id: sessionId,
-      question_index: index + 1,
-      operation: attempt.operation,
-      digits_left: roundSettings.leftDigits,
-      digits_right: roundSettings.rightDigits,
-      left_operand: attempt.leftOperand,
-      right_operand: attempt.rightOperand,
-      correct_answer: attempt.correctAnswer.toString(),
-      submitted_answer: attempt.submittedAnswer.toString(),
-      is_correct: attempt.isCorrect,
-      response_ms: attempt.responseMs
-    }));
+    const rows = buildProgressLogRows(attempts, roundSettings, user.id, sessionId);
 
-    const { error } = await client.from('progress_logs').insert(rows);
-
-    if (error) {
+    try {
+      await persistProgressLogBatches(client, rows);
+    } catch (error) {
       setLastRound((summary) =>
         summary
-          ? { ...summary, saveState: 'error', saveError: error.message }
+          ? {
+              ...summary,
+              saveState: 'error',
+              saveError: error?.message || 'Unable to save this round.'
+            }
           : summary
       );
       return;
@@ -202,26 +257,27 @@ export default function TrainerPage() {
   };
 
   const updateSetting = (key, value) => {
+    if (isLoadingPreferences) {
+      return;
+    }
+
     const normalizedValue =
       ['leftDigits', 'rightDigits', 'roundSize'].includes(key) ? Number(value) : value;
 
-    setSettings((currentSettings) => {
-      const nextSettings = {
-        ...currentSettings,
-        [key]: normalizedValue
-      };
-      const nextOperation =
-        key === 'operation' ? normalizedValue : currentSettings.operation;
+    const nextSettings = {
+      ...settings,
+      [key]: normalizedValue
+    };
+    const nextOperation = key === 'operation' ? normalizedValue : settings.operation;
 
-      if (operationRequiresOrderedDigits(nextOperation)) {
-        nextSettings.rightDigits = Math.min(
-          Number(nextSettings.rightDigits),
-          Number(nextSettings.leftDigits)
-        );
-      }
+    if (operationRequiresOrderedDigits(nextOperation)) {
+      nextSettings.rightDigits = Math.min(
+        Number(nextSettings.rightDigits),
+        Number(nextSettings.leftDigits)
+      );
+    }
 
-      return sanitizeSettings(nextSettings);
-    });
+    void upsertPreferences({ trainerSettings: sanitizeSettings(nextSettings) });
   };
 
   return (
@@ -284,12 +340,17 @@ export default function TrainerPage() {
           <section className='trainer-layout appear-up'>
             <article className='panel paper-panel'>
               <h2>Round Blueprint</h2>
-              <form className='settings-form' onSubmit={startRound}>
+              <form
+                ref={settingsFormRef}
+                className='settings-form'
+                onSubmit={startRound}
+              >
                 <label htmlFor='operation'>Operation</label>
                 <select
                   id='operation'
                   value={settings.operation}
                   onChange={(event) => updateSetting('operation', event.target.value)}
+                  disabled={isLoadingPreferences}
                 >
                   {getOperationOptions().map((option) => (
                     <option key={option.value} value={option.value}>
@@ -303,6 +364,7 @@ export default function TrainerPage() {
                   id='leftDigits'
                   value={settings.leftDigits}
                   onChange={(event) => updateSetting('leftDigits', event.target.value)}
+                  disabled={isLoadingPreferences}
                 >
                   {DIGIT_OPTIONS.map((digits) => (
                     <option key={digits} value={digits}>
@@ -316,6 +378,7 @@ export default function TrainerPage() {
                   id='rightDigits'
                   value={settings.rightDigits}
                   onChange={(event) => updateSetting('rightDigits', event.target.value)}
+                  disabled={isLoadingPreferences}
                 >
                   {availableRightDigits.map((digits) => (
                     <option key={digits} value={digits}>
@@ -329,13 +392,23 @@ export default function TrainerPage() {
                   id='roundSize'
                   type='number'
                   min='3'
-                  max='40'
+                  max='10000'
                   value={settings.roundSize}
                   onChange={(event) => updateSetting('roundSize', event.target.value)}
+                  disabled={isLoadingPreferences}
                 />
 
-                <button type='submit' className='button button-strong button-full'>
-                  {activeRound ? 'Restart round' : 'Start round'}
+                <button
+                  type='submit'
+                  className='button button-strong button-full'
+                  aria-keyshortcuts='Enter'
+                  disabled={isLoadingPreferences}
+                >
+                  {isLoadingPreferences
+                    ? 'Loading blueprint...'
+                    : activeRound
+                      ? 'Restart round'
+                      : 'Start round'}
                 </button>
               </form>
             </article>

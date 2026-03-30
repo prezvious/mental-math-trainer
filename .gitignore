@@ -1,18 +1,26 @@
 node_modules/
 .next/
 out/
+dist/
+build/
 coverage/
 .turbo/
 .cache/
+.parcel-cache/
+.eslintcache/
+*.tsbuildinfo
 
 .idea/
 .vscode/
 .codex/
 .claude/
+.history/
 
 .env
 .env.*
 !.env.example
+.envrc
+.direnv/
 
 .vercel/
 
@@ -30,3 +38,8 @@ pnpm-debug.log*
 *.p12
 *.crt
 *.cer
+*.db
+*.sqlite
+*.sqlite-journal
+tmp/
+temp/

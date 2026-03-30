@@ -28,11 +28,12 @@ test('sanitizeSettings clamps digit counts and round size within allowed bounds'
     operation: 'MULTIPLICATION',
     leftDigits: 0,
     rightDigits: 99,
-    roundSize: 999
+    roundSize: 99999
   });
 
   assert.equal(settings.leftDigits, 1);
   assert.equal(settings.rightDigits, MAX_DIGITS);
+  assert.equal(MAX_ROUND_SIZE, 10000);
   assert.equal(settings.roundSize, MAX_ROUND_SIZE);
 
   const minimumSettings = sanitizeSettings({

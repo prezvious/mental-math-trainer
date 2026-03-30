@@ -2,39 +2,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import SettingsIcon from 'images/settings.svg';
+import { useAccountPreferences } from 'utils/accountPreferencesContext';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
 import {
-  DEFAULT_THEME_KEY,
   getThemeByKey,
   THEME_OPTIONS
 } from 'utils/themes';
 
-const THEME_STORAGE_KEY = 'mathtrainer-theme-key';
-
 export default function SiteLayout({ children }) {
   const router = useRouter();
   const { user, isConfigured, signOut } = useSupabaseAuth();
-  const [themeKey, setThemeKey] = useState(DEFAULT_THEME_KEY);
+  const { themeKey, isLoadingPreferences, upsertPreferences } =
+    useAccountPreferences();
   const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const storedThemeKey = window.localStorage.getItem(THEME_STORAGE_KEY);
-    if (storedThemeKey && THEME_OPTIONS.some((theme) => theme.key === storedThemeKey)) {
-      setThemeKey(storedThemeKey);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.setItem(THEME_STORAGE_KEY, themeKey);
-  }, [themeKey]);
 
   useEffect(() => {
     const closeThemePanel = () => setIsThemePanelOpen(false);
@@ -127,13 +107,17 @@ export default function SiteLayout({ children }) {
     }
   };
 
+  const handleThemeChange = (event) => {
+    void upsertPreferences({ themeKey: event.target.value });
+  };
+
   return (
     <div className='app-shell' data-theme-key={activeTheme.key} style={themeStyle}>
       <header className='site-header'>
         <div className='site-header-inner'>
-          <Link href='/' className='brand' aria-label='MathTrainer home'>
-            <span className='brand-chip'>MathTrainer</span>
-            <span className='brand-title'>Mental Math Studio</span>
+          <Link href='/' className='brand' aria-label='Mental Math home'>
+            <span className='brand-chip'>Studio</span>
+            <span className='brand-title'>Mental Math</span>
           </Link>
           <nav className='site-nav' aria-label='Main'>
             {navLinks.map((link) => {
@@ -202,7 +186,8 @@ export default function SiteLayout({ children }) {
               id='theme-select'
               className='theme-select'
               value={activeTheme.key}
-              onChange={(event) => setThemeKey(event.target.value)}
+              onChange={handleThemeChange}
+              disabled={Boolean(user) && isLoadingPreferences}
             >
               {THEME_OPTIONS.map((theme) => (
                 <option key={theme.key} value={theme.key}>

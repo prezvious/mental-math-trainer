@@ -1,5 +1,5 @@
 export const MAX_DIGITS = 8;
-export const MAX_ROUND_SIZE = 40;
+export const MAX_ROUND_SIZE = 10000;
 export const MIN_ROUND_SIZE = 3;
 
 export const OPERATION_META = {

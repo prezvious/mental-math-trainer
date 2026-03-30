@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { formatDuration, OPERATION_META } from 'utils/mathEngine';
+import { fetchAllProgressLogs } from 'utils/progressLogs';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
 
 function formatTimestamp(isoDate) {
@@ -28,23 +29,15 @@ export default function StatsPage() {
     setIsLoading(true);
     setErrorMessage('');
 
-    const { data, error } = await client
-      .from('progress_logs')
-      .select(
-        'id, session_id, question_index, operation, digits_left, digits_right, left_operand, right_operand, submitted_answer, correct_answer, is_correct, response_ms, created_at'
-      )
-      .order('created_at', { ascending: false })
-      .limit(1000);
-
-    if (error) {
-      setLogs([]);
-      setErrorMessage(error.message);
+    try {
+      const data = await fetchAllProgressLogs(client, user.id);
+      setLogs(data);
       setIsLoading(false);
-      return;
+    } catch (error) {
+      setLogs([]);
+      setErrorMessage(error?.message || 'Could not load progress data.');
+      setIsLoading(false);
     }
-
-    setLogs(data || []);
-    setIsLoading(false);
   }, [client, user]);
 
   useEffect(() => {
