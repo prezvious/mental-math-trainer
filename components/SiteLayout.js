@@ -97,6 +97,7 @@ export default function SiteLayout({ children }) {
 
   const navLinks = [
     { href: '/', label: 'Trainer' },
+    { href: '/mixed', label: 'Mixed' },
     { href: '/stats', label: 'Progress' }
   ];
 
@@ -133,24 +134,24 @@ export default function SiteLayout({ children }) {
               );
             })}
           </nav>
-          <div className='site-actions'>
+          <div className={`site-actions${user ? ' has-user-session' : ''}`}>
             {!isConfigured && <span className='status-badge'>Account sync unavailable</span>}
             {user ? (
-              <>
+              <div className='site-session'>
                 <span className='user-pill'>{user.email}</span>
                 <button type='button' className='button button-quiet' onClick={handleSignOut}>
                   Log out
                 </button>
-              </>
+              </div>
             ) : (
-              <>
+              <div className='site-auth-links'>
                 <Link href='/login' className='button button-quiet'>
                   Log in
                 </Link>
                 <Link href='/signup' className='button button-strong'>
                   Sign up
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>

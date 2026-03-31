@@ -28,6 +28,7 @@ const AccountPreferencesContext = createContext({
 
 export function AccountPreferencesProvider({ children }) {
   const { client, user, isLoading: isAuthLoading } = useSupabaseAuth();
+  const userId = user?.id ?? null;
   const [preferences, setPreferences] = useState(() =>
     createDefaultAccountPreferences()
   );
@@ -53,7 +54,7 @@ export function AccountPreferencesProvider({ children }) {
       };
     }
 
-    if (!client || !user) {
+    if (!client || !userId) {
       const defaultPreferences = createDefaultAccountPreferences();
       latestPreferencesRef.current = defaultPreferences;
       setPreferences(defaultPreferences);
@@ -68,7 +69,7 @@ export function AccountPreferencesProvider({ children }) {
     client
       .from(USER_PREFERENCES_TABLE)
       .select(USER_PREFERENCES_COLUMNS)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle()
       .then(({ data, error }) => {
         if (!isMounted) {
@@ -93,10 +94,10 @@ export function AccountPreferencesProvider({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [client, isAuthLoading, user]);
+  }, [client, isAuthLoading, userId]);
 
   const flushPendingPreferences = useCallback(async () => {
-    if (!client || !user) {
+    if (!client || !userId) {
       return;
     }
 
@@ -111,7 +112,7 @@ export function AccountPreferencesProvider({ children }) {
 
         const { error } = await client
           .from(USER_PREFERENCES_TABLE)
-          .upsert(buildUserPreferencesRow(user.id, snapshot), {
+          .upsert(buildUserPreferencesRow(userId, snapshot), {
             onConflict: 'user_id'
           });
 
@@ -125,7 +126,7 @@ export function AccountPreferencesProvider({ children }) {
     });
 
     return flushPromiseRef.current;
-  }, [client, user]);
+  }, [client, userId]);
 
   const upsertPreferences = useCallback(
     async (patch = {}) => {
@@ -137,7 +138,7 @@ export function AccountPreferencesProvider({ children }) {
       latestPreferencesRef.current = nextPreferences;
       setPreferences(nextPreferences);
 
-      if (!client || !user) {
+      if (!client || !userId) {
         return { error: null };
       }
 
@@ -151,7 +152,7 @@ export function AccountPreferencesProvider({ children }) {
         return { error };
       }
     },
-    [client, flushPendingPreferences, user]
+    [client, flushPendingPreferences, userId]
   );
 
   const value = useMemo(
