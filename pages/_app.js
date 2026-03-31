@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import SiteLayout from 'components/SiteLayout';
 import { AccountPreferencesProvider } from 'utils/accountPreferencesContext';
+import { ActiveSessionProvider } from 'utils/activeSessionContext';
 import { SupabaseAuthProvider } from 'utils/supabaseAuthContext';
 import 'styles/globals.css';
 
@@ -17,11 +18,13 @@ export default function App({ Component, pageProps }) {
         <meta name='theme-color' content='#12141c' />
       </Head>
       <SupabaseAuthProvider>
-        <AccountPreferencesProvider>
-          <SiteLayout>
-            <Component {...pageProps} />
-          </SiteLayout>
-        </AccountPreferencesProvider>
+        <ActiveSessionProvider>
+          <AccountPreferencesProvider>
+            <SiteLayout>
+              <Component {...pageProps} />
+            </SiteLayout>
+          </AccountPreferencesProvider>
+        </ActiveSessionProvider>
       </SupabaseAuthProvider>
     </>
   );

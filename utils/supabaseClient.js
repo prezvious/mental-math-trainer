@@ -16,6 +16,17 @@ export function isSupabaseConfigured() {
   return Boolean(supabaseUrl && supabaseClientKey);
 }
 
+export function getSupabaseRestConfig() {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  return {
+    url: supabaseUrl,
+    key: supabaseClientKey
+  };
+}
+
 export function getSupabaseClient() {
   if (!isSupabaseConfigured()) {
     return null;

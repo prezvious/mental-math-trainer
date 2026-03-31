@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import SettingsIcon from 'images/settings.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext';
+import { useActiveSession } from 'utils/activeSessionContext';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
 import {
   getThemeByKey,
@@ -12,6 +13,7 @@ import {
 export default function SiteLayout({ children }) {
   const router = useRouter();
   const { user, isConfigured, signOut } = useSupabaseAuth();
+  const { terminateActiveSession } = useActiveSession();
   const { themeKey, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
@@ -102,6 +104,12 @@ export default function SiteLayout({ children }) {
   ];
 
   const handleSignOut = async () => {
+    try {
+      await terminateActiveSession('sign-out');
+    } catch (error) {
+      console.error('Failed to persist the active session before sign out.', error);
+    }
+
     const { error } = await signOut();
     if (!error) {
       await router.push('/login');

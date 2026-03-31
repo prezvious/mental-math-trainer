@@ -1,10 +1,12 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Keypad from 'components/mixed/Keypad';
 import ProgressBar from 'components/mixed/ProgressBar';
 import QuestionTimer from 'components/mixed/QuestionTimer';
 import StackedProblem from 'components/mixed/StackedProblem';
+import { useActiveSession } from 'utils/activeSessionContext';
 import {
   createMixedProblem,
   DIFFICULTY_LEVELS,
@@ -18,13 +20,16 @@ import {
 } from 'utils/mixedDifficulty';
 import { MixedTrainerProvider, useMixedTrainer } from 'utils/mixedTrainerContext';
 import {
-  buildMixedProgressLogRows,
+  buildMixedProgressLogRow,
   createMixedActiveRound,
   processMixedRoundSubmission,
   shouldAutoSubmitAnswer
 } from 'utils/mixedTrainerRound';
-import { persistProgressLogBatches } from 'utils/progressLogs';
 import { computeRoundStats, formatDuration } from 'utils/mathEngine';
+import {
+  createProgressLogBuffer
+} from 'utils/progressLogs';
+import { getSupabaseRestConfig } from 'utils/supabaseClient';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
 
 function createSessionId() {
@@ -36,6 +41,57 @@ function createSessionId() {
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+function getPathnameFromUrl(url) {
+  if (typeof window === 'undefined') {
+    return url;
+  }
+
+  try {
+    return new URL(url, window.location.origin).pathname;
+  } catch (_error) {
+    return url;
+  }
+}
+
+function createRoundSummary(attempts, userId, wasTerminated) {
+  return {
+    ...computeRoundStats(attempts),
+    attempts,
+    finishedAt: new Date().toISOString(),
+    wasTerminated,
+    saveState: userId ? 'saving' : 'idle',
+    saveError: ''
+  };
+}
+
+function getSaveStatusMessage(lastRound) {
+  if (lastRound.saveState === 'saving') {
+    return lastRound.wasTerminated
+      ? 'Ending session and saving progress...'
+      : 'Saving this round...';
+  }
+
+  if (lastRound.saveState === 'saved') {
+    return lastRound.wasTerminated
+      ? 'Session ended early and progress was saved to your history.'
+      : 'Round saved to your progress history.';
+  }
+
+  if (lastRound.saveState === 'idle') {
+    return lastRound.wasTerminated
+      ? 'Session ended early. Sign in to store partial progress.'
+      : 'Sign in to store completed rounds.';
+  }
+
+  if (lastRound.saveState === 'error') {
+    return lastRound.wasTerminated
+      ? `Could not save this ended session: ${lastRound.saveError}`
+      : `Could not save this round: ${lastRound.saveError}`;
+  }
+
+  return '';
 }
 
 const DIFFICULTY_LABELS = {
@@ -58,7 +114,9 @@ const OPERATION_SETTING_KEYS = {
 const CORRECT_FLASH_MS = 400;
 
 function MixedTrainerContent() {
-  const { client, user, isConfigured } = useSupabaseAuth();
+  const router = useRouter();
+  const { client, session, user, isConfigured } = useSupabaseAuth();
+  const { registerActiveSessionTerminator } = useActiveSession();
   const { mixedSettings: settings, isLoadingMixedSettings, upsertMixedSettings } =
     useMixedTrainer();
 
@@ -69,11 +127,54 @@ function MixedTrainerContent() {
   const handledQuestionIdRef = useRef(null);
   const hiddenInputRef = useRef(null);
   const flashTimeoutRef = useRef(null);
+  const pendingAdvanceRef = useRef(null);
+  const activeRoundRef = useRef(activeRound);
+  const clientRef = useRef(client);
+  const accessTokenRef = useRef(session?.access_token ?? null);
+  const isMountedRef = useRef(false);
+  const terminationPromiseRef = useRef(null);
+  const terminateSessionRef = useRef(async () => ({ handled: false }));
+  const userId = user?.id ?? null;
+
+  const progressBufferRef = useRef(null);
+  if (!progressBufferRef.current) {
+    progressBufferRef.current = createProgressLogBuffer({
+      getClient: () => clientRef.current,
+      getAccessToken: () => accessTokenRef.current,
+      getRestConfig: getSupabaseRestConfig
+    });
+  }
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (flashTimeoutRef.current) {
+        clearTimeout(flashTimeoutRef.current);
+      }
+      progressBufferRef.current?.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    clientRef.current = client;
+  }, [client]);
+
+  useEffect(() => {
+    accessTokenRef.current = session?.access_token ?? null;
+  }, [session]);
+
+  useEffect(() => {
+    activeRoundRef.current = activeRound;
+  }, [activeRound]);
 
   useEffect(() => {
     if (user) {
       return;
     }
+
+    progressBufferRef.current?.clear();
+    pendingAdvanceRef.current = null;
     setActiveRound(null);
     setAnswerInput('');
     setIsCorrectFlash(false);
@@ -88,24 +189,158 @@ function MixedTrainerContent() {
     hiddenInputRef.current.focus();
   }, [activeRound, activeRound?.questionId]);
 
-  useEffect(() => {
-    return () => {
-      if (flashTimeoutRef.current) {
-        clearTimeout(flashTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const enabledOperations = useMemo(
     () => getEnabledOperations(settings),
     [settings]
   );
   const canStart = enabledOperations.length > 0;
 
+  const markSummarySaved = useCallback(() => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    setLastRound((summary) =>
+      summary ? { ...summary, saveState: 'saved', saveError: '' } : summary
+    );
+  }, []);
+
+  const markSummaryError = useCallback((error, fallbackMessage) => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    setLastRound((summary) =>
+      summary
+        ? {
+            ...summary,
+            saveState: 'error',
+            saveError: error?.message || fallbackMessage
+          }
+        : summary
+    );
+  }, []);
+
+  const persistQueuedProgress = useCallback(
+    async ({ keepalive = false } = {}) => {
+      if (!userId || !clientRef.current) {
+        return;
+      }
+
+      await progressBufferRef.current.flush({ keepalive });
+    },
+    [userId]
+  );
+
+  const finalizeRound = useCallback(
+    async (attempts, { wasTerminated, keepalive = false }) => {
+      handledQuestionIdRef.current = null;
+      pendingAdvanceRef.current = null;
+      setActiveRound(null);
+      setAnswerInput('');
+      setIsCorrectFlash(false);
+
+      const summary = createRoundSummary(attempts, userId, wasTerminated);
+      if (isMountedRef.current) {
+        setLastRound(summary);
+      }
+
+      if (!userId || !clientRef.current) {
+        return;
+      }
+
+      try {
+        await persistQueuedProgress({ keepalive });
+        markSummarySaved();
+      } catch (error) {
+        markSummaryError(
+          error,
+          wasTerminated ? 'Unable to save this ended session.' : 'Unable to save this round.'
+        );
+      }
+    },
+    [markSummaryError, markSummarySaved, persistQueuedProgress, userId]
+  );
+
+  const getTerminationAttempts = useCallback(() => {
+    const roundSnapshot = activeRoundRef.current;
+    if (!roundSnapshot) {
+      return [];
+    }
+
+    if (
+      pendingAdvanceRef.current &&
+      pendingAdvanceRef.current.handledQuestionId === roundSnapshot.questionId
+    ) {
+      return pendingAdvanceRef.current.attempts;
+    }
+
+    return roundSnapshot.attempts;
+  }, []);
+
+  const terminateActiveRound = useCallback(
+    async (_reason, { keepalive = false } = {}) => {
+      const roundSnapshot = activeRoundRef.current;
+      if (!roundSnapshot) {
+        return { handled: false };
+      }
+
+      if (terminationPromiseRef.current) {
+        return terminationPromiseRef.current;
+      }
+
+      const promise = (async () => {
+        if (flashTimeoutRef.current) {
+          clearTimeout(flashTimeoutRef.current);
+          flashTimeoutRef.current = null;
+        }
+
+        const attempts = getTerminationAttempts();
+        if (!attempts.length) {
+          handledQuestionIdRef.current = null;
+          pendingAdvanceRef.current = null;
+          progressBufferRef.current?.clear();
+          if (isMountedRef.current) {
+            setActiveRound(null);
+            setAnswerInput('');
+            setIsCorrectFlash(false);
+          }
+          return { handled: true, saved: false };
+        }
+
+        await finalizeRound(attempts, {
+          wasTerminated: true,
+          keepalive
+        });
+
+        return { handled: true, saved: true };
+      })().finally(() => {
+        if (terminationPromiseRef.current === promise) {
+          terminationPromiseRef.current = null;
+        }
+      });
+
+      terminationPromiseRef.current = promise;
+      return promise;
+    },
+    [finalizeRound, getTerminationAttempts]
+  );
+
+  terminateSessionRef.current = terminateActiveRound;
+
+  useEffect(
+    () =>
+      registerActiveSessionTerminator((reason) => terminateSessionRef.current(reason)),
+    [registerActiveSessionTerminator]
+  );
+
   const beginRound = useCallback(() => {
     if (isLoadingMixedSettings || !canStart) {
       return;
     }
+
+    progressBufferRef.current?.clear();
+    pendingAdvanceRef.current = null;
 
     const sanitized = sanitizeMixedSettings(settings);
     const enabled = getEnabledOperations(sanitized);
@@ -113,13 +348,16 @@ function MixedTrainerContent() {
     const firstDifficulty = getDifficultyForOperation(sanitized, firstOp);
     const firstProblem = createMixedProblem(firstOp, firstDifficulty);
     const questionStartedAt = Date.now();
+    const sessionId = createSessionId();
 
     void upsertMixedSettings(sanitized);
     setLastRound(null);
     setAnswerInput('');
     setIsCorrectFlash(false);
     handledQuestionIdRef.current = null;
-    setActiveRound(createMixedActiveRound(sanitized, firstProblem, questionStartedAt));
+    setActiveRound(
+      createMixedActiveRound(sanitized, firstProblem, questionStartedAt, sessionId)
+    );
   }, [canStart, isLoadingMixedSettings, settings, upsertMixedSettings]);
 
   const startRound = useCallback(
@@ -166,57 +404,46 @@ function MixedTrainerContent() {
     return () => window.removeEventListener('keydown', handleStartShortcut);
   }, [activeRound, beginRound, isLoadingMixedSettings, user]);
 
-  const persistRound = useCallback(
-    async (attempts) => {
-      if (!client || !user) {
-        return;
+  useEffect(() => {
+    if (!activeRound || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        void terminateActiveRound('visibilitychange', { keepalive: true });
       }
+    };
 
-      setLastRound((summary) =>
-        summary ? { ...summary, saveState: 'saving', saveError: '' } : summary
-      );
+    const handlePageHide = () => {
+      void terminateActiveRound('pagehide', { keepalive: true });
+    };
 
-      const sessionId = createSessionId();
-      const rows = buildMixedProgressLogRows(attempts, user.id, sessionId);
-
-      try {
-        await persistProgressLogBatches(client, rows);
-      } catch (error) {
-        setLastRound((summary) =>
-          summary
-            ? {
-                ...summary,
-                saveState: 'error',
-                saveError: error?.message || 'Unable to save this round.'
-              }
-            : summary
-        );
-        return;
+    const handleRouteChangeStart = (url) => {
+      if (getPathnameFromUrl(url) !== router.pathname) {
+        void terminateActiveRound('route-change');
       }
+    };
 
-      setLastRound((summary) =>
-        summary ? { ...summary, saveState: 'saved', saveError: '' } : summary
-      );
-    },
-    [client, user]
-  );
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    router.events.on('routeChangeStart', handleRouteChangeStart);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      router.events.off('routeChangeStart', handleRouteChangeStart);
+    };
+  }, [activeRound, router.events, router.pathname, terminateActiveRound]);
 
   const advanceAfterCorrect = useCallback(
-    (submission) => {
+    async (submission) => {
+      pendingAdvanceRef.current = null;
+
       const { attempts, isComplete, nextActiveRound } = submission;
 
       if (isComplete) {
-        setActiveRound(null);
-        setAnswerInput('');
-        setIsCorrectFlash(false);
-        setLastRound({
-          ...computeRoundStats(attempts),
-          attempts,
-          finishedAt: new Date().toISOString(),
-          saveState: user ? 'saving' : 'idle',
-          saveError: ''
-        });
-        void persistRound(attempts);
+        await finalizeRound(attempts, { wasTerminated: false });
         return;
       }
 
@@ -224,17 +451,18 @@ function MixedTrainerContent() {
       setIsCorrectFlash(false);
       setActiveRound(nextActiveRound);
     },
-    [persistRound, user]
+    [finalizeRound]
   );
 
   const submitAnswer = useCallback(
     (submittedAnswer, submittedAt = Date.now()) => {
-      if (!activeRound || isCorrectFlash) {
+      const roundSnapshot = activeRoundRef.current;
+      if (!roundSnapshot || isCorrectFlash) {
         return;
       }
 
       const submission = processMixedRoundSubmission(
-        activeRound,
+        roundSnapshot,
         submittedAnswer,
         submittedAt,
         handledQuestionIdRef.current
@@ -245,6 +473,19 @@ function MixedTrainerContent() {
       }
 
       handledQuestionIdRef.current = submission.handledQuestionId;
+
+      if (userId) {
+        progressBufferRef.current.enqueue(
+          buildMixedProgressLogRow(
+            submission.attempt,
+            userId,
+            roundSnapshot.sessionId,
+            submission.attempts.length
+          )
+        );
+      }
+
+      pendingAdvanceRef.current = submission;
       setIsCorrectFlash(true);
 
       if (flashTimeoutRef.current) {
@@ -253,15 +494,16 @@ function MixedTrainerContent() {
 
       flashTimeoutRef.current = setTimeout(() => {
         flashTimeoutRef.current = null;
-        advanceAfterCorrect(submission);
+        void advanceAfterCorrect(submission);
       }, CORRECT_FLASH_MS);
     },
-    [activeRound, advanceAfterCorrect, isCorrectFlash]
+    [advanceAfterCorrect, isCorrectFlash, userId]
   );
 
   const processInput = useCallback(
     (nextValue) => {
-      if (!activeRound || isCorrectFlash) {
+      const roundSnapshot = activeRoundRef.current;
+      if (!roundSnapshot || isCorrectFlash) {
         return;
       }
 
@@ -269,13 +511,13 @@ function MixedTrainerContent() {
 
       const autoSubmitted = shouldAutoSubmitAnswer(
         nextValue,
-        activeRound.currentProblem.correctAnswer
+        roundSnapshot.currentProblem.correctAnswer
       );
       if (autoSubmitted !== null) {
         submitAnswer(autoSubmitted, Date.now());
       }
     },
-    [activeRound, isCorrectFlash, submitAnswer]
+    [isCorrectFlash, submitAnswer]
   );
 
   const handleDigit = useCallback(
@@ -510,13 +752,7 @@ function MixedTrainerContent() {
                   <p>{formatDuration(lastRound.totalResponseMs)}</p>
                 </article>
               </div>
-              <p className='save-status'>
-                {lastRound.saveState === 'saving' && 'Saving this round...'}
-                {lastRound.saveState === 'saved' && 'Round saved to your progress history.'}
-                {lastRound.saveState === 'idle' && 'Sign in to store completed rounds.'}
-                {lastRound.saveState === 'error' &&
-                  `Could not save this round: ${lastRound.saveError}`}
-              </p>
+              <p className='save-status'>{getSaveStatusMessage(lastRound)}</p>
               <Link href='/stats' className='button button-quiet'>
                 Open progress dashboard
               </Link>

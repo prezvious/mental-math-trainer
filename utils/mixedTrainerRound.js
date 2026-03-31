@@ -7,8 +7,14 @@ import {
 
 export { shouldAutoSubmitAnswer } from './trainerRound.js';
 
-export function createMixedActiveRound(settings, firstProblem, questionStartedAt) {
+export function createMixedActiveRound(
+  settings,
+  firstProblem,
+  questionStartedAt,
+  sessionId = null
+) {
   return {
+    sessionId,
     settings,
     attempts: [],
     currentProblem: firstProblem,
@@ -111,10 +117,16 @@ export function processMixedRoundSubmission(
 }
 
 export function buildMixedProgressLogRows(attempts, userId, sessionId) {
-  return attempts.map((attempt, index) => ({
+  return attempts.map((attempt, index) =>
+    buildMixedProgressLogRow(attempt, userId, sessionId, index + 1)
+  );
+}
+
+export function buildMixedProgressLogRow(attempt, userId, sessionId, questionIndex) {
+  return {
     user_id: userId,
     session_id: sessionId,
-    question_index: index + 1,
+    question_index: questionIndex,
     operation: attempt.operation,
     digits_left: attempt.digitsLeft,
     digits_right: attempt.digitsRight,
@@ -124,5 +136,5 @@ export function buildMixedProgressLogRows(attempts, userId, sessionId) {
     submitted_answer: attempt.submittedAnswer.toString(),
     is_correct: attempt.isCorrect,
     response_ms: attempt.responseMs
-  }));
+  };
 }

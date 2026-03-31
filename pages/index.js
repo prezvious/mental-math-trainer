@@ -1,7 +1,9 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountPreferences } from 'utils/accountPreferencesContext';
+import { useActiveSession } from 'utils/activeSessionContext';
 import {
   computeRoundStats,
   createProblem,
@@ -13,14 +15,15 @@ import {
   sanitizeSettings
 } from 'utils/mathEngine';
 import {
-  buildProgressLogRows,
-  persistProgressLogBatches
+  buildProgressLogRow,
+  createProgressLogBuffer
 } from 'utils/progressLogs';
 import {
   createActiveRound,
   processRoundSubmission,
   shouldAutoSubmitAnswer
 } from 'utils/trainerRound';
+import { getSupabaseRestConfig } from 'utils/supabaseClient';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext';
 import { DIGIT_OPTIONS } from 'utils/utils';
 
@@ -36,8 +39,62 @@ function createSessionId() {
   });
 }
 
+function getPathnameFromUrl(url) {
+  if (typeof window === 'undefined') {
+    return url;
+  }
+
+  try {
+    return new URL(url, window.location.origin).pathname;
+  } catch (_error) {
+    return url;
+  }
+}
+
+function createRoundSummary(attempts, settings, userId, wasTerminated) {
+  return {
+    ...computeRoundStats(attempts),
+    attempts,
+    settings,
+    finishedAt: new Date().toISOString(),
+    wasTerminated,
+    saveState: userId ? 'saving' : 'idle',
+    saveError: ''
+  };
+}
+
+function getSaveStatusMessage(lastRound) {
+  if (lastRound.saveState === 'saving') {
+    return lastRound.wasTerminated
+      ? 'Ending session and saving progress...'
+      : 'Saving this round...';
+  }
+
+  if (lastRound.saveState === 'saved') {
+    return lastRound.wasTerminated
+      ? 'Session ended early and progress was saved to your history.'
+      : 'Round saved to your progress history.';
+  }
+
+  if (lastRound.saveState === 'idle') {
+    return lastRound.wasTerminated
+      ? 'Session ended early. Sign in to store partial progress.'
+      : 'Sign in to store completed rounds.';
+  }
+
+  if (lastRound.saveState === 'error') {
+    return lastRound.wasTerminated
+      ? `Could not save this ended session: ${lastRound.saveError}`
+      : `Could not save this round: ${lastRound.saveError}`;
+  }
+
+  return '';
+}
+
 export default function TrainerPage() {
-  const { client, user, isConfigured } = useSupabaseAuth();
+  const router = useRouter();
+  const { client, session, user, isConfigured } = useSupabaseAuth();
+  const { registerActiveSessionTerminator } = useActiveSession();
   const { trainerSettings: settings, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [activeRound, setActiveRound] = useState(null);
@@ -46,11 +103,49 @@ export default function TrainerPage() {
   const settingsFormRef = useRef(null);
   const answerInputRef = useRef(null);
   const handledQuestionIdRef = useRef(null);
+  const activeRoundRef = useRef(activeRound);
+  const clientRef = useRef(client);
+  const accessTokenRef = useRef(session?.access_token ?? null);
+  const isMountedRef = useRef(false);
+  const terminationPromiseRef = useRef(null);
+  const terminateSessionRef = useRef(async () => ({ handled: false }));
+  const userId = user?.id ?? null;
+
+  const progressBufferRef = useRef(null);
+  if (!progressBufferRef.current) {
+    progressBufferRef.current = createProgressLogBuffer({
+      getClient: () => clientRef.current,
+      getAccessToken: () => accessTokenRef.current,
+      getRestConfig: getSupabaseRestConfig
+    });
+  }
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      progressBufferRef.current?.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    clientRef.current = client;
+  }, [client]);
+
+  useEffect(() => {
+    accessTokenRef.current = session?.access_token ?? null;
+  }, [session]);
+
+  useEffect(() => {
+    activeRoundRef.current = activeRound;
+  }, [activeRound]);
 
   useEffect(() => {
     if (user) {
       return;
     }
+
+    progressBufferRef.current?.clear();
     setActiveRound(null);
     setAnswerInput('');
     setLastRound(null);
@@ -65,10 +160,138 @@ export default function TrainerPage() {
     answerInputRef.current.focus();
   }, [activeRound]);
 
-  const beginRound = useCallback(() => {
+  const activeStats = useMemo(
+    () => computeRoundStats(activeRound?.attempts || []),
+    [activeRound]
+  );
+  const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
+  const availableRightDigits = isOrderedDigitOperation
+    ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
+    : DIGIT_OPTIONS;
+
+  const markSummarySaved = useCallback(() => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    setLastRound((summary) =>
+      summary ? { ...summary, saveState: 'saved', saveError: '' } : summary
+    );
+  }, []);
+
+  const markSummaryError = useCallback((error, fallbackMessage) => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    setLastRound((summary) =>
+      summary
+        ? {
+            ...summary,
+            saveState: 'error',
+            saveError: error?.message || fallbackMessage
+          }
+        : summary
+    );
+  }, []);
+
+  const persistQueuedProgress = useCallback(
+    async ({ keepalive = false } = {}) => {
+      if (!userId || !clientRef.current) {
+        return;
+      }
+
+      await progressBufferRef.current.flush({ keepalive });
+    },
+    [userId]
+  );
+
+  const finalizeRound = useCallback(
+    async (attempts, roundSettings, { wasTerminated, keepalive = false }) => {
+      handledQuestionIdRef.current = null;
+      setActiveRound(null);
+      setAnswerInput('');
+
+      const summary = createRoundSummary(attempts, roundSettings, userId, wasTerminated);
+      if (isMountedRef.current) {
+        setLastRound(summary);
+      }
+
+      if (!userId || !clientRef.current) {
+        return;
+      }
+
+      try {
+        await persistQueuedProgress({ keepalive });
+        markSummarySaved();
+      } catch (error) {
+        markSummaryError(
+          error,
+          wasTerminated ? 'Unable to save this ended session.' : 'Unable to save this round.'
+        );
+      }
+    },
+    [markSummaryError, markSummarySaved, persistQueuedProgress, userId]
+  );
+
+  const terminateActiveRound = useCallback(
+    async (_reason, { keepalive = false } = {}) => {
+      const roundSnapshot = activeRoundRef.current;
+      if (!roundSnapshot) {
+        return { handled: false };
+      }
+
+      if (terminationPromiseRef.current) {
+        return terminationPromiseRef.current;
+      }
+
+      const promise = (async () => {
+        if (!roundSnapshot.attempts.length) {
+          handledQuestionIdRef.current = null;
+          progressBufferRef.current?.clear();
+          if (isMountedRef.current) {
+            setActiveRound(null);
+            setAnswerInput('');
+          }
+          return { handled: true, saved: false };
+        }
+
+        await finalizeRound(roundSnapshot.attempts, roundSnapshot.settings, {
+          wasTerminated: true,
+          keepalive
+        });
+
+        return { handled: true, saved: true };
+      })().finally(() => {
+        if (terminationPromiseRef.current === promise) {
+          terminationPromiseRef.current = null;
+        }
+      });
+
+      terminationPromiseRef.current = promise;
+      return promise;
+    },
+    [finalizeRound]
+  );
+
+  terminateSessionRef.current = terminateActiveRound;
+
+  useEffect(
+    () =>
+      registerActiveSessionTerminator((reason) => terminateSessionRef.current(reason)),
+    [registerActiveSessionTerminator]
+  );
+
+  const beginRound = useCallback(async () => {
     if (isLoadingPreferences) {
       return;
     }
+
+    if (activeRoundRef.current) {
+      await terminateActiveRound('restart');
+    }
+
+    progressBufferRef.current?.clear();
 
     const sanitizedSettings = sanitizeSettings(settings);
     const firstProblem = createProblem(
@@ -77,20 +300,26 @@ export default function TrainerPage() {
       sanitizedSettings.rightDigits
     );
     const questionStartedAt = Date.now();
+    const sessionId = createSessionId();
 
     void upsertPreferences({ trainerSettings: sanitizedSettings });
     setLastRound(null);
     setAnswerInput('');
     handledQuestionIdRef.current = null;
     setActiveRound(
-      createActiveRound(sanitizedSettings, firstProblem, questionStartedAt)
+      createActiveRound(
+        sanitizedSettings,
+        firstProblem,
+        questionStartedAt,
+        sessionId
+      )
     );
-  }, [isLoadingPreferences, settings, upsertPreferences]);
+  }, [isLoadingPreferences, settings, terminateActiveRound, upsertPreferences]);
 
   const startRound = useCallback(
     (event) => {
       event.preventDefault();
-      beginRound();
+      void beginRound();
     },
     [beginRound]
   );
@@ -139,92 +368,91 @@ export default function TrainerPage() {
       }
 
       event.preventDefault();
-      beginRound();
+      void beginRound();
     };
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
   }, [activeRound, beginRound, isLoadingPreferences, user]);
 
-  const activeStats = useMemo(
-    () => computeRoundStats(activeRound?.attempts || []),
-    [activeRound]
-  );
-  const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
-  const availableRightDigits = isOrderedDigitOperation
-    ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
-    : DIGIT_OPTIONS;
-
-  const persistRound = async (attempts, roundSettings) => {
-    if (!client || !user) {
-      return;
+  useEffect(() => {
+    if (!activeRound || typeof window === 'undefined') {
+      return undefined;
     }
 
-    setLastRound((summary) =>
-      summary ? { ...summary, saveState: 'saving', saveError: '' } : summary
-    );
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        void terminateActiveRound('visibilitychange', { keepalive: true });
+      }
+    };
 
-    const sessionId = createSessionId();
-    const rows = buildProgressLogRows(attempts, roundSettings, user.id, sessionId);
+    const handlePageHide = () => {
+      void terminateActiveRound('pagehide', { keepalive: true });
+    };
 
-    try {
-      await persistProgressLogBatches(client, rows);
-    } catch (error) {
-      setLastRound((summary) =>
-        summary
-          ? {
-              ...summary,
-              saveState: 'error',
-              saveError: error?.message || 'Unable to save this round.'
-            }
-          : summary
+    const handleRouteChangeStart = (url) => {
+      if (getPathnameFromUrl(url) !== router.pathname) {
+        void terminateActiveRound('route-change');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    router.events.on('routeChangeStart', handleRouteChangeStart);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      router.events.off('routeChangeStart', handleRouteChangeStart);
+    };
+  }, [activeRound, router.events, router.pathname, terminateActiveRound]);
+
+  const submitAnswer = useCallback(
+    async (submittedAnswer, submittedAt = Date.now()) => {
+      const roundSnapshot = activeRoundRef.current;
+      if (!roundSnapshot) {
+        return;
+      }
+
+      const submission = processRoundSubmission(
+        roundSnapshot,
+        submittedAnswer,
+        submittedAt,
+        handledQuestionIdRef.current
       );
-      return;
-    }
 
-    setLastRound((summary) =>
-      summary ? { ...summary, saveState: 'saved', saveError: '' } : summary
-    );
-  };
+      if (submission.ignored) {
+        return;
+      }
 
-  const submitAnswer = async (submittedAnswer, submittedAt = Date.now()) => {
-    if (!activeRound) {
-      return;
-    }
+      handledQuestionIdRef.current = submission.handledQuestionId;
 
-    const roundSnapshot = activeRound;
-    const submission = processRoundSubmission(
-      roundSnapshot,
-      submittedAnswer,
-      submittedAt,
-      handledQuestionIdRef.current
-    );
+      if (userId) {
+        progressBufferRef.current.enqueue(
+          buildProgressLogRow(
+            submission.attempt,
+            roundSnapshot.settings,
+            userId,
+            roundSnapshot.sessionId,
+            submission.attempts.length
+          )
+        );
+      }
 
-    if (submission.ignored) {
-      return;
-    }
+      const { attempts, isComplete, nextActiveRound } = submission;
 
-    handledQuestionIdRef.current = submission.handledQuestionId;
-    const { attempts, isComplete, nextActiveRound } = submission;
+      if (isComplete) {
+        await finalizeRound(attempts, roundSnapshot.settings, {
+          wasTerminated: false
+        });
+        return;
+      }
 
-    if (isComplete) {
-      setActiveRound(null);
       setAnswerInput('');
-      setLastRound({
-        ...computeRoundStats(attempts),
-        attempts,
-        settings: roundSnapshot.settings,
-        finishedAt: new Date().toISOString(),
-        saveState: user ? 'saving' : 'idle',
-        saveError: ''
-      });
-      await persistRound(attempts, roundSnapshot.settings);
-      return;
-    }
-
-    setAnswerInput('');
-    setActiveRound(nextActiveRound);
-  };
+      setActiveRound(nextActiveRound);
+    },
+    [finalizeRound, userId]
+  );
 
   const handleAnswerSubmit = async (event) => {
     event.preventDefault();
@@ -241,13 +469,14 @@ export default function TrainerPage() {
     const nextValue = event.target.value;
     setAnswerInput(nextValue);
 
-    if (!activeRound) {
+    const roundSnapshot = activeRoundRef.current;
+    if (!roundSnapshot) {
       return;
     }
 
     const autoSubmittedAnswer = shouldAutoSubmitAnswer(
       nextValue,
-      activeRound.currentProblem.correctAnswer
+      roundSnapshot.currentProblem.correctAnswer
     );
     if (autoSubmittedAnswer === null) {
       return;
@@ -486,13 +715,7 @@ export default function TrainerPage() {
                   <p>{formatDuration(lastRound.totalResponseMs)}</p>
                 </article>
               </div>
-              <p className='save-status'>
-                {lastRound.saveState === 'saving' && 'Saving this round...'}
-                {lastRound.saveState === 'saved' && 'Round saved to your progress history.'}
-                {lastRound.saveState === 'idle' && 'Sign in to store completed rounds.'}
-                {lastRound.saveState === 'error' &&
-                  `Could not save this round: ${lastRound.saveError}`}
-              </p>
+              <p className='save-status'>{getSaveStatusMessage(lastRound)}</p>
               <Link href='/stats' className='button button-quiet'>
                 Open progress dashboard
               </Link>

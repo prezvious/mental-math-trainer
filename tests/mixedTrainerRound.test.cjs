@@ -41,7 +41,8 @@ test('processMixedRoundSubmission records a correct answer and advances', () => 
       digitsLeft: 1,
       digitsRight: 1
     },
-    1000
+    1000,
+    'mixed-session-1'
   );
 
   const submission = processMixedRoundSubmission(activeRound, 9n, 1425, null);
@@ -56,6 +57,7 @@ test('processMixedRoundSubmission records a correct answer and advances', () => 
   assert.equal(submission.nextActiveRound.currentProblem.operation, 'ADDITION');
   assert.equal(submission.nextActiveRound.currentProblem.digitsLeft, 1);
   assert.equal(submission.nextActiveRound.currentProblem.digitsRight, 1);
+  assert.equal(submission.nextActiveRound.sessionId, 'mixed-session-1');
 });
 
 test('final question completion returns no nextActiveRound', () => {
@@ -87,7 +89,8 @@ test('final question completion returns no nextActiveRound', () => {
       digitsRight: 1
     },
     questionStartedAt: 2000,
-    questionId: 2
+    questionId: 2,
+    sessionId: 'mixed-session-final'
   };
 
   const submission = processMixedRoundSubmission(activeRound, 9n, 2550, null);
@@ -109,7 +112,8 @@ test('duplicate submissions for the same question are ignored', () => {
       digitsLeft: 1,
       digitsRight: 1
     },
-    500
+    500,
+    'mixed-session-dedupe'
   );
 
   const firstSubmission = processMixedRoundSubmission(activeRound, 9n, 900, null);

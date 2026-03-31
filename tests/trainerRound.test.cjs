@@ -46,7 +46,8 @@ test('processRoundSubmission records an incorrect manual submit and advances', (
       rightOperand: 2,
       correctAnswer: 16n
     },
-    1000
+    1000,
+    'session-incorrect'
   );
 
   const submission = processRoundSubmission(activeRound, 15n, 1450, null, createProblemStub);
@@ -59,6 +60,7 @@ test('processRoundSubmission records an incorrect manual submit and advances', (
   assert.equal(submission.nextActiveRound.questionId, 2);
   assert.equal(submission.nextActiveRound.attempts.length, 1);
   assert.equal(submission.nextActiveRound.questionStartedAt, 1450);
+  assert.equal(submission.nextActiveRound.sessionId, 'session-incorrect');
 });
 
 test('processRoundSubmission records a correct submit and advances', () => {
@@ -75,7 +77,8 @@ test('processRoundSubmission records a correct submit and advances', () => {
       rightOperand: 12,
       correctAnswer: 144n
     },
-    500
+    500,
+    'session-correct'
   );
 
   const submission = processRoundSubmission(activeRound, 144n, 900, null, createProblemStub);
@@ -84,6 +87,7 @@ test('processRoundSubmission records a correct submit and advances', () => {
   assert.equal(submission.attempt.responseMs, 400);
   assert.equal(submission.isComplete, false);
   assert.equal(submission.nextActiveRound.questionId, 2);
+  assert.equal(submission.nextActiveRound.sessionId, 'session-correct');
 });
 
 test('final question completion returns no nextActiveRound', () => {
@@ -113,7 +117,8 @@ test('final question completion returns no nextActiveRound', () => {
       correctAnswer: 12n
     },
     questionStartedAt: 2000,
-    questionId: 2
+    questionId: 2,
+    sessionId: 'session-final'
   };
 
   const submission = processRoundSubmission(activeRound, 12n, 2600, null, createProblemStub);
@@ -138,7 +143,8 @@ test('duplicate submissions for the same question are ignored', () => {
       rightOperand: 14,
       correctAnswer: 291n
     },
-    1200
+    1200,
+    'session-dedupe'
   );
 
   const firstSubmission = processRoundSubmission(

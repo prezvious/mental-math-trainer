@@ -1,7 +1,13 @@
 import { createProblem, parseIntegerInput } from './mathEngine.js';
 
-export function createActiveRound(settings, currentProblem, questionStartedAt) {
+export function createActiveRound(
+  settings,
+  currentProblem,
+  questionStartedAt,
+  sessionId = null
+) {
   return {
+    sessionId,
     settings,
     attempts: [],
     currentProblem,
@@ -65,15 +71,16 @@ export function resolveRoundSubmission(
     activeRound.settings.rightDigits
   );
 
-  return {
-    attempt,
-    attempts,
-    isComplete,
-    nextActiveRound: {
-      ...activeRound,
+    return {
+      attempt,
       attempts,
-      currentProblem: nextProblem,
-      questionStartedAt: nextQuestionStartedAt,
+      isComplete,
+      nextActiveRound: {
+        ...activeRound,
+        sessionId: activeRound.sessionId,
+        attempts,
+        currentProblem: nextProblem,
+        questionStartedAt: nextQuestionStartedAt,
       questionId: activeRound.questionId + 1
     }
   };
