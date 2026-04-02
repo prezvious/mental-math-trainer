@@ -2,7 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 export default function LoginPage() {
   const router = useRouter();

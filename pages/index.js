@@ -2,8 +2,8 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccountPreferences } from 'utils/accountPreferencesContext';
-import { useActiveSession } from 'utils/activeSessionContext';
+import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
+import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   computeRoundStats,
   createProblem,
@@ -13,19 +13,19 @@ import {
   operationRequiresOrderedDigits,
   parseIntegerInput,
   sanitizeSettings
-} from 'utils/mathEngine';
+} from 'utils/mathEngine.js';
 import {
   buildProgressLogRow,
   createProgressLogBuffer
-} from 'utils/progressLogs';
+} from 'utils/progressLogs.js';
 import {
   createActiveRound,
   processRoundSubmission,
   shouldAutoSubmitAnswer
-} from 'utils/trainerRound';
-import { getSupabaseRestConfig } from 'utils/supabaseClient';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext';
-import { DIGIT_OPTIONS } from 'utils/utils';
+} from 'utils/trainerRound.js';
+import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
+import { DIGIT_OPTIONS } from 'utils/utils.js';
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {

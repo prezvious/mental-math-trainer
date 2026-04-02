@@ -131,7 +131,20 @@ function parseBooleanOrFallback(value, fallback) {
 function createSquaresProblem(difficulty) {
   const config = DIFFICULTY_CONFIG.SQUARES[difficulty];
   if (!config) {
-    return createSquaresProblem('warmup');
+    const fallbackConfig = DIFFICULTY_CONFIG.SQUARES.warmup;
+    if (!fallbackConfig) {
+      throw new Error('SQUARES warmup difficulty config is missing.');
+    }
+    const n = randomIntegerInRange(fallbackConfig.min, fallbackConfig.max);
+    const digitsLeft = String(n).length;
+    return {
+      operation: 'SQUARES',
+      leftOperand: n,
+      rightOperand: n,
+      correctAnswer: BigInt(n) * BigInt(n),
+      digitsLeft,
+      digitsRight: digitsLeft
+    };
   }
 
   const n = randomIntegerInRange(config.min, config.max);

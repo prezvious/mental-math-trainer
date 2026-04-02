@@ -2,13 +2,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import SettingsIcon from 'images/settings.svg';
-import { useAccountPreferences } from 'utils/accountPreferencesContext';
-import { useActiveSession } from 'utils/activeSessionContext';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext';
+import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
+import { useActiveSession } from 'utils/activeSessionContext.js';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   getThemeByKey,
   THEME_OPTIONS
-} from 'utils/themes';
+} from 'utils/themes.js';
 
 export default function SiteLayout({ children }) {
   const router = useRouter();

@@ -2,11 +2,11 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Keypad from 'components/mixed/Keypad';
-import ProgressBar from 'components/mixed/ProgressBar';
-import QuestionTimer from 'components/mixed/QuestionTimer';
-import StackedProblem from 'components/mixed/StackedProblem';
-import { useActiveSession } from 'utils/activeSessionContext';
+import Keypad from 'components/mixed/Keypad.js';
+import ProgressBar from 'components/mixed/ProgressBar.js';
+import QuestionTimer from 'components/mixed/QuestionTimer.js';
+import StackedProblem from 'components/mixed/StackedProblem.js';
+import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   createMixedProblem,
   DIFFICULTY_LEVELS,
@@ -17,20 +17,20 @@ import {
   pickRandomOperation,
   RUN_LENGTHS,
   sanitizeMixedSettings
-} from 'utils/mixedDifficulty';
-import { MixedTrainerProvider, useMixedTrainer } from 'utils/mixedTrainerContext';
+} from 'utils/mixedDifficulty.js';
+import { MixedTrainerProvider, useMixedTrainer } from 'utils/mixedTrainerContext.js';
 import {
   buildMixedProgressLogRow,
   createMixedActiveRound,
   processMixedRoundSubmission,
   shouldAutoSubmitAnswer
-} from 'utils/mixedTrainerRound';
-import { computeRoundStats, formatDuration } from 'utils/mathEngine';
+} from 'utils/mixedTrainerRound.js';
+import { computeRoundStats, formatDuration } from 'utils/mathEngine.js';
 import {
   createProgressLogBuffer
-} from 'utils/progressLogs';
-import { getSupabaseRestConfig } from 'utils/supabaseClient';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext';
+} from 'utils/progressLogs.js';
+import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {

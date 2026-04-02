@@ -1,4 +1,4 @@
-import { MIXED_OPERATION_META } from 'utils/mixedDifficulty';
+import { MIXED_OPERATION_META } from 'utils/mixedDifficulty.js';
 
 export default function StackedProblem({ problem, answerDisplay, isCorrect }) {
   if (problem.operation === 'SQUARES') {

@@ -1,9 +1,9 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { formatDuration, OPERATION_META } from 'utils/mathEngine';
-import { fetchAllProgressLogs } from 'utils/progressLogs';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext';
+import { formatDuration, OPERATION_META } from 'utils/mathEngine.js';
+import { fetchAllProgressLogs } from 'utils/progressLogs.js';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 function formatTimestamp(isoDate) {
   return new Intl.DateTimeFormat('en-US', {
@@ -108,15 +108,16 @@ export default function StatsPage() {
       const key = entry.session_id;
       const existing = bySession.get(key) || {
         sessionId: key,
-        operation: entry.operation,
-        digitsLeft: entry.digits_left,
-        digitsRight: entry.digits_right,
+        operations: new Set(),
+        digitPairs: new Set(),
         attempts: 0,
         correct: 0,
         totalResponseMs: 0,
         latestCreatedAt: entry.created_at
       };
 
+      existing.operations.add(entry.operation);
+      existing.digitPairs.add(`${entry.digits_left}x${entry.digits_right}`);
       existing.attempts += 1;
       existing.totalResponseMs += entry.response_ms;
       if (entry.is_correct) {
@@ -306,19 +307,26 @@ export default function StatsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {recentSessions.map((session) => (
-                        <tr key={session.sessionId}>
-                          <td>{formatTimestamp(session.latestCreatedAt)}</td>
-                          <td>{OPERATION_META[session.operation]?.label || session.operation}</td>
-                          <td>
-                            {session.digitsLeft} x {session.digitsRight}
-                          </td>
-                          <td>
-                            {session.correct}/{session.attempts}
-                          </td>
-                          <td>{formatDuration(session.totalResponseMs / session.attempts)}</td>
-                        </tr>
-                      ))}
+                      {recentSessions.map((session) => {
+                        const isMixed = session.operations.size > 1;
+                        const modeLabel = isMixed
+                          ? 'Mixed'
+                          : OPERATION_META[session.operations.values().next().value]?.label || session.operations.values().next().value;
+                        const digitsLabel = isMixed
+                          ? 'Varies'
+                          : session.digitPairs.values().next().value;
+                        return (
+                          <tr key={session.sessionId}>
+                            <td>{formatTimestamp(session.latestCreatedAt)}</td>
+                            <td>{modeLabel}</td>
+                            <td>{digitsLabel}</td>
+                            <td>
+                              {session.correct}/{session.attempts}
+                            </td>
+                            <td>{formatDuration(session.totalResponseMs / session.attempts)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

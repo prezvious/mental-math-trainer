@@ -2,12 +2,12 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   calculateStrength,
   isPasswordValid,
   validatePassword
-} from 'utils/passwordValidation';
+} from 'utils/passwordValidation.js';
 
 const PASSWORD_RULES = [
   { key: 'uppercase', label: 'Contains an uppercase letter' },

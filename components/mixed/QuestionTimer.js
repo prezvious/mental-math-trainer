@@ -16,6 +16,8 @@ export default function QuestionTimer({ startedAt, hidden, frozen }) {
   const rafRef = useRef(null);
 
   useEffect(() => {
+    setElapsed(0);
+
     if (hidden || frozen) {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
@@ -37,10 +39,6 @@ export default function QuestionTimer({ startedAt, hidden, frozen }) {
       }
     };
   }, [startedAt, hidden, frozen]);
-
-  useEffect(() => {
-    setElapsed(0);
-  }, [startedAt]);
 
   if (hidden) {
     return null;

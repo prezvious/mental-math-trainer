@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { getSupabaseClient, isSupabaseConfigured } from 'utils/supabaseClient';
+import { getSupabaseClient, isSupabaseConfigured } from 'utils/supabaseClient.js';
 
 const SupabaseAuthContext = createContext({
   client: null,

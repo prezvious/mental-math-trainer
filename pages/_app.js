@@ -1,8 +1,8 @@
 import Head from 'next/head';
-import SiteLayout from 'components/SiteLayout';
-import { AccountPreferencesProvider } from 'utils/accountPreferencesContext';
-import { ActiveSessionProvider } from 'utils/activeSessionContext';
-import { SupabaseAuthProvider } from 'utils/supabaseAuthContext';
+import SiteLayout from 'components/SiteLayout.js';
+import { AccountPreferencesProvider } from 'utils/accountPreferencesContext.js';
+import { ActiveSessionProvider } from 'utils/activeSessionContext.js';
+import { SupabaseAuthProvider } from 'utils/supabaseAuthContext.js';
 import 'styles/globals.css';
 
 export default function App({ Component, pageProps }) {

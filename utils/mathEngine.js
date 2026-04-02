@@ -5,8 +5,9 @@ export const MIN_ROUND_SIZE = 3;
 export const OPERATION_META = {
   ADDITION: { label: 'Addition', symbol: '+' },
   SUBTRACTION: { label: 'Subtraction', symbol: '-' },
-  MULTIPLICATION: { label: 'Multiplication', symbol: 'x' },
-  DIVISION: { label: 'Division', symbol: '/' }
+  MULTIPLICATION: { label: 'Multiplication', symbol: '\u00D7' },
+  DIVISION: { label: 'Division', symbol: '\u00F7' },
+  SQUARES: { label: 'Squares', symbol: '\u00B2' }
 };
 
 const VALID_OPERATIONS = Object.keys(OPERATION_META);
@@ -143,7 +144,7 @@ export function formatDuration(milliseconds) {
 
 export function parseIntegerInput(value) {
   const trimmedValue = value.trim();
-  if (!/^-?\d+$/.test(trimmedValue)) {
+  if (!/^\d+$/.test(trimmedValue)) {
     return null;
   }
 
@@ -165,8 +166,8 @@ export function sanitizeSettings(settings) {
     1,
     MAX_DIGITS
   );
-  if (operationRequiresOrderedDigits(operation) && rightDigits > leftDigits) {
-    rightDigits = leftDigits;
+  if (operationRequiresOrderedDigits(operation)) {
+    rightDigits = Math.min(rightDigits, leftDigits);
   }
 
   return {
