@@ -1,6 +1,24 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient, isSupabaseConfigured } from 'utils/supabaseClient.js';
 
+function areSessionsEquivalent(previousSession, nextSession) {
+  if (previousSession === nextSession) {
+    return true;
+  }
+
+  if (!previousSession || !nextSession) {
+    return previousSession === nextSession;
+  }
+
+  return (
+    previousSession.access_token === nextSession.access_token &&
+    previousSession.refresh_token === nextSession.refresh_token &&
+    previousSession.expires_at === nextSession.expires_at &&
+    previousSession.user?.id === nextSession.user?.id &&
+    previousSession.user?.updated_at === nextSession.user?.updated_at
+  );
+}
+
 const SupabaseAuthContext = createContext({
   client: null,
   isConfigured: false,
@@ -28,14 +46,22 @@ export function SupabaseAuthProvider({ children }) {
       if (!isMounted) {
         return;
       }
-      setSession(data.session ?? null);
+      setSession((previousSession) =>
+        areSessionsEquivalent(previousSession, data.session ?? null)
+          ? previousSession
+          : (data.session ?? null)
+      );
       setIsLoading(false);
     });
 
     const {
       data: { subscription }
     } = client.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession ?? null);
+      setSession((previousSession) =>
+        areSessionsEquivalent(previousSession, nextSession ?? null)
+          ? previousSession
+          : (nextSession ?? null)
+      );
     });
 
     return () => {

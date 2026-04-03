@@ -173,7 +173,7 @@ function MixedTrainerContent() {
   }, [activeRound]);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       return;
     }
 
@@ -184,7 +184,7 @@ function MixedTrainerContent() {
     setIsCorrectFlash(false);
     setLastRound(null);
     handledQuestionIdRef.current = null;
-  }, [progressBuffer, user]);
+  }, [progressBuffer, userId]);
 
   useEffect(() => {
     if (!activeRound || !hiddenInputRef.current) {
@@ -373,7 +373,7 @@ function MixedTrainerContent() {
   );
 
   useEffect(() => {
-    if (!user || activeRound || isLoadingMixedSettings || typeof window === 'undefined') {
+    if (!userId || activeRound || isLoadingMixedSettings || typeof window === 'undefined') {
       return undefined;
     }
 
@@ -406,18 +406,12 @@ function MixedTrainerContent() {
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, beginRound, isLoadingMixedSettings, user]);
+  }, [activeRound, beginRound, isLoadingMixedSettings, userId]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
       return undefined;
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        void terminateActiveRound('visibilitychange', { keepalive: true });
-      }
-    };
 
     const handlePageHide = () => {
       void terminateActiveRound('pagehide', { keepalive: true });
@@ -429,12 +423,10 @@ function MixedTrainerContent() {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
     router.events.on('routeChangeStart', handleRouteChangeStart);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
       router.events.off('routeChangeStart', handleRouteChangeStart);
     };

@@ -148,7 +148,7 @@ export default function TrainerPage() {
   }, [settings.roundSize]);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       return;
     }
 
@@ -157,7 +157,7 @@ export default function TrainerPage() {
     setAnswerInput('');
     setLastRound(null);
     handledQuestionIdRef.current = null;
-  }, [progressBuffer, user]);
+  }, [progressBuffer, userId]);
 
   useEffect(() => {
     if (!activeRound || !answerInputRef.current) {
@@ -352,7 +352,7 @@ export default function TrainerPage() {
   );
 
   useEffect(() => {
-    if (!user || activeRound || isLoadingPreferences || typeof window === 'undefined') {
+    if (!userId || activeRound || isLoadingPreferences || typeof window === 'undefined') {
       return undefined;
     }
 
@@ -400,18 +400,12 @@ export default function TrainerPage() {
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, beginRound, isLoadingPreferences, user]);
+  }, [activeRound, beginRound, isLoadingPreferences, userId]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
       return undefined;
     }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        void terminateActiveRound('visibilitychange', { keepalive: true });
-      }
-    };
 
     const handlePageHide = () => {
       void terminateActiveRound('pagehide', { keepalive: true });
@@ -423,12 +417,10 @@ export default function TrainerPage() {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
     router.events.on('routeChangeStart', handleRouteChangeStart);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
       router.events.off('routeChangeStart', handleRouteChangeStart);
     };

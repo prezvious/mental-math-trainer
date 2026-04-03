@@ -16,13 +16,14 @@ function formatTimestamp(isoDate) {
 
 export default function StatsPage() {
   const { client, user, isConfigured } = useSupabaseAuth();
+  const userId = user?.id ?? null;
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const loadLogs = useCallback(async () => {
-    if (!client || !user) {
+    if (!client || !userId) {
       return;
     }
 
@@ -30,7 +31,7 @@ export default function StatsPage() {
     setErrorMessage('');
 
     try {
-      const data = await fetchAllProgressLogs(client, user.id);
+      const data = await fetchAllProgressLogs(client, userId);
       setLogs(data);
       setIsLoading(false);
     } catch (error) {
@@ -38,16 +39,16 @@ export default function StatsPage() {
       setErrorMessage(error?.message || 'Could not load progress data.');
       setIsLoading(false);
     }
-  }, [client, user]);
+  }, [client, userId]);
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setLogs([]);
       setIsLoading(false);
       return;
     }
     loadLogs();
-  }, [loadLogs, user]);
+  }, [loadLogs, userId]);
 
   const overview = useMemo(() => {
     const totalAttempts = logs.length;
@@ -142,7 +143,7 @@ export default function StatsPage() {
   const recentAttempts = useMemo(() => logs.slice(0, 12), [logs]);
 
   const handleReset = async () => {
-    if (!client || !user || isResetting) {
+    if (!client || !userId || isResetting) {
       return;
     }
     const shouldReset = window.confirm(
@@ -154,7 +155,7 @@ export default function StatsPage() {
 
     setIsResetting(true);
     setErrorMessage('');
-    const { error } = await client.from('progress_logs').delete().eq('user_id', user.id);
+    const { error } = await client.from('progress_logs').delete().eq('user_id', userId);
     setIsResetting(false);
 
     if (error) {
