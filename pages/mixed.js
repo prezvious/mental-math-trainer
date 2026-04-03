@@ -25,7 +25,11 @@ import {
   processMixedRoundSubmission,
   shouldAutoSubmitAnswer
 } from 'utils/mixedTrainerRound.js';
-import { computeRoundStats, formatDuration } from 'utils/mathEngine.js';
+import {
+  computeRoundStats,
+  formatDuration,
+  parseIntegerInput
+} from 'utils/mathEngine.js';
 import {
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
@@ -135,15 +139,15 @@ function MixedTrainerContent() {
   const terminationPromiseRef = useRef(null);
   const terminateSessionRef = useRef(async () => ({ handled: false }));
   const userId = user?.id ?? null;
-
-  const progressBufferRef = useRef(null);
-  if (!progressBufferRef.current) {
-    progressBufferRef.current = createProgressLogBuffer({
-      getClient: () => clientRef.current,
-      getAccessToken: () => accessTokenRef.current,
-      getRestConfig: getSupabaseRestConfig
-    });
-  }
+  const progressBuffer = useMemo(
+    () =>
+      createProgressLogBuffer({
+        getClient: () => clientRef.current,
+        getAccessToken: () => accessTokenRef.current,
+        getRestConfig: getSupabaseRestConfig
+      }),
+    []
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -152,9 +156,9 @@ function MixedTrainerContent() {
       if (flashTimeoutRef.current) {
         clearTimeout(flashTimeoutRef.current);
       }
-      progressBufferRef.current?.dispose();
+      progressBuffer.dispose();
     };
-  }, []);
+  }, [progressBuffer]);
 
   useEffect(() => {
     clientRef.current = client;
@@ -173,14 +177,14 @@ function MixedTrainerContent() {
       return;
     }
 
-    progressBufferRef.current?.clear();
+    progressBuffer.clear();
     pendingAdvanceRef.current = null;
     setActiveRound(null);
     setAnswerInput('');
     setIsCorrectFlash(false);
     setLastRound(null);
     handledQuestionIdRef.current = null;
-  }, [user]);
+  }, [progressBuffer, user]);
 
   useEffect(() => {
     if (!activeRound || !hiddenInputRef.current) {
@@ -227,9 +231,9 @@ function MixedTrainerContent() {
         return;
       }
 
-      await progressBufferRef.current.flush({ keepalive });
+      await progressBuffer.flush({ keepalive });
     },
-    [userId]
+    [progressBuffer, userId]
   );
 
   const finalizeRound = useCallback(
@@ -299,7 +303,6 @@ function MixedTrainerContent() {
         if (!attempts.length) {
           handledQuestionIdRef.current = null;
           pendingAdvanceRef.current = null;
-          progressBufferRef.current?.clear();
           if (isMountedRef.current) {
             setActiveRound(null);
             setAnswerInput('');
@@ -326,7 +329,9 @@ function MixedTrainerContent() {
     [finalizeRound, getTerminationAttempts]
   );
 
-  terminateSessionRef.current = terminateActiveRound;
+  useEffect(() => {
+    terminateSessionRef.current = terminateActiveRound;
+  }, [terminateActiveRound]);
 
   useEffect(
     () =>
@@ -339,7 +344,6 @@ function MixedTrainerContent() {
       return;
     }
 
-    progressBufferRef.current?.clear();
     pendingAdvanceRef.current = null;
 
     const sanitized = sanitizeMixedSettings(settings);
@@ -449,7 +453,10 @@ function MixedTrainerContent() {
 
       setAnswerInput('');
       setIsCorrectFlash(false);
-      setActiveRound(nextActiveRound);
+      setActiveRound({
+        ...nextActiveRound,
+        questionStartedAt: Date.now()
+      });
     },
     [finalizeRound]
   );
@@ -475,7 +482,7 @@ function MixedTrainerContent() {
       handledQuestionIdRef.current = submission.handledQuestionId;
 
       if (userId) {
-        progressBufferRef.current.enqueue(
+        progressBuffer.enqueue(
           buildMixedProgressLogRow(
             submission.attempt,
             userId,
@@ -497,8 +504,17 @@ function MixedTrainerContent() {
         void advanceAfterCorrect(submission);
       }, CORRECT_FLASH_MS);
     },
-    [advanceAfterCorrect, isCorrectFlash, userId]
+    [advanceAfterCorrect, isCorrectFlash, progressBuffer, userId]
   );
+
+  const submitCurrentInput = useCallback(() => {
+    const parsedAnswer = parseIntegerInput(answerInput);
+    if (parsedAnswer === null) {
+      return;
+    }
+
+    submitAnswer(parsedAnswer, Date.now());
+  }, [answerInput, submitAnswer]);
 
   const processInput = useCallback(
     (nextValue) => {
@@ -562,9 +578,15 @@ function MixedTrainerContent() {
       if (event.key === 'Delete' || event.key === 'Escape') {
         event.preventDefault();
         handleClear();
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitCurrentInput();
       }
     },
-    [handleClear, handleDelete, handleDigit, isCorrectFlash]
+    [handleClear, handleDelete, handleDigit, isCorrectFlash, submitCurrentInput]
   );
 
   const updateSetting = (key, value) => {
@@ -794,6 +816,7 @@ function MixedTrainerContent() {
               onDigit={handleDigit}
               onClear={handleClear}
               onDelete={handleDelete}
+              onSubmit={submitCurrentInput}
               disabled={isCorrectFlash}
             />
           </article>

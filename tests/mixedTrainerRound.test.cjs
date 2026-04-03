@@ -6,6 +6,7 @@ const { pathToFileURL } = require('node:url');
 let buildMixedProgressLogRows;
 let createMixedActiveRound;
 let processMixedRoundSubmission;
+let shouldAutoSubmitAnswer;
 
 const ADDITION_ONLY_SETTINGS = {
   squaresDifficulty: 'off',
@@ -26,7 +27,8 @@ test.before(async () => {
   ({
     buildMixedProgressLogRows,
     createMixedActiveRound,
-    processMixedRoundSubmission
+    processMixedRoundSubmission,
+    shouldAutoSubmitAnswer
   } = mixedTrainerRound);
 });
 
@@ -101,6 +103,30 @@ test('final question completion returns no nextActiveRound', () => {
   assert.equal(submission.attempt.responseMs, 550);
 });
 
+test('processMixedRoundSubmission records incorrect answers without prestarting the next timer', () => {
+  const activeRound = createMixedActiveRound(
+    ADDITION_ONLY_SETTINGS,
+    {
+      operation: 'ADDITION',
+      leftOperand: 6,
+      rightOperand: 4,
+      correctAnswer: 10n,
+      digitsLeft: 1,
+      digitsRight: 1
+    },
+    1000,
+    'mixed-session-wrong-answer'
+  );
+
+  const submission = processMixedRoundSubmission(activeRound, 9n, 1450, null);
+
+  assert.equal(submission.ignored, false);
+  assert.equal(submission.attempt.isCorrect, false);
+  assert.equal(submission.attempt.submittedAnswer, 9n);
+  assert.equal(submission.responseMs, 450);
+  assert.equal(submission.nextActiveRound.questionStartedAt, null);
+});
+
 test('duplicate submissions for the same question are ignored', () => {
   const activeRound = createMixedActiveRound(
     ADDITION_ONLY_SETTINGS,
@@ -127,6 +153,14 @@ test('duplicate submissions for the same question are ignored', () => {
   assert.equal(firstSubmission.ignored, false);
   assert.equal(duplicateSubmission.ignored, true);
   assert.equal(duplicateSubmission.handledQuestionId, firstSubmission.handledQuestionId);
+});
+
+test('shouldAutoSubmitAnswer only triggers on exact correct integer input', () => {
+  assert.equal(shouldAutoSubmitAnswer('42', 42n), 42n);
+  assert.equal(shouldAutoSubmitAnswer(' 42 ', 42n), 42n);
+  assert.equal(shouldAutoSubmitAnswer('41', 42n), null);
+  assert.equal(shouldAutoSubmitAnswer('', 42n), null);
+  assert.equal(shouldAutoSubmitAnswer('-', 42n), null);
 });
 
 test('buildMixedProgressLogRows preserves per-attempt operation metadata', () => {

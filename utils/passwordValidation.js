@@ -55,3 +55,7 @@ export function calculateStrength(validationResult) {
 export function isPasswordValid(validationResult) {
   return Object.values(validationResult).every(Boolean);
 }
+
+export function getPasswordRuleIndicator(isPassed) {
+  return isPassed ? '\u2713' : '\u25cb';
+}

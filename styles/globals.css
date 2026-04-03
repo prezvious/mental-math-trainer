@@ -1575,6 +1575,10 @@ th {
   color: var(--text-subtle);
 }
 
+.keypad-button.submit {
+  grid-column: 1 / -1;
+}
+
 /* Question timer */
 
 .question-timer {

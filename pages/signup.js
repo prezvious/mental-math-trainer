@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   calculateStrength,
+  getPasswordRuleIndicator,
   isPasswordValid,
   validatePassword
 } from 'utils/passwordValidation.js';
@@ -201,7 +202,7 @@ export default function SignupPage() {
                 const isPassed = passwordValidation[rule.key];
                 return (
                   <li key={rule.key} className={isPassed ? 'is-pass' : ''}>
-                    <span aria-hidden='true'>{isPassed ? '?' : '?'}</span>
+                    <span aria-hidden='true'>{getPasswordRuleIndicator(isPassed)}</span>
                     <span>{rule.label}</span>
                   </li>
                 );

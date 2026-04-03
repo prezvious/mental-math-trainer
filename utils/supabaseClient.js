@@ -4,9 +4,7 @@ let cachedClient;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabasePublishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const supabaseClientKey = supabaseAnonKey || supabasePublishableKey;
+const supabaseClientKey = supabaseAnonKey;
 
 export function isSupabaseConfigured() {
   return Boolean(supabaseUrl && supabaseClientKey);

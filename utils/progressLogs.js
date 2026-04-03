@@ -123,6 +123,7 @@ export function createProgressLogBuffer({
   clearTimeoutImpl = globalThis.clearTimeout
 } = {}) {
   let pendingRows = [];
+  let inFlightRows = [];
   let flushTimer = null;
   let flushPromise = null;
 
@@ -158,8 +159,11 @@ export function createProgressLogBuffer({
     cancelScheduledFlush();
 
     if (flushPromise) {
-      if (keepalive && pendingRows.length) {
-        fireKeepalive(pendingRows.slice());
+      if (keepalive) {
+        const rowsToKeepalive = [...inFlightRows, ...pendingRows];
+        if (rowsToKeepalive.length) {
+          fireKeepalive(rowsToKeepalive);
+        }
       }
 
       return flushPromise;
@@ -180,6 +184,7 @@ export function createProgressLogBuffer({
       while (pendingRows.length) {
         const snapshot = pendingRows;
         pendingRows = [];
+        inFlightRows = snapshot;
 
         if (keepalive) {
           fireKeepalive(snapshot);
@@ -191,6 +196,8 @@ export function createProgressLogBuffer({
         } catch (error) {
           pendingRows = [...snapshot, ...pendingRows];
           throw error;
+        } finally {
+          inFlightRows = [];
         }
       }
 
@@ -232,7 +239,8 @@ export function createProgressLogBuffer({
     clear,
     dispose: cancelScheduledFlush,
     getPendingRows: () => pendingRows.slice(),
-    getPendingCount: () => pendingRows.length
+    getPendingCount: () => pendingRows.length,
+    getInFlightRows: () => inFlightRows.slice()
   };
 }
 

@@ -54,8 +54,7 @@ function resolveMixedRoundSubmission(
   activeRound,
   submittedAnswer,
   responseMs,
-  nextQuestionStartedAt,
-  createdAt = new Date(nextQuestionStartedAt).toISOString()
+  createdAt = new Date().toISOString()
 ) {
   const attempt = createMixedAttempt(
     activeRound.currentProblem,
@@ -80,7 +79,7 @@ function resolveMixedRoundSubmission(
       ...activeRound,
       attempts,
       currentProblem: nextProblem,
-      questionStartedAt: nextQuestionStartedAt,
+      questionStartedAt: null,
       questionId: activeRound.questionId + 1
     }
   };
@@ -110,7 +109,6 @@ export function processMixedRoundSubmission(
       activeRound,
       submittedAnswer,
       responseMs,
-      submittedAt,
       new Date(submittedAt).toISOString()
     )
   };

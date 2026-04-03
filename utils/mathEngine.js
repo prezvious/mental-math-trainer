@@ -182,6 +182,28 @@ export function sanitizeSettings(settings) {
   };
 }
 
+export function resolveRoundSizeDraft(settings, roundSizeDraft) {
+  const parsedRoundSize = Number.parseInt(roundSizeDraft, 10);
+  if (!Number.isInteger(parsedRoundSize)) {
+    return {
+      nextSettings: settings,
+      nextRoundSizeDraft: String(settings.roundSize),
+      didChange: false
+    };
+  }
+
+  const nextSettings = sanitizeSettings({
+    ...settings,
+    roundSize: parsedRoundSize
+  });
+
+  return {
+    nextSettings,
+    nextRoundSizeDraft: String(nextSettings.roundSize),
+    didChange: nextSettings.roundSize !== settings.roundSize
+  };
+}
+
 export function computeRoundStats(attempts) {
   const total = attempts.length;
   const correct = attempts.filter((attempt) => attempt.isCorrect).length;

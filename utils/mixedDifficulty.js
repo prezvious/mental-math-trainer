@@ -45,11 +45,11 @@ export const DIFFICULTY_CONFIG = {
 };
 
 export const MIXED_OPERATION_META = {
-  SQUARES: { label: 'Squares', symbol: '²', configLabel: '( )²' },
-  MULTIPLICATION: { label: 'Multiplication', symbol: '×', configLabel: '×' },
+  SQUARES: { label: 'Squares', symbol: '\u00b2', configLabel: '( )\u00b2' },
+  MULTIPLICATION: { label: 'Multiplication', symbol: '\u00d7', configLabel: '\u00d7' },
   ADDITION: { label: 'Addition', symbol: '+', configLabel: '+' },
-  SUBTRACTION: { label: 'Subtraction', symbol: '−', configLabel: '−' },
-  DIVISION: { label: 'Division', symbol: '÷', configLabel: '÷' }
+  SUBTRACTION: { label: 'Subtraction', symbol: '\u2212', configLabel: '\u2212' },
+  DIVISION: { label: 'Division', symbol: '\u00f7', configLabel: '\u00f7' }
 };
 
 export const MIXED_OPERATIONS = Object.keys(MIXED_OPERATION_META);
@@ -89,7 +89,7 @@ export function getDifficultyForOperation(settings, operation) {
 
 export function getEnabledOperations(settings) {
   return MIXED_OPERATIONS.filter(
-    (op) => getDifficultyForOperation(settings, op) !== 'off'
+    (operation) => getDifficultyForOperation(settings, operation) !== 'off'
   );
 }
 
@@ -135,26 +135,27 @@ function createSquaresProblem(difficulty) {
     if (!fallbackConfig) {
       throw new Error('SQUARES warmup difficulty config is missing.');
     }
-    const n = randomIntegerInRange(fallbackConfig.min, fallbackConfig.max);
-    const digitsLeft = String(n).length;
+
+    const value = randomIntegerInRange(fallbackConfig.min, fallbackConfig.max);
+    const digitsLeft = String(value).length;
     return {
       operation: 'SQUARES',
-      leftOperand: n,
-      rightOperand: n,
-      correctAnswer: BigInt(n) * BigInt(n),
+      leftOperand: value,
+      rightOperand: value,
+      correctAnswer: BigInt(value) * BigInt(value),
       digitsLeft,
       digitsRight: digitsLeft
     };
   }
 
-  const n = randomIntegerInRange(config.min, config.max);
-  const digitsLeft = String(n).length;
+  const value = randomIntegerInRange(config.min, config.max);
+  const digitsLeft = String(value).length;
 
   return {
     operation: 'SQUARES',
-    leftOperand: n,
-    rightOperand: n,
-    correctAnswer: BigInt(n) * BigInt(n),
+    leftOperand: value,
+    rightOperand: value,
+    correctAnswer: BigInt(value) * BigInt(value),
     digitsLeft,
     digitsRight: digitsLeft
   };

@@ -5,6 +5,7 @@ const { pathToFileURL } = require('node:url');
 
 let createProblem;
 let sanitizeSettings;
+let resolveRoundSizeDraft;
 let MAX_DIGITS;
 let MAX_ROUND_SIZE;
 let MIN_ROUND_SIZE;
@@ -17,6 +18,7 @@ test.before(async () => {
   ({
     createProblem,
     sanitizeSettings,
+    resolveRoundSizeDraft,
     MAX_DIGITS,
     MAX_ROUND_SIZE,
     MIN_ROUND_SIZE
@@ -62,6 +64,30 @@ test('sanitizeSettings caps rightDigits for subtraction and division', () => {
 
   assert.equal(subtractionSettings.rightDigits, 3);
   assert.equal(divisionSettings.rightDigits, 1);
+});
+
+test('resolveRoundSizeDraft restores invalid drafts and clamps oversized values', () => {
+  const currentSettings = {
+    operation: 'ADDITION',
+    leftDigits: 2,
+    rightDigits: 2,
+    roundSize: 21
+  };
+
+  assert.deepEqual(resolveRoundSizeDraft(currentSettings, ''), {
+    nextSettings: currentSettings,
+    nextRoundSizeDraft: '21',
+    didChange: false
+  });
+
+  assert.deepEqual(resolveRoundSizeDraft(currentSettings, '99999'), {
+    nextSettings: {
+      ...currentSettings,
+      roundSize: MAX_ROUND_SIZE
+    },
+    nextRoundSizeDraft: String(MAX_ROUND_SIZE),
+    didChange: true
+  });
 });
 
 test('createProblem supports the requested edge digit combinations', () => {

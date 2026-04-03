@@ -12,6 +12,7 @@ import {
   OPERATION_META,
   operationRequiresOrderedDigits,
   parseIntegerInput,
+  resolveRoundSizeDraft,
   sanitizeSettings
 } from 'utils/mathEngine.js';
 import {
@@ -100,6 +101,7 @@ export default function TrainerPage() {
   const [activeRound, setActiveRound] = useState(null);
   const [answerInput, setAnswerInput] = useState('');
   const [lastRound, setLastRound] = useState(null);
+  const [roundSizeDraft, setRoundSizeDraft] = useState(() => String(settings.roundSize));
   const settingsFormRef = useRef(null);
   const answerInputRef = useRef(null);
   const handledQuestionIdRef = useRef(null);
@@ -111,22 +113,23 @@ export default function TrainerPage() {
   const terminateSessionRef = useRef(async () => ({ handled: false }));
   const userId = user?.id ?? null;
 
-  const progressBufferRef = useRef(null);
-  if (!progressBufferRef.current) {
-    progressBufferRef.current = createProgressLogBuffer({
-      getClient: () => clientRef.current,
-      getAccessToken: () => accessTokenRef.current,
-      getRestConfig: getSupabaseRestConfig
-    });
-  }
+  const progressBuffer = useMemo(
+    () =>
+      createProgressLogBuffer({
+        getClient: () => clientRef.current,
+        getAccessToken: () => accessTokenRef.current,
+        getRestConfig: getSupabaseRestConfig
+      }),
+    []
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      progressBufferRef.current?.dispose();
+      progressBuffer.dispose();
     };
-  }, []);
+  }, [progressBuffer]);
 
   useEffect(() => {
     clientRef.current = client;
@@ -141,16 +144,20 @@ export default function TrainerPage() {
   }, [activeRound]);
 
   useEffect(() => {
+    setRoundSizeDraft(String(settings.roundSize));
+  }, [settings.roundSize]);
+
+  useEffect(() => {
     if (user) {
       return;
     }
 
-    progressBufferRef.current?.clear();
+    progressBuffer.clear();
     setActiveRound(null);
     setAnswerInput('');
     setLastRound(null);
     handledQuestionIdRef.current = null;
-  }, [user]);
+  }, [progressBuffer, user]);
 
   useEffect(() => {
     if (!activeRound || !answerInputRef.current) {
@@ -201,9 +208,9 @@ export default function TrainerPage() {
         return;
       }
 
-      await progressBufferRef.current.flush({ keepalive });
+      await progressBuffer.flush({ keepalive });
     },
-    [userId]
+    [progressBuffer, userId]
   );
 
   const finalizeRound = useCallback(
@@ -248,7 +255,6 @@ export default function TrainerPage() {
       const promise = (async () => {
         if (!roundSnapshot.attempts.length) {
           handledQuestionIdRef.current = null;
-          progressBufferRef.current?.clear();
           if (isMountedRef.current) {
             setActiveRound(null);
             setAnswerInput('');
@@ -274,13 +280,31 @@ export default function TrainerPage() {
     [finalizeRound]
   );
 
-  terminateSessionRef.current = terminateActiveRound;
+  useEffect(() => {
+    terminateSessionRef.current = terminateActiveRound;
+  }, [terminateActiveRound]);
 
   useEffect(
     () =>
       registerActiveSessionTerminator((reason) => terminateSessionRef.current(reason)),
     [registerActiveSessionTerminator]
   );
+
+  const commitRoundSizeDraft = useCallback(() => {
+    const {
+      nextSettings,
+      nextRoundSizeDraft,
+      didChange
+    } = resolveRoundSizeDraft(settings, roundSizeDraft);
+
+    setRoundSizeDraft(nextRoundSizeDraft);
+
+    if (didChange) {
+      void upsertPreferences({ trainerSettings: nextSettings });
+    }
+
+    return nextSettings;
+  }, [roundSizeDraft, settings, upsertPreferences]);
 
   const beginRound = useCallback(async () => {
     if (isLoadingPreferences) {
@@ -291,9 +315,7 @@ export default function TrainerPage() {
       await terminateActiveRound('restart');
     }
 
-    progressBufferRef.current?.clear();
-
-    const sanitizedSettings = sanitizeSettings(settings);
+    const sanitizedSettings = commitRoundSizeDraft();
     const firstProblem = createProblem(
       sanitizedSettings.operation,
       sanitizedSettings.leftDigits,
@@ -314,7 +336,12 @@ export default function TrainerPage() {
         sessionId
       )
     );
-  }, [isLoadingPreferences, settings, terminateActiveRound, upsertPreferences]);
+  }, [
+    commitRoundSizeDraft,
+    isLoadingPreferences,
+    terminateActiveRound,
+    upsertPreferences
+  ]);
 
   const startRound = useCallback(
     (event) => {
@@ -428,7 +455,7 @@ export default function TrainerPage() {
       handledQuestionIdRef.current = submission.handledQuestionId;
 
       if (userId) {
-        progressBufferRef.current.enqueue(
+        progressBuffer.enqueue(
           buildProgressLogRow(
             submission.attempt,
             roundSnapshot.settings,
@@ -451,7 +478,7 @@ export default function TrainerPage() {
       setAnswerInput('');
       setActiveRound(nextActiveRound);
     },
-    [finalizeRound, userId]
+    [finalizeRound, progressBuffer, userId]
   );
 
   const handleAnswerSubmit = async (event) => {
@@ -490,8 +517,12 @@ export default function TrainerPage() {
       return;
     }
 
-    const normalizedValue =
-      ['leftDigits', 'rightDigits', 'roundSize'].includes(key) ? Number(value) : value;
+    if (key === 'roundSize') {
+      setRoundSizeDraft(value);
+      return;
+    }
+
+    const normalizedValue = ['leftDigits', 'rightDigits'].includes(key) ? Number(value) : value;
 
     const nextSettings = {
       ...settings,
@@ -622,8 +653,9 @@ export default function TrainerPage() {
                   type='number'
                   min='3'
                   max='10000'
-                  value={settings.roundSize}
+                  value={roundSizeDraft}
                   onChange={(event) => updateSetting('roundSize', event.target.value)}
+                  onBlur={commitRoundSizeDraft}
                   disabled={isLoadingPreferences}
                 />
 

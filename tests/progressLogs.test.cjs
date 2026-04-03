@@ -114,6 +114,17 @@ function createTimeoutHarness() {
   };
 }
 
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 test.before(async () => {
   const progressLogs = await import(
     pathToFileURL(path.resolve(__dirname, '../utils/progressLogs.js')).href
@@ -317,6 +328,87 @@ test('createProgressLogBuffer triggers a keepalive flush before the regular upse
 
   assert.equal(keepaliveCalls.length, 1);
   assert.equal(client.upsertCalls.length, 1);
+});
+
+test('createProgressLogBuffer keepalive includes in-flight and pending rows during an active flush', async () => {
+  const gate = createDeferred();
+  let signalUpsertStarted;
+  const upsertStarted = new Promise((resolve) => {
+    signalUpsertStarted = resolve;
+  });
+  const upsertCalls = [];
+  const keepaliveBodies = [];
+  const client = {
+    from(table) {
+      assert.equal(table, 'progress_logs');
+      return {
+        async upsert(rows, options) {
+          upsertCalls.push({ rows, options });
+          signalUpsertStarted();
+          await gate.promise;
+          return { error: null };
+        }
+      };
+    }
+  };
+  const buffer = createProgressLogBuffer({
+    getClient: () => client,
+    getAccessToken: () => 'token-123',
+    getRestConfig: () => ({
+      url: 'https://example.supabase.co',
+      key: 'anon-key'
+    }),
+    fetchImpl: async (_url, options) => {
+      keepaliveBodies.push(JSON.parse(options.body));
+      return {
+        ok: true,
+        async text() {
+          return '';
+        }
+      };
+    }
+  });
+  const firstRow = buildProgressLogRow(
+    createAttempt(0),
+    { leftDigits: 2, rightDigits: 1 },
+    'user-1',
+    'session-1',
+    1
+  );
+  const secondRow = buildProgressLogRow(
+    createAttempt(1),
+    { leftDigits: 2, rightDigits: 1 },
+    'user-1',
+    'session-1',
+    2
+  );
+
+  buffer.enqueue(firstRow);
+  const firstFlushPromise = buffer.flush();
+  await upsertStarted;
+
+  assert.deepEqual(buffer.getInFlightRows(), [firstRow]);
+
+  buffer.enqueue(secondRow);
+  const keepaliveFlushPromise = buffer.flush({ keepalive: true });
+
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(keepaliveBodies.length, 1);
+  assert.deepEqual(
+    keepaliveBodies[0].map((row) => row.question_index),
+    [1, 2]
+  );
+
+  gate.resolve();
+
+  await firstFlushPromise;
+  await keepaliveFlushPromise;
+
+  assert.equal(upsertCalls.length, 2);
+  assert.equal(buffer.getPendingCount(), 0);
+  assert.deepEqual(buffer.getInFlightRows(), []);
 });
 
 test('fetchAllProgressLogs keeps paginating until the final partial page', async () => {
