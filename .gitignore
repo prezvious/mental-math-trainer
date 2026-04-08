@@ -15,6 +15,8 @@ coverage/
 .codex/
 .claude/
 .history/
+*.swp
+*.swo
 
 .env
 .env.*
@@ -27,13 +29,34 @@ coverage/
 .envrc
 .direnv/
 
+.npmrc
+.yarnrc
+.yarnrc.yml
+
 .vercel/
+.netlify/
 
 # Private backend tooling
 supabase/
 
+# Secrets and credentials
+secrets/
+credentials/
+*.secret
+*.pem
+*.key
+*.p12
+*.crt
+*.cer
+*.pfx
+*.jks
+service-account*.json
+*-credentials.json
+
 .DS_Store
 Thumbs.db
+desktop.ini
+ehthumbs.db
 
 *.log
 npm-debug.log*
@@ -41,14 +64,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-*.pem
-*.key
-*.p12
-*.crt
-*.cer
 *.db
 *.sqlite
 *.sqlite-journal
 tmp/
 temp/
+*.backup
+*.bak
+*.orig
 

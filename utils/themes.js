@@ -118,6 +118,36 @@ const RAW_THEMES = [
     name: 'Saffron Static',
     vibe: 'Campaign urgency with persuasive contrast.',
     colors: ['#F0A11E', '#5C3DD1', '#FBF7F0', '#252329']
+  },
+  {
+    key: 'cotton-candy-dawn',
+    name: 'Cotton Candy Dawn',
+    vibe: 'Romantic dawn blush with dreamy editorial softness.',
+    colors: ['#D894BE', '#EABBD9', '#F8E2F1', '#2B1A2A']
+  },
+  {
+    key: 'honey-milk',
+    name: 'Honey Milk',
+    vibe: 'Warm cafe calm with patient workshop focus.',
+    colors: ['#D8B389', '#EAD2B3', '#F8F0DE', '#241B12']
+  },
+  {
+    key: 'sage-whisk',
+    name: 'Sage Whisk',
+    vibe: 'Fresh garden clarity with herbal, unhurried poise.',
+    colors: ['#84C370', '#BFE1B2', '#E4F4DE', '#1C271B']
+  },
+  {
+    key: 'lavender-mist',
+    name: 'Lavender Mist',
+    vibe: 'Twilight study hush with introspective lavender glow.',
+    colors: ['#8E89CD', '#C2B9E9', '#E7E0F7', '#1C1A2E']
+  },
+  {
+    key: 'aqua-whisper',
+    name: 'Aqua Whisper',
+    vibe: 'Spa-fresh serenity with clean, breathable flow.',
+    colors: ['#89CDC6', '#B9E9E4', '#DEF7F3', '#112625']
   }
 ];
 
@@ -518,6 +548,81 @@ const LAYOUT_PROFILES = [
     heroAccentWidth: '175px', heroAccentHeight: '18px', heroAccentRotate: '9deg',
     heroAccentX: '22px', heroAccentY: '14px',
     bgAngle: '145deg', bgStop: '65%', animationDuration: '0.4s'
+  },
+  // 20: Cotton Candy Dawn — borrows Paper Lantern "Vertical Scroll"
+  {
+    headerColumns: 'auto 1fr auto', brandOrder: 2, navOrder: 1, actionsOrder: 3,
+    brandAlign: 'center', navAlign: 'start', actionsAlign: 'end',
+    mainMax: '880px', mainGap: '1.3rem', mainTop: '1.5rem', mainBottom: '3.2rem',
+    trainerColumns: '1fr',
+    guestColumns: '1fr',
+    summaryColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    operationColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    panelRadius: '22px', panelBorderWidth: '2px', cardTilt: '0deg', cardLift: '8px',
+    heroSize: '150px', heroRotate: '-32deg', heroOffsetX: '-38px', heroOffsetY: '-36px',
+    heroAccentWidth: '110px', heroAccentHeight: '10px', heroAccentRotate: '6deg',
+    heroAccentX: '14px', heroAccentY: '22px',
+    bgAngle: '176deg', bgStop: '68%', animationDuration: '0.56s'
+  },
+  // 21: Honey Milk — borrows Ink and Apricot "Studio Desk"
+  {
+    headerColumns: '1fr auto auto', brandOrder: 1, navOrder: 2, actionsOrder: 3,
+    brandAlign: 'start', navAlign: 'center', actionsAlign: 'end',
+    mainMax: '1050px', mainGap: '1rem', mainTop: '1.12rem', mainBottom: '2.7rem',
+    trainerColumns: 'minmax(0, 1fr) minmax(240px, 300px)',
+    guestColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    summaryColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    operationColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    panelRadius: '16px', panelBorderWidth: '2px', cardTilt: '-0.8deg', cardLift: '10px',
+    heroSize: '160px', heroRotate: '15deg', heroOffsetX: '-36px', heroOffsetY: '-34px',
+    heroAccentWidth: '120px', heroAccentHeight: '12px', heroAccentRotate: '-7deg',
+    heroAccentX: '16px', heroAccentY: '20px',
+    bgAngle: '170deg', bgStop: '75%', animationDuration: '0.45s'
+  },
+  // 22: Sage Whisk — borrows Apothecary Glass "Lab Notebook"
+  {
+    headerColumns: '1fr auto 1fr', brandOrder: 1, navOrder: 3, actionsOrder: 2,
+    brandAlign: 'start', navAlign: 'end', actionsAlign: 'center',
+    mainMax: '960px', mainGap: '0.9rem', mainTop: '1rem', mainBottom: '2.4rem',
+    trainerColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    guestColumns: 'minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.9fr)',
+    summaryColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    operationColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    panelRadius: '10px', panelBorderWidth: '2px', cardTilt: '0deg', cardLift: '0px',
+    heroSize: '130px', heroRotate: '-8deg', heroOffsetX: '-30px', heroOffsetY: '-28px',
+    heroAccentWidth: '96px', heroAccentHeight: '8px', heroAccentRotate: '2deg',
+    heroAccentX: '12px', heroAccentY: '18px',
+    bgAngle: '180deg', bgStop: '78%', animationDuration: '0.42s'
+  },
+  // 23: Lavender Mist — borrows Velvet Circuit "Command Center"
+  {
+    headerColumns: '1fr auto auto', brandOrder: 1, navOrder: 2, actionsOrder: 3,
+    brandAlign: 'start', navAlign: 'center', actionsAlign: 'end',
+    mainMax: '1180px', mainGap: '1.05rem', mainTop: '1.15rem', mainBottom: '2.8rem',
+    trainerColumns: 'minmax(270px, 340px) minmax(0, 1fr)',
+    guestColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    summaryColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    operationColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    panelRadius: '14px', panelBorderWidth: '2px', cardTilt: '-0.6deg', cardLift: '10px',
+    heroSize: '200px', heroRotate: '18deg', heroOffsetX: '-50px', heroOffsetY: '-46px',
+    heroAccentWidth: '140px', heroAccentHeight: '14px', heroAccentRotate: '-5deg',
+    heroAccentX: '18px', heroAccentY: '16px',
+    bgAngle: '158deg', bgStop: '72%', animationDuration: '0.48s'
+  },
+  // 24: Aqua Whisper — borrows Porcelain Rebel "Split Screen"
+  {
+    headerColumns: 'auto auto 1fr', brandOrder: 3, navOrder: 1, actionsOrder: 2,
+    brandAlign: 'end', navAlign: 'start', actionsAlign: 'center',
+    mainMax: '1100px', mainGap: '1rem', mainTop: '1.08rem', mainBottom: '2.6rem',
+    trainerColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    guestColumns: 'minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0, 1.1fr)',
+    summaryColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.1fr)',
+    operationColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)',
+    panelRadius: '18px', panelBorderWidth: '2px', cardTilt: '0.5deg', cardLift: '12px',
+    heroSize: '175px', heroRotate: '-20deg', heroOffsetX: '-40px', heroOffsetY: '-38px',
+    heroAccentWidth: '128px', heroAccentHeight: '12px', heroAccentRotate: '8deg',
+    heroAccentX: '20px', heroAccentY: '24px',
+    bgAngle: '155deg', bgStop: '74%', animationDuration: '0.46s'
   }
 ];
 
