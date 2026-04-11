@@ -9,6 +9,7 @@ import {
   createProblem,
   formatDuration,
   getOperationOptions,
+  MAX_BASE,
   OPERATION_META,
   operationRequiresOrderedDigits,
   parseIntegerInput,
@@ -171,6 +172,7 @@ export default function TrainerPage() {
     () => computeRoundStats(activeRound?.attempts || []),
     [activeRound]
   );
+  const isExponentiation = settings.operation === 'EXPONENTIATION';
   const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
   const availableRightDigits = isOrderedDigitOperation
     ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
@@ -319,7 +321,8 @@ export default function TrainerPage() {
     const firstProblem = createProblem(
       sanitizedSettings.operation,
       sanitizedSettings.leftDigits,
-      sanitizedSettings.rightDigits
+      sanitizedSettings.rightDigits,
+      sanitizedSettings.maxBase
     );
     const questionStartedAt = Date.now();
     const sessionId = createSessionId();
@@ -514,7 +517,7 @@ export default function TrainerPage() {
       return;
     }
 
-    const normalizedValue = ['leftDigits', 'rightDigits'].includes(key) ? Number(value) : value;
+    const normalizedValue = ['leftDigits', 'rightDigits', 'maxBase'].includes(key) ? Number(value) : value;
 
     const nextSettings = {
       ...settings,
@@ -611,33 +614,50 @@ export default function TrainerPage() {
                   ))}
                 </select>
 
-                <label htmlFor='leftDigits'>Left number digits</label>
-                <select
-                  id='leftDigits'
-                  value={settings.leftDigits}
-                  onChange={(event) => updateSetting('leftDigits', event.target.value)}
-                  disabled={isLoadingPreferences}
-                >
-                  {DIGIT_OPTIONS.map((digits) => (
-                    <option key={digits} value={digits}>
-                      {`${digits} digit${digits === 1 ? '' : 's'}`}
-                    </option>
-                  ))}
-                </select>
+                {isExponentiation ? (
+                  <>
+                    <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
+                    <input
+                      id='maxBase'
+                      type='range'
+                      min='2'
+                      max={MAX_BASE}
+                      value={settings.maxBase}
+                      onChange={(event) => updateSetting('maxBase', event.target.value)}
+                      disabled={isLoadingPreferences}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor='leftDigits'>Left number digits</label>
+                    <select
+                      id='leftDigits'
+                      value={settings.leftDigits}
+                      onChange={(event) => updateSetting('leftDigits', event.target.value)}
+                      disabled={isLoadingPreferences}
+                    >
+                      {DIGIT_OPTIONS.map((digits) => (
+                        <option key={digits} value={digits}>
+                          {`${digits} digit${digits === 1 ? '' : 's'}`}
+                        </option>
+                      ))}
+                    </select>
 
-                <label htmlFor='rightDigits'>Right number digits</label>
-                <select
-                  id='rightDigits'
-                  value={settings.rightDigits}
-                  onChange={(event) => updateSetting('rightDigits', event.target.value)}
-                  disabled={isLoadingPreferences}
-                >
-                  {availableRightDigits.map((digits) => (
-                    <option key={digits} value={digits}>
-                      {`${digits} digit${digits === 1 ? '' : 's'}`}
-                    </option>
-                  ))}
-                </select>
+                    <label htmlFor='rightDigits'>Right number digits</label>
+                    <select
+                      id='rightDigits'
+                      value={settings.rightDigits}
+                      onChange={(event) => updateSetting('rightDigits', event.target.value)}
+                      disabled={isLoadingPreferences}
+                    >
+                      {availableRightDigits.map((digits) => (
+                        <option key={digits} value={digits}>
+                          {`${digits} digit${digits === 1 ? '' : 's'}`}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
 
                 <label htmlFor='roundSize'>Questions per round</label>
                 <input
@@ -686,10 +706,10 @@ export default function TrainerPage() {
                     />
                   </div>
                   <p className='problem-line'>
-                    {activeRound.currentProblem.operation === 'SQUARES' ? (
+                    {activeRound.currentProblem.operation === 'EXPONENTIATION' ? (
                       <>
                         <span>{activeRound.currentProblem.leftOperand}</span>
-                        <sup className='problem-exponent'>2</sup>
+                        <sup className='problem-exponent'>{activeRound.currentProblem.rightOperand}</sup>
                       </>
                     ) : (
                       <>

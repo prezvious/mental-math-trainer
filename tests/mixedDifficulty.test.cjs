@@ -23,7 +23,7 @@ test.before(async () => {
 
 test('sanitizeMixedSettings falls back to defaults and normalizes boolean inputs', () => {
   const settings = sanitizeMixedSettings({
-    squaresDifficulty: 'invalid',
+    exponentiationDifficulty: 'invalid',
     multiplicationDifficulty: 'expert',
     additionDifficulty: 'off',
     subtractionDifficulty: 'medium',
@@ -47,7 +47,7 @@ test('sanitizeMixedSettings falls back to defaults and normalizes boolean inputs
 test('getEnabledOperations only returns operations that are not off', () => {
   const enabledOperations = getEnabledOperations({
     ...DEFAULT_MIXED_SETTINGS,
-    squaresDifficulty: 'off',
+    exponentiationDifficulty: 'off',
     multiplicationDifficulty: 'hard',
     additionDifficulty: 'off',
     subtractionDifficulty: 'easy',
@@ -57,14 +57,14 @@ test('getEnabledOperations only returns operations that are not off', () => {
   assert.deepEqual(enabledOperations, ['MULTIPLICATION', 'SUBTRACTION']);
 });
 
-test('createMixedProblem generates squares with the configured range and metadata', () => {
+test('createMixedProblem generates exponentiation with the configured range and metadata', () => {
   const originalRandom = Math.random;
   Math.random = () => 0;
 
   try {
-    const problem = createMixedProblem('SQUARES', 'easy');
+    const problem = createMixedProblem('EXPONENTIATION', 'easy');
 
-    assert.equal(problem.operation, 'SQUARES');
+    assert.equal(problem.operation, 'EXPONENTIATION');
     assert.equal(problem.leftOperand, 2);
     assert.equal(problem.rightOperand, 2);
     assert.equal(problem.correctAnswer, 4n);

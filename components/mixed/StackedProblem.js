@@ -1,11 +1,11 @@
 import { MIXED_OPERATION_META } from 'utils/mixedDifficulty.js';
 
 export default function StackedProblem({ problem, answerDisplay, isCorrect }) {
-  if (problem.operation === 'SQUARES') {
+  if (problem.operation === 'EXPONENTIATION') {
     return (
       <div className='stacked-problem'>
         <div className='squares-display'>
-          {problem.leftOperand}<sup>2</sup>
+          {problem.leftOperand}<sup>{problem.rightOperand}</sup>
         </div>
         <div className='stacked-problem-line' />
         <div className={`stacked-problem-answer${isCorrect ? ' correct-flash' : ''}`}>

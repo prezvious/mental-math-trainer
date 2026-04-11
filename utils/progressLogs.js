@@ -31,8 +31,12 @@ export function buildProgressLogRow(
     session_id: sessionId,
     question_index: questionIndex,
     operation: attempt.operation,
-    digits_left: roundSettings.leftDigits,
-    digits_right: roundSettings.rightDigits,
+    digits_left: attempt.operation === 'EXPONENTIATION'
+      ? String(attempt.leftOperand).length
+      : roundSettings.leftDigits,
+    digits_right: attempt.operation === 'EXPONENTIATION'
+      ? 1
+      : roundSettings.rightDigits,
     left_operand: attempt.leftOperand,
     right_operand: attempt.rightOperand,
     correct_answer: attempt.correctAnswer.toString(),

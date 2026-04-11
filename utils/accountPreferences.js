@@ -8,6 +8,7 @@ export const USER_PREFERENCES_COLUMNS = [
   'trainer_operation',
   'trainer_left_digits',
   'trainer_right_digits',
+  'trainer_max_base',
   'trainer_round_size',
   'updated_at'
 ].join(', ');
@@ -16,6 +17,7 @@ export const DEFAULT_TRAINER_SETTINGS = Object.freeze({
   operation: 'MULTIPLICATION',
   leftDigits: 2,
   rightDigits: 2,
+  maxBase: 10,
   roundSize: 10
 });
 
@@ -50,6 +52,10 @@ export function sanitizeTrainerSettings(settings = {}) {
       settings.rightDigits ??
       settings.trainer_right_digits ??
       DEFAULT_TRAINER_SETTINGS.rightDigits,
+    maxBase:
+      settings.maxBase ??
+      settings.trainer_max_base ??
+      DEFAULT_TRAINER_SETTINGS.maxBase,
     roundSize:
       settings.roundSize ??
       settings.trainer_round_size ??
@@ -92,6 +98,7 @@ export function buildUserPreferencesRow(
     trainer_operation: sanitized.trainerSettings.operation,
     trainer_left_digits: sanitized.trainerSettings.leftDigits,
     trainer_right_digits: sanitized.trainerSettings.rightDigits,
+    trainer_max_base: sanitized.trainerSettings.maxBase,
     trainer_round_size: sanitized.trainerSettings.roundSize,
     updated_at: updatedAt
   };

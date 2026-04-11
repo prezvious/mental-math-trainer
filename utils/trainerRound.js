@@ -68,7 +68,8 @@ export function resolveRoundSubmission(
   const nextProblem = createProblemImpl(
     activeRound.settings.operation,
     activeRound.settings.leftDigits,
-    activeRound.settings.rightDigits
+    activeRound.settings.rightDigits,
+    activeRound.settings.maxBase
   );
 
     return {

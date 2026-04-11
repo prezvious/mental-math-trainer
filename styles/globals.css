@@ -581,6 +581,10 @@ code {
   max-width: 600px;
 }
 
+.app-shell:has(.arena-active) .theme-floating-layer {
+  display: none;
+}
+
 .settings-form,
 .answer-form,
 .auth-form {
@@ -608,6 +612,13 @@ code {
   font-size: 1rem;
   color: var(--text-main);
   font-family: 'Newsreader', serif;
+}
+
+.settings-form input[type='range'] {
+  padding: 0.3rem 0;
+  background-color: transparent;
+  border: none;
+  accent-color: var(--accent-main);
 }
 
 .progress-meta {

@@ -4,7 +4,7 @@ export const MIXED_PREFERENCES_TABLE = 'mixed_trainer_preferences';
 
 export const MIXED_PREFERENCES_COLUMNS = [
   'user_id',
-  'squares_difficulty',
+  'exponentiation_difficulty',
   'multiplication_difficulty',
   'addition_difficulty',
   'subtraction_difficulty',
@@ -16,7 +16,7 @@ export const MIXED_PREFERENCES_COLUMNS = [
 ].join(', ');
 
 const DB_TO_JS = {
-  squares_difficulty: 'squaresDifficulty',
+  exponentiation_difficulty: 'exponentiationDifficulty',
   multiplication_difficulty: 'multiplicationDifficulty',
   addition_difficulty: 'additionDifficulty',
   subtraction_difficulty: 'subtractionDifficulty',
@@ -49,7 +49,7 @@ export function buildMixedPreferencesRow(
 
   return {
     user_id: userId,
-    squares_difficulty: sanitized.squaresDifficulty,
+    exponentiation_difficulty: sanitized.exponentiationDifficulty,
     multiplication_difficulty: sanitized.multiplicationDifficulty,
     addition_difficulty: sanitized.additionDifficulty,
     subtraction_difficulty: sanitized.subtractionDifficulty,

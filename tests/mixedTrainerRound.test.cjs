@@ -9,7 +9,7 @@ let processMixedRoundSubmission;
 let shouldAutoSubmitAnswer;
 
 const ADDITION_ONLY_SETTINGS = {
-  squaresDifficulty: 'off',
+  exponentiationDifficulty: 'off',
   multiplicationDifficulty: 'off',
   additionDifficulty: 'warmup',
   subtractionDifficulty: 'off',
@@ -167,15 +167,15 @@ test('buildMixedProgressLogRows preserves per-attempt operation metadata', () =>
   const rows = buildMixedProgressLogRows(
     [
       {
-        operation: 'SQUARES',
+        operation: 'EXPONENTIATION',
         leftOperand: 12,
-        rightOperand: 12,
+        rightOperand: 2,
         correctAnswer: 144n,
         submittedAnswer: 144n,
         isCorrect: true,
         responseMs: 300,
         digitsLeft: 2,
-        digitsRight: 2
+        digitsRight: 1
       },
       {
         operation: 'MULTIPLICATION',
@@ -198,11 +198,11 @@ test('buildMixedProgressLogRows preserves per-attempt operation metadata', () =>
       user_id: 'user-123',
       session_id: 'session-123',
       question_index: 1,
-      operation: 'SQUARES',
+      operation: 'EXPONENTIATION',
       digits_left: 2,
-      digits_right: 2,
+      digits_right: 1,
       left_operand: 12,
-      right_operand: 12,
+      right_operand: 2,
       correct_answer: '144',
       submitted_answer: '144',
       is_correct: true,

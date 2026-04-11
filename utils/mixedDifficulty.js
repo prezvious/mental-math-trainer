@@ -1,7 +1,7 @@
 import { createProblem } from './mathEngine.js';
 
 export const DIFFICULTY_LEVELS = {
-  SQUARES: ['off', 'warmup', 'easy', 'medium', 'hard'],
+  EXPONENTIATION: ['off', 'warmup', 'easy', 'medium', 'hard'],
   MULTIPLICATION: ['off', 'warmup', 'easy', 'medium', 'hard', 'expert'],
   ADDITION: ['off', 'warmup', 'easy', 'medium', 'hard', 'expert'],
   SUBTRACTION: ['off', 'warmup', 'easy', 'medium', 'hard', 'expert'],
@@ -9,7 +9,7 @@ export const DIFFICULTY_LEVELS = {
 };
 
 export const DIFFICULTY_CONFIG = {
-  SQUARES: {
+  EXPONENTIATION: {
     warmup: { min: 2, max: 15 },
     easy: { min: 2, max: 30 },
     medium: { min: 10, max: 60 },
@@ -45,7 +45,7 @@ export const DIFFICULTY_CONFIG = {
 };
 
 export const MIXED_OPERATION_META = {
-  SQUARES: { label: 'Squares', symbol: '\u00b2', configLabel: '( )\u00b2' },
+  EXPONENTIATION: { label: 'Exponentiation', symbol: '^', configLabel: 'x\u207f' },
   MULTIPLICATION: { label: 'Multiplication', symbol: '\u00d7', configLabel: '\u00d7' },
   ADDITION: { label: 'Addition', symbol: '+', configLabel: '+' },
   SUBTRACTION: { label: 'Subtraction', symbol: '\u2212', configLabel: '\u2212' },
@@ -57,7 +57,7 @@ export const MIXED_OPERATIONS = Object.keys(MIXED_OPERATION_META);
 export const RUN_LENGTHS = [3, 7, 21, 55, 111];
 
 export const DEFAULT_MIXED_SETTINGS = Object.freeze({
-  squaresDifficulty: 'warmup',
+  exponentiationDifficulty: 'warmup',
   multiplicationDifficulty: 'warmup',
   additionDifficulty: 'warmup',
   subtractionDifficulty: 'warmup',
@@ -68,7 +68,7 @@ export const DEFAULT_MIXED_SETTINGS = Object.freeze({
 });
 
 const SETTING_KEY_TO_OPERATION = {
-  squaresDifficulty: 'SQUARES',
+  exponentiationDifficulty: 'EXPONENTIATION',
   multiplicationDifficulty: 'MULTIPLICATION',
   additionDifficulty: 'ADDITION',
   subtractionDifficulty: 'SUBTRACTION',
@@ -76,7 +76,7 @@ const SETTING_KEY_TO_OPERATION = {
 };
 
 const OPERATION_TO_SETTING_KEY = {
-  SQUARES: 'squaresDifficulty',
+  EXPONENTIATION: 'exponentiationDifficulty',
   MULTIPLICATION: 'multiplicationDifficulty',
   ADDITION: 'additionDifficulty',
   SUBTRACTION: 'subtractionDifficulty',
@@ -128,42 +128,30 @@ function parseBooleanOrFallback(value, fallback) {
   return fallback;
 }
 
-function createSquaresProblem(difficulty) {
-  const config = DIFFICULTY_CONFIG.SQUARES[difficulty];
-  if (!config) {
-    const fallbackConfig = DIFFICULTY_CONFIG.SQUARES.warmup;
-    if (!fallbackConfig) {
-      throw new Error('SQUARES warmup difficulty config is missing.');
-    }
-
-    const value = randomIntegerInRange(fallbackConfig.min, fallbackConfig.max);
-    const digitsLeft = String(value).length;
-    return {
-      operation: 'SQUARES',
-      leftOperand: value,
-      rightOperand: value,
-      correctAnswer: BigInt(value) * BigInt(value),
-      digitsLeft,
-      digitsRight: digitsLeft
-    };
+function createExponentiationProblem(difficulty) {
+  const config = DIFFICULTY_CONFIG.EXPONENTIATION[difficulty];
+  const effectiveConfig = config || DIFFICULTY_CONFIG.EXPONENTIATION.warmup;
+  if (!effectiveConfig) {
+    throw new Error('EXPONENTIATION warmup difficulty config is missing.');
   }
 
-  const value = randomIntegerInRange(config.min, config.max);
-  const digitsLeft = String(value).length;
+  const base = randomIntegerInRange(effectiveConfig.min, effectiveConfig.max);
+  const exponent = Math.random() < 0.5 ? 2 : 3;
+  const digitsLeft = String(base).length;
 
   return {
-    operation: 'SQUARES',
-    leftOperand: value,
-    rightOperand: value,
-    correctAnswer: BigInt(value) * BigInt(value),
+    operation: 'EXPONENTIATION',
+    leftOperand: base,
+    rightOperand: exponent,
+    correctAnswer: BigInt(base) ** BigInt(exponent),
     digitsLeft,
-    digitsRight: digitsLeft
+    digitsRight: 1
   };
 }
 
 export function createMixedProblem(operation, difficulty) {
-  if (operation === 'SQUARES') {
-    return createSquaresProblem(difficulty);
+  if (operation === 'EXPONENTIATION') {
+    return createExponentiationProblem(difficulty);
   }
 
   const config = DIFFICULTY_CONFIG[operation]?.[difficulty];

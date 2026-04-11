@@ -341,8 +341,8 @@ export default function StatsPage() {
                     return (
                       <li key={entry.id}>
                         <div className='attempt-equation'>
-                          {entry.operation === 'SQUARES'
-                            ? <>{entry.left_operand}<sup>2</sup></>
+                          {entry.operation === 'EXPONENTIATION'
+                            ? <>{entry.left_operand}<sup>{entry.right_operand}</sup></>
                             : <>{entry.left_operand} {operation} {entry.right_operand}</>
                           }
                         </div>

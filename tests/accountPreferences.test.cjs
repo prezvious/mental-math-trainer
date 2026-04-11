@@ -46,6 +46,7 @@ test('sanitizeAccountPreferences clamps invalid trainer data and falls back to t
     operation: 'DIVISION',
     leftDigits: 2,
     rightDigits: 2,
+    maxBase: 10,
     roundSize: 10000
   });
 });
@@ -77,6 +78,7 @@ test('mergeAccountPreferences preserves unrelated fields across partial updates'
     operation: 'DIVISION',
     leftDigits: 3,
     rightDigits: 3,
+    maxBase: 10,
     roundSize: 10000
   });
 });
@@ -102,6 +104,7 @@ test('buildUserPreferencesRow produces the expected database payload', () => {
     trainer_operation: 'SUBTRACTION',
     trainer_left_digits: 4,
     trainer_right_digits: 2,
+    trainer_max_base: 10,
     trainer_round_size: 250,
     updated_at: '2026-03-30T00:00:00.000Z'
   });

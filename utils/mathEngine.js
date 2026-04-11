@@ -7,7 +7,7 @@ export const OPERATION_META = {
   SUBTRACTION: { label: 'Subtraction', symbol: '-' },
   MULTIPLICATION: { label: 'Multiplication', symbol: '\u00D7' },
   DIVISION: { label: 'Division', symbol: '\u00F7' },
-  SQUARES: { label: 'Squares', symbol: '\u00B2' }
+  EXPONENTIATION: { label: 'Exponentiation', symbol: '^' }
 };
 
 const VALID_OPERATIONS = Object.keys(OPERATION_META);
@@ -97,6 +97,12 @@ function getOperands(operation, leftDigits, rightDigits) {
   }
 }
 
+function getExponentiationOperands(maxBase) {
+  const base = randomInteger(2, Math.max(3, maxBase + 1));
+  const exponent = Math.random() < 0.5 ? 2 : 3;
+  return [base, exponent];
+}
+
 function getCorrectAnswer(operation, leftOperand, rightOperand) {
   const left = BigInt(leftOperand);
   const right = BigInt(rightOperand);
@@ -110,12 +116,24 @@ function getCorrectAnswer(operation, leftOperand, rightOperand) {
       return left * right;
     case 'DIVISION':
       return left / right;
+    case 'EXPONENTIATION':
+      return left ** right;
     default:
       return 0n;
   }
 }
 
-export function createProblem(operation, leftDigits, rightDigits) {
+export function createProblem(operation, leftDigits, rightDigits, maxBase) {
+  if (operation === 'EXPONENTIATION') {
+    const [base, exponent] = getExponentiationOperands(maxBase || 10);
+    return {
+      operation,
+      leftOperand: base,
+      rightOperand: exponent,
+      correctAnswer: getCorrectAnswer(operation, base, exponent)
+    };
+  }
+
   const [leftOperand, rightOperand] = getOperands(operation, leftDigits, rightDigits);
   const correctAnswer = getCorrectAnswer(operation, leftOperand, rightOperand);
 
@@ -155,6 +173,8 @@ export function parseIntegerInput(value) {
   }
 }
 
+export const MAX_BASE = 20;
+
 export function sanitizeSettings(settings) {
   const operation = VALID_OPERATIONS.includes(settings.operation)
     ? settings.operation
@@ -170,10 +190,13 @@ export function sanitizeSettings(settings) {
     rightDigits = Math.min(rightDigits, leftDigits);
   }
 
+  const maxBase = clampNumber(parseNumberOrFallback(settings.maxBase, 10), 2, MAX_BASE);
+
   return {
     operation,
     leftDigits,
     rightDigits,
+    maxBase,
     roundSize: clampNumber(
       parseNumberOrFallback(settings.roundSize, 10),
       MIN_ROUND_SIZE,

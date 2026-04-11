@@ -108,7 +108,7 @@ const DIFFICULTY_LABELS = {
 };
 
 const OPERATION_SETTING_KEYS = {
-  SQUARES: 'squaresDifficulty',
+  EXPONENTIATION: 'exponentiationDifficulty',
   MULTIPLICATION: 'multiplicationDifficulty',
   ADDITION: 'additionDifficulty',
   SUBTRACTION: 'subtractionDifficulty',

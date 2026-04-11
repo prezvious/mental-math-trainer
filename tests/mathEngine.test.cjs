@@ -71,6 +71,7 @@ test('resolveRoundSizeDraft restores invalid drafts and clamps oversized values'
     operation: 'ADDITION',
     leftDigits: 2,
     rightDigits: 2,
+    maxBase: 10,
     roundSize: 21
   };
 
