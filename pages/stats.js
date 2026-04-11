@@ -341,7 +341,10 @@ export default function StatsPage() {
                     return (
                       <li key={entry.id}>
                         <div className='attempt-equation'>
-                          {entry.left_operand} {operation} {entry.right_operand}
+                          {entry.operation === 'SQUARES'
+                            ? <>{entry.left_operand}<sup>2</sup></>
+                            : <>{entry.left_operand} {operation} {entry.right_operand}</>
+                          }
                         </div>
                         <div className='attempt-result'>
                           <span className={entry.is_correct ? 'good' : 'bad'}>

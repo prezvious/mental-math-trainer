@@ -589,8 +589,8 @@ export default function TrainerPage() {
 
       {user && (
         <>
-          <section className='trainer-layout appear-up'>
-            <article className='panel paper-panel'>
+          <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
+            {!activeRound && <article className='panel paper-panel'>
               <h2>Round Blueprint</h2>
               <form
                 ref={settingsFormRef}
@@ -664,7 +664,7 @@ export default function TrainerPage() {
                       : 'Start round'}
                 </button>
               </form>
-            </article>
+            </article>}
 
             <article className='panel chalk-panel'>
               <h2>Live Arena</h2>
@@ -686,9 +686,18 @@ export default function TrainerPage() {
                     />
                   </div>
                   <p className='problem-line'>
-                    <span>{activeRound.currentProblem.leftOperand}</span>
-                    <span>{OPERATION_META[activeRound.currentProblem.operation].symbol}</span>
-                    <span>{activeRound.currentProblem.rightOperand}</span>
+                    {activeRound.currentProblem.operation === 'SQUARES' ? (
+                      <>
+                        <span>{activeRound.currentProblem.leftOperand}</span>
+                        <sup className='problem-exponent'>2</sup>
+                      </>
+                    ) : (
+                      <>
+                        <span>{activeRound.currentProblem.leftOperand}</span>
+                        <span>{OPERATION_META[activeRound.currentProblem.operation].symbol}</span>
+                        <span>{activeRound.currentProblem.rightOperand}</span>
+                      </>
+                    )}
                   </p>
                   <form className='answer-form' onSubmit={handleAnswerSubmit}>
                     <label htmlFor='answerInput'>Your answer</label>

@@ -569,6 +569,18 @@ code {
   gap: 1rem;
 }
 
+.trainer-layout.arena-active {
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+}
+
+.trainer-layout.arena-active .chalk-panel {
+  width: 100%;
+  max-width: 600px;
+}
+
 .settings-form,
 .answer-form,
 .auth-form {
@@ -633,6 +645,12 @@ code {
   font-family: 'Syne', sans-serif;
   font-size: clamp(2rem, 9vw, 4.6rem);
   line-height: 1;
+}
+
+.problem-exponent {
+  font-size: 0.55em;
+  vertical-align: super;
+  line-height: 0;
 }
 
 .placeholder-text {
