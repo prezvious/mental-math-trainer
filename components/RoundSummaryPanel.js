@@ -24,21 +24,23 @@ export default function RoundSummaryPanel({
       <div className='summary-grid'>
         <article>
           <h3>Accuracy</h3>
-          <p>{round.accuracy.toFixed(1)}%</p>
+          <p className='summary-metric-value'>{round.accuracy.toFixed(1)}%</p>
         </article>
         <article>
           <h3>Correct Answers</h3>
-          <p>
-            {round.correct}/{round.total}
-          </p>
+          <div className='summary-count-stack' aria-label={`${round.correct} out of ${round.total}`}>
+            <span className='summary-count-primary'>{round.correct}</span>
+            <span className='summary-count-divider'>/</span>
+            <span className='summary-count-secondary'>{round.total}</span>
+          </div>
         </article>
         <article>
           <h3>Avg Response</h3>
-          <p>{formatDuration(round.averageResponseMs)}</p>
+          <p className='summary-metric-value'>{formatDuration(round.averageResponseMs)}</p>
         </article>
         <article>
           <h3>Total Time</h3>
-          <p>{formatDuration(round.totalResponseMs)}</p>
+          <p className='summary-metric-value'>{formatDuration(round.totalResponseMs)}</p>
         </article>
       </div>
       {children}

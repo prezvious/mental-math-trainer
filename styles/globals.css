@@ -868,6 +868,40 @@ code {
   font-size: clamp(1.26rem, 2.8vw, 1.68rem);
 }
 
+.summary-metric-value {
+  line-height: 1.05;
+}
+
+.summary-count-stack {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 0.05rem;
+  min-height: clamp(4.6rem, 8vw, 5.4rem);
+}
+
+.summary-count-primary,
+.summary-count-secondary,
+.summary-count-divider {
+  display: block;
+  font-family: 'Syne', sans-serif;
+  line-height: 0.95;
+}
+
+.summary-count-primary {
+  font-size: clamp(1.8rem, 4.2vw, 2.45rem);
+}
+
+.summary-count-divider {
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  color: var(--text-subtle);
+}
+
+.summary-count-secondary {
+  font-size: clamp(1.2rem, 2.4vw, 1.42rem);
+  color: var(--text-subtle);
+}
+
 .save-status {
   margin: 0 0 0.9rem;
   font-family: 'IBM Plex Mono', monospace;
