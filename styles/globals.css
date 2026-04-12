@@ -702,18 +702,29 @@ code {
   letter-spacing: 0.05em;
 }
 
+.progress-shell {
+  display: grid;
+  gap: 0.18rem;
+}
+
 .progress-track {
   width: 100%;
   border: 1px solid var(--line);
   background-color: rgba(255, 255, 255, 0.54);
   height: 12px;
   margin-bottom: 1rem;
+  overflow: hidden;
 }
 
 .progress-track span {
   display: block;
   height: 100%;
   background-color: var(--accent-main);
+}
+
+.progress-track.is-animated span {
+  width: 0;
+  animation: progress-track-fill var(--progress-duration, 2000ms) linear forwards;
 }
 
 .problem-line {
@@ -862,6 +873,78 @@ code {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.75rem;
   color: var(--text-subtle);
+}
+
+.round-summary-panel {
+  width: 100%;
+}
+
+.summary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.summary-actions-left {
+  justify-content: flex-start;
+}
+
+.summary-panel-centered {
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+.summary-panel-centered .summary-actions {
+  justify-content: center;
+}
+
+.finish-state-shell {
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+}
+
+.finish-state-shell-centered {
+  justify-items: center;
+}
+
+.finish-state-shell-split {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  align-items: start;
+}
+
+.finish-state-shell-split > * {
+  min-width: 0;
+}
+
+.finish-secondary-panel {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.ai-transition-panel {
+  align-self: stretch;
+}
+
+.panel-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.button-inline {
+  width: auto;
+  min-width: 0;
+}
+
+.trainer-toggle-row {
+  margin: 0.15rem 0 0.35rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(50, 34, 68, 0.2);
 }
 
 .stats-actions {
@@ -1495,6 +1578,10 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .finish-state-shell-split {
+    grid-template-columns: 1fr;
+  }
+
   .problem-line {
     justify-content: flex-start;
   }
@@ -1594,6 +1681,16 @@ th {
 
   .mode-toggle-button {
     flex: 1 1 0;
+  }
+
+  .summary-actions,
+  .summary-actions-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-actions .button {
+    width: 100%;
   }
 }
 
@@ -1822,4 +1919,14 @@ th {
 .toggle-switch:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@keyframes progress-track-fill {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: 100%;
+  }
 }

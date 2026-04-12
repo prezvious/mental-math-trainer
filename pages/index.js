@@ -2,8 +2,15 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
+import ProgressBar from 'components/mixed/ProgressBar.js';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
+import {
+  AI_AUTO_CYCLE_TRANSITION_MS,
+  buildAiCycleBlueprints,
+  formatAiCycleBlueprintLabel
+} from 'utils/aiCycle.js';
 import { solveAiExpression } from 'utils/aiMath.js';
 import {
   buildAiModeCustomLogRow,
@@ -19,7 +26,6 @@ import {
 import {
   computeRoundStats,
   createProblem,
-  formatDuration,
   getOperationOptions,
   MAX_BASE,
   operationRequiresOrderedDigits,
@@ -71,12 +77,21 @@ function getPerformanceNow() {
     : Date.now();
 }
 
-function createRoundSummary(attempts, settings, userId, wasTerminated, sourceMode) {
+function createRoundSummary(
+  attempts,
+  settings,
+  userId,
+  wasTerminated,
+  sourceMode,
+  meta = {}
+) {
   return {
     ...computeRoundStats(attempts),
     attempts,
     settings,
     sourceMode,
+    aiAutoCycle: Boolean(meta.aiAutoCycle),
+    blueprintLabel: meta.blueprintLabel || '',
     finishedAt: new Date().toISOString(),
     wasTerminated,
     saveState: userId ? 'saving' : 'idle',
@@ -132,6 +147,11 @@ export default function TrainerPage() {
   const [trainerInputMode, setTrainerInputMode] = useState(TRAINER_INPUT_MODES.MANUAL);
   const [customExpression, setCustomExpression] = useState('');
   const [customSolverState, setCustomSolverState] = useState(DEFAULT_SOLVER_STATE);
+  const [aiAutoCycleEnabled, setAiAutoCycleEnabled] = useState(false);
+  const [aiCycleStopRequested, setAiCycleStopRequested] = useState(false);
+  const [aiCycleBlueprints, setAiCycleBlueprints] = useState([]);
+  const [aiCycleCursor, setAiCycleCursor] = useState(0);
+  const [aiTransitionState, setAiTransitionState] = useState(null);
   const settingsFormRef = useRef(null);
   const customSolverFormRef = useRef(null);
   const answerInputRef = useRef(null);
@@ -143,6 +163,9 @@ export default function TrainerPage() {
   const terminationPromiseRef = useRef(null);
   const terminateSessionRef = useRef(async () => ({ handled: false }));
   const aiSolveLockRef = useRef(false);
+  const aiAutoCycleEnabledRef = useRef(aiAutoCycleEnabled);
+  const aiCycleStopRequestedRef = useRef(aiCycleStopRequested);
+  const aiCycleBlueprintsRef = useRef(aiCycleBlueprints);
   const userId = user?.id ?? null;
   const isAiMode = isAdmin && trainerInputMode === TRAINER_INPUT_MODES.AI;
 
@@ -188,6 +211,18 @@ export default function TrainerPage() {
   }, [activeRound]);
 
   useEffect(() => {
+    aiAutoCycleEnabledRef.current = aiAutoCycleEnabled;
+  }, [aiAutoCycleEnabled]);
+
+  useEffect(() => {
+    aiCycleStopRequestedRef.current = aiCycleStopRequested;
+  }, [aiCycleStopRequested]);
+
+  useEffect(() => {
+    aiCycleBlueprintsRef.current = aiCycleBlueprints;
+  }, [aiCycleBlueprints]);
+
+  useEffect(() => {
     setRoundSizeDraft(String(settings.roundSize));
   }, [settings.roundSize]);
 
@@ -211,6 +246,11 @@ export default function TrainerPage() {
     setLastRound(null);
     setCustomExpression('');
     setCustomSolverState(DEFAULT_SOLVER_STATE);
+    setAiAutoCycleEnabled(false);
+    setAiCycleStopRequested(false);
+    setAiCycleBlueprints([]);
+    setAiCycleCursor(0);
+    setAiTransitionState(null);
     handledQuestionIdRef.current = null;
     aiSolveLockRef.current = false;
   }, [aiModeBuffer, progressBuffer, userId]);
@@ -288,7 +328,9 @@ export default function TrainerPage() {
       {
         wasTerminated,
         keepalive = false,
-        sourceMode = TRAINER_INPUT_MODES.MANUAL
+        sourceMode = TRAINER_INPUT_MODES.MANUAL,
+        aiAutoCycle = false,
+        blueprintLabel = ''
       }
     ) => {
       handledQuestionIdRef.current = null;
@@ -300,7 +342,11 @@ export default function TrainerPage() {
         roundSettings,
         userId,
         wasTerminated,
-        sourceMode
+        sourceMode,
+        {
+          aiAutoCycle,
+          blueprintLabel
+        }
       );
       if (isMountedRef.current) {
         setLastRound(summary);
@@ -399,45 +445,74 @@ export default function TrainerPage() {
     return nextSettings;
   }, [roundSizeDraft, settings, upsertPreferences]);
 
+  const startRoundWithSettings = useCallback(
+    async (
+      roundSettings,
+      {
+        sourceMode,
+        aiAutoCycleRound = false,
+        nextCycleCursor = null,
+        persistSettings = false
+      }
+    ) => {
+      if (isLoadingPreferences) {
+        return;
+      }
+
+      if (activeRoundRef.current) {
+        await terminateActiveRound('restart');
+      }
+
+      const sanitizedSettings = sanitizeSettings(roundSettings);
+      const firstProblem = createProblem(
+        sanitizedSettings.operation,
+        sanitizedSettings.leftDigits,
+        sanitizedSettings.rightDigits,
+        sanitizedSettings.maxBase
+      );
+      const questionStartedAt = Date.now();
+      const sessionId = createSessionId();
+
+      if (persistSettings) {
+        void upsertPreferences({ trainerSettings: sanitizedSettings });
+      }
+
+      setRoundSizeDraft(String(sanitizedSettings.roundSize));
+      setLastRound(null);
+      setAiTransitionState(null);
+      setAnswerInput('');
+      handledQuestionIdRef.current = null;
+      setActiveRound({
+        ...createActiveRound(
+          sanitizedSettings,
+          firstProblem,
+          questionStartedAt,
+          sessionId
+        ),
+        sourceMode,
+        aiAutoCycleRound,
+        aiCycleCursor: nextCycleCursor
+      });
+    },
+    [isLoadingPreferences, terminateActiveRound, upsertPreferences]
+  );
+
   const beginRound = useCallback(async () => {
     if (isLoadingPreferences) {
       return;
     }
 
-    if (activeRoundRef.current) {
-      await terminateActiveRound('restart');
-    }
-
     const sourceMode = isAiMode ? TRAINER_INPUT_MODES.AI : TRAINER_INPUT_MODES.MANUAL;
     const sanitizedSettings = commitRoundSizeDraft();
-    const firstProblem = createProblem(
-      sanitizedSettings.operation,
-      sanitizedSettings.leftDigits,
-      sanitizedSettings.rightDigits,
-      sanitizedSettings.maxBase
-    );
-    const questionStartedAt = Date.now();
-    const sessionId = createSessionId();
-
-    void upsertPreferences({ trainerSettings: sanitizedSettings });
-    setLastRound(null);
-    setAnswerInput('');
-    handledQuestionIdRef.current = null;
-    setActiveRound({
-      ...createActiveRound(
-        sanitizedSettings,
-        firstProblem,
-        questionStartedAt,
-        sessionId
-      ),
-      sourceMode
+    await startRoundWithSettings(sanitizedSettings, {
+      sourceMode,
+      persistSettings: true
     });
   }, [
     commitRoundSizeDraft,
     isAiMode,
     isLoadingPreferences,
-    terminateActiveRound,
-    upsertPreferences
+    startRoundWithSettings
   ]);
 
   const startRound = useCallback(
@@ -448,8 +523,78 @@ export default function TrainerPage() {
     [beginRound]
   );
 
+  const startAiAutoCycle = useCallback(async () => {
+    if (!isAiMode) {
+      return;
+    }
+
+    const cycleSeedSettings = commitRoundSizeDraft();
+    const blueprints = buildAiCycleBlueprints(cycleSeedSettings);
+    if (!blueprints.length) {
+      return;
+    }
+
+    setAiCycleBlueprints(blueprints);
+    setAiCycleCursor(0);
+    setAiAutoCycleEnabled(true);
+    setAiCycleStopRequested(false);
+    setAiTransitionState(null);
+
+    await startRoundWithSettings(blueprints[0], {
+      sourceMode: TRAINER_INPUT_MODES.AI,
+      aiAutoCycleRound: true,
+      nextCycleCursor: 0
+    });
+  }, [commitRoundSizeDraft, isAiMode, startRoundWithSettings]);
+
+  const handleStopAiCycle = useCallback(() => {
+    setAiAutoCycleEnabled(false);
+
+    if (activeRoundRef.current?.sourceMode === TRAINER_INPUT_MODES.AI) {
+      setAiCycleStopRequested(true);
+      return;
+    }
+
+    setAiCycleStopRequested(false);
+    setAiTransitionState(null);
+  }, []);
+
+  const handleCustomizeBlueprint = useCallback(() => {
+    setLastRound(null);
+    setAiTransitionState(null);
+    setAiAutoCycleEnabled(false);
+    setAiCycleStopRequested(false);
+    setAiCycleBlueprints([]);
+    setAiCycleCursor(0);
+    setCustomExpression('');
+    setCustomSolverState(DEFAULT_SOLVER_STATE);
+  }, []);
+
+  const handleStartAgain = useCallback(async () => {
+    if (!lastRound) {
+      return;
+    }
+
+    if (lastRound.sourceMode === TRAINER_INPUT_MODES.AI && lastRound.aiAutoCycle) {
+      await startAiAutoCycle();
+      return;
+    }
+
+    await startRoundWithSettings(lastRound.settings, {
+      sourceMode: lastRound.sourceMode,
+      persistSettings: true
+    });
+  }, [lastRound, startAiAutoCycle, startRoundWithSettings]);
+
   useEffect(() => {
-    if (!userId || activeRound || isLoadingPreferences || typeof window === 'undefined') {
+    if (
+      !userId ||
+      activeRound ||
+      lastRound ||
+      aiTransitionState ||
+      isLoadingPreferences ||
+      typeof window === 'undefined'
+    ) {
       return undefined;
     }
 
@@ -505,7 +650,7 @@ export default function TrainerPage() {
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, beginRound, isLoadingPreferences, userId]);
+  }, [activeRound, aiTransitionState, beginRound, isLoadingPreferences, lastRound, userId]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
@@ -632,8 +777,35 @@ export default function TrainerPage() {
         if (batchResult.isComplete) {
           await finalizeRound(batchResult.attempts, roundSnapshot.settings, {
             wasTerminated: false,
-            sourceMode: TRAINER_INPUT_MODES.AI
+            sourceMode: TRAINER_INPUT_MODES.AI,
+            aiAutoCycle: Boolean(roundSnapshot.aiAutoCycleRound),
+            blueprintLabel: formatAiCycleBlueprintLabel(roundSnapshot.settings)
           });
+
+          if (
+            roundSnapshot.aiAutoCycleRound &&
+            aiAutoCycleEnabledRef.current &&
+            !aiCycleStopRequestedRef.current &&
+            aiCycleBlueprintsRef.current.length
+          ) {
+            const nextIndex =
+              ((roundSnapshot.aiCycleCursor ?? 0) + 1) % aiCycleBlueprintsRef.current.length;
+
+            setAiCycleCursor(nextIndex);
+            setAiTransitionState({
+              startedAt: Date.now(),
+              durationMs: AI_AUTO_CYCLE_TRANSITION_MS,
+              nextIndex,
+              nextSettings: aiCycleBlueprintsRef.current[nextIndex],
+              nextBlueprintLabel: formatAiCycleBlueprintLabel(
+                aiCycleBlueprintsRef.current[nextIndex]
+              )
+            });
+          } else if (roundSnapshot.aiAutoCycleRound) {
+            setAiTransitionState(null);
+            setAiCycleStopRequested(false);
+          }
+
           return;
         }
 
@@ -653,7 +825,11 @@ export default function TrainerPage() {
               roundSnapshot.settings,
               userId,
               false,
-              TRAINER_INPUT_MODES.AI
+              TRAINER_INPUT_MODES.AI,
+              {
+                aiAutoCycle: Boolean(roundSnapshot.aiAutoCycleRound),
+                blueprintLabel: formatAiCycleBlueprintLabel(roundSnapshot.settings)
+              }
             ),
             saveState: 'error',
             saveError: error?.message || 'AI MODE could not solve this round.'
@@ -676,6 +852,35 @@ export default function TrainerPage() {
       aiSolveLockRef.current = false;
     };
   }, [activeRound, aiModeBuffer, finalizeRound, userId]);
+
+  useEffect(() => {
+    if (
+      !aiTransitionState ||
+      activeRound ||
+      !aiAutoCycleEnabled ||
+      aiCycleStopRequested
+    ) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void startRoundWithSettings(aiTransitionState.nextSettings, {
+        sourceMode: TRAINER_INPUT_MODES.AI,
+        aiAutoCycleRound: true,
+        nextCycleCursor: aiTransitionState.nextIndex
+      });
+    }, aiTransitionState.durationMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    activeRound,
+    aiAutoCycleEnabled,
+    aiCycleStopRequested,
+    aiTransitionState,
+    startRoundWithSettings
+  ]);
 
   const handleAnswerSubmit = async (event) => {
     event.preventDefault();
@@ -744,6 +949,13 @@ export default function TrainerPage() {
     }
 
     setTrainerInputMode(nextMode);
+    setLastRound(null);
+    setAiTransitionState(null);
+    setAiAutoCycleEnabled(false);
+    setAiCycleStopRequested(false);
+    setAiCycleBlueprints([]);
+    setAiCycleCursor(0);
+    setCustomExpression('');
     setCustomSolverState(DEFAULT_SOLVER_STATE);
   };
 
@@ -808,6 +1020,131 @@ export default function TrainerPage() {
     }
   };
 
+  const isAiTransitioning = Boolean(
+    user &&
+    !activeRound &&
+    aiTransitionState &&
+    lastRound?.sourceMode === TRAINER_INPUT_MODES.AI
+  );
+  const isTrainerFinishState = Boolean(
+    user &&
+    !activeRound &&
+    lastRound &&
+    !aiTransitionState
+  );
+  const isManualTrainerFinishState =
+    isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.MANUAL;
+  const isAiTrainerFinishState =
+    isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.AI;
+  const shouldHideTrainerPanels = Boolean(
+    user &&
+    !activeRound &&
+    (lastRound || aiTransitionState)
+  );
+  const shouldShowHeroPanel = !user || !shouldHideTrainerPanels;
+  const shouldShowAdminControl = user && isAdmin && !shouldHideTrainerPanels;
+  const shouldShowBlueprintPanel =
+    user && !activeRound && !lastRound && !aiTransitionState;
+  const activeAiQuestionLabel = activeRound
+    ? `Questions ${activeRound.attempts.length + 1} / ${activeRound.settings.roundSize}`
+    : '';
+
+  const renderAutoCycleToggle = () => (
+    <div className='toggle-row trainer-toggle-row'>
+      <span>Auto Cycle</span>
+      <button
+        type='button'
+        role='switch'
+        aria-checked={aiAutoCycleEnabled}
+        className={`toggle-switch${aiAutoCycleEnabled ? ' is-active' : ''}`}
+        onClick={() => {
+          if (aiAutoCycleEnabled) {
+            handleStopAiCycle();
+            return;
+          }
+
+          void startAiAutoCycle();
+        }}
+      >
+        <span className='toggle-switch-thumb' />
+      </button>
+    </div>
+  );
+
+  const renderAiCalculatorPanel = (copy) => (
+    <article className='panel chalk-panel finish-secondary-panel'>
+      <div className='panel-title-row'>
+        <h2>Live Arena</h2>
+        <span className='mode-pill mode-pill-ai'>AI MODE</span>
+      </div>
+      {renderAutoCycleToggle()}
+      <div className='solver-shell'>
+        {copy && <p className='placeholder-text'>{copy}</p>}
+        <form
+          ref={customSolverFormRef}
+          className='answer-form solver-form'
+          onSubmit={handleCustomSolve}
+        >
+          <label htmlFor='custom-expression'>Custom solver</label>
+          <input
+            id='custom-expression'
+            type='text'
+            autoComplete='off'
+            value={customExpression}
+            onChange={(event) => {
+              setCustomExpression(event.target.value);
+              if (customSolverState.status !== 'idle') {
+                setCustomSolverState(DEFAULT_SOLVER_STATE);
+              }
+            }}
+            placeholder='sqrt(144) + log(100, 10)'
+          />
+          <button
+            type='submit'
+            className='button button-strong button-full'
+            disabled={customSolverState.status === 'working'}
+          >
+            {customSolverState.status === 'working'
+              ? 'Solving...'
+              : 'Solve expression'}
+          </button>
+        </form>
+
+        {customSolverState.error && (
+          <p className='feedback warning'>{customSolverState.error}</p>
+        )}
+
+        {customSolverState.result && (
+          <section className='solver-result'>
+            <div className='solver-result-head'>
+              <span className='mode-pill mode-pill-ai'>AI MODE</span>
+              <span className='solver-latency'>
+                {customSolverState.result.responseMs}ms
+              </span>
+            </div>
+            <p className='solver-expression'>
+              {customSolverState.result.normalizedExpression}
+            </p>
+            <div className='solver-grid'>
+              <article>
+                <h3>Exact</h3>
+                <p>{customSolverState.result.exactText}</p>
+              </article>
+              <article>
+                <h3>Decimal</h3>
+                <p>{customSolverState.result.decimalText}</p>
+              </article>
+              <article>
+                <h3>Kind</h3>
+                <p>{customSolverState.result.kind}</p>
+              </article>
+            </div>
+          </section>
+        )}
+      </div>
+    </article>
+  );
+
   return (
     <>
       <Head>
@@ -817,20 +1154,22 @@ export default function TrainerPage() {
           content='A redesigned mental math trainer with account login, timed rounds, and progress tracking.'
         />
       </Head>
-      <section className='hero-panel appear-up'>
-        <p className='hero-tag'>Discipline Through Numbers</p>
-        <h1>Mental Math Studio</h1>
-        <p>
-          Sprint through targeted arithmetic rounds, keep every attempt, and track
-          your long-term speed over time.
-        </p>
-        {!isConfigured && (
-          <p className='inline-warning'>
-            Account features are not configured yet, so saved progress is currently
-            unavailable.
+      {shouldShowHeroPanel && (
+        <section className='hero-panel appear-up'>
+          <p className='hero-tag'>Discipline Through Numbers</p>
+          <h1>Mental Math Studio</h1>
+          <p>
+            Sprint through targeted arithmetic rounds, keep every attempt, and track
+            your long-term speed over time.
           </p>
-        )}
-      </section>
+          {!isConfigured && (
+            <p className='inline-warning'>
+              Account features are not configured yet, so saved progress is currently
+              unavailable.
+            </p>
+          )}
+        </section>
+      )}
 
       {!user && (
         <section className='guest-layout appear-up'>
@@ -863,7 +1202,7 @@ export default function TrainerPage() {
         </section>
       )}
 
-      {user && isAdmin && (
+      {shouldShowAdminControl && (
         <section className='panel paper-panel mode-panel appear-up'>
           <div className='mode-panel-head'>
             <div>
@@ -903,289 +1242,325 @@ export default function TrainerPage() {
 
       {user && (
         <>
-          <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
-            {!activeRound && (
-              <article className='panel paper-panel'>
-                <div className='panel-title-row'>
-                  <h2>Round Blueprint</h2>
-                  {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
-                </div>
-                <form
-                  ref={settingsFormRef}
-                  className='settings-form'
-                  onSubmit={startRound}
-                >
-                  <label htmlFor='operation'>Operation</label>
-                  <select
-                    id='operation'
-                    value={settings.operation}
-                    onChange={(event) => updateSetting('operation', event.target.value)}
-                    disabled={isLoadingPreferences}
-                  >
-                    {getOperationOptions().map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  {isExponentiation ? (
-                    <>
-                      <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
-                      <input
-                        id='maxBase'
-                        type='range'
-                        min='2'
-                        max={MAX_BASE}
-                        value={settings.maxBase}
-                        onChange={(event) => updateSetting('maxBase', event.target.value)}
-                        disabled={isLoadingPreferences}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <label htmlFor='leftDigits'>Left number digits</label>
-                      <select
-                        id='leftDigits'
-                        value={settings.leftDigits}
-                        onChange={(event) => updateSetting('leftDigits', event.target.value)}
-                        disabled={isLoadingPreferences}
-                      >
-                        {DIGIT_OPTIONS.map((digits) => (
-                          <option key={digits} value={digits}>
-                            {`${digits} digit${digits === 1 ? '' : 's'}`}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label htmlFor='rightDigits'>Right number digits</label>
-                      <select
-                        id='rightDigits'
-                        value={settings.rightDigits}
-                        onChange={(event) => updateSetting('rightDigits', event.target.value)}
-                        disabled={isLoadingPreferences}
-                      >
-                        {availableRightDigits.map((digits) => (
-                          <option key={digits} value={digits}>
-                            {`${digits} digit${digits === 1 ? '' : 's'}`}
-                          </option>
-                        ))}
-                      </select>
-                    </>
-                  )}
-
-                  <label htmlFor='roundSize'>Questions per round</label>
-                  <input
-                    id='roundSize'
-                    type='number'
-                    min='3'
-                    max='10000'
-                    value={roundSizeDraft}
-                    onChange={(event) => updateSetting('roundSize', event.target.value)}
-                    onBlur={commitRoundSizeDraft}
-                    disabled={isLoadingPreferences}
-                  />
-
-                  <button
-                    type='submit'
-                    className='button button-strong button-full'
-                    aria-keyshortcuts='Enter'
-                    disabled={isLoadingPreferences}
-                  >
-                    {isLoadingPreferences
-                      ? 'Loading blueprint...'
-                      : isAiMode
-                      ? 'Start AI round'
-                      : 'Start round'}
-                  </button>
-                </form>
-              </article>
-            )}
-
-            <article className='panel chalk-panel'>
-              <div className='panel-title-row'>
-                <h2>Live Arena</h2>
-                {activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
-                  <span className='mode-pill mode-pill-ai'>AI MODE</span>
-                )}
-              </div>
-              {activeRound ? (
-                <>
-                  <div className='progress-meta'>
-                    <p>
-                      Question {activeRound.attempts.length + 1} / {activeRound.settings.roundSize}
-                    </p>
-                    <p>
-                      Correct so far: {activeStats.correct}/{activeStats.total}
-                    </p>
+          {(shouldShowBlueprintPanel || activeRound) && (
+            <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
+              {shouldShowBlueprintPanel && (
+                <article className='panel paper-panel'>
+                  <div className='panel-title-row'>
+                    <h2>Round Blueprint</h2>
+                    {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
                   </div>
-                  <div className='progress-track' aria-hidden='true'>
-                    <span
-                      style={{
-                        width: `${(activeRound.attempts.length / activeRound.settings.roundSize) * 100}%`
-                      }}
-                    />
-                  </div>
-                  <p className='problem-line'>
-                    {activeRound.currentProblem.operation === 'EXPONENTIATION' ? (
+                  <form
+                    ref={settingsFormRef}
+                    className='settings-form'
+                    onSubmit={startRound}
+                  >
+                    <label htmlFor='operation'>Operation</label>
+                    <select
+                      id='operation'
+                      value={settings.operation}
+                      onChange={(event) => updateSetting('operation', event.target.value)}
+                      disabled={isLoadingPreferences}
+                    >
+                      {getOperationOptions().map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {isExponentiation ? (
                       <>
-                        <span>{activeRound.currentProblem.leftOperand}</span>
-                        <sup className='problem-exponent'>{activeRound.currentProblem.rightOperand}</sup>
+                        <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
+                        <input
+                          id='maxBase'
+                          type='range'
+                          min='2'
+                          max={MAX_BASE}
+                          value={settings.maxBase}
+                          onChange={(event) => updateSetting('maxBase', event.target.value)}
+                          disabled={isLoadingPreferences}
+                        />
                       </>
                     ) : (
                       <>
-                        <span>{activeRound.currentProblem.leftOperand}</span>
-                        <span>{OPERATION_META[activeRound.currentProblem.operation].symbol}</span>
-                        <span>{activeRound.currentProblem.rightOperand}</span>
+                        <label htmlFor='leftDigits'>Left number digits</label>
+                        <select
+                          id='leftDigits'
+                          value={settings.leftDigits}
+                          onChange={(event) => updateSetting('leftDigits', event.target.value)}
+                          disabled={isLoadingPreferences}
+                        >
+                          {DIGIT_OPTIONS.map((digits) => (
+                            <option key={digits} value={digits}>
+                              {`${digits} digit${digits === 1 ? '' : 's'}`}
+                            </option>
+                          ))}
+                        </select>
+
+                        <label htmlFor='rightDigits'>Right number digits</label>
+                        <select
+                          id='rightDigits'
+                          value={settings.rightDigits}
+                          onChange={(event) => updateSetting('rightDigits', event.target.value)}
+                          disabled={isLoadingPreferences}
+                        >
+                          {availableRightDigits.map((digits) => (
+                            <option key={digits} value={digits}>
+                              {`${digits} digit${digits === 1 ? '' : 's'}`}
+                            </option>
+                          ))}
+                        </select>
                       </>
                     )}
-                  </p>
 
-                  {activeRound.sourceMode === TRAINER_INPUT_MODES.AI ? (
-                    <div className='ai-run-status'>
-                      <p className='placeholder-text'>
-                        Local solver engaged. Each question is evaluated immediately and
-                        written to the admin progress log.
-                      </p>
-                    </div>
-                  ) : (
-                    <form className='answer-form' onSubmit={handleAnswerSubmit}>
-                      <label htmlFor='answerInput'>Your answer</label>
-                      <input
-                        ref={answerInputRef}
-                        id='answerInput'
-                        type='text'
-                        inputMode='numeric'
-                        autoComplete='off'
-                        value={answerInput}
-                        onChange={handleAnswerChange}
-                        placeholder='Type integer answer'
-                      />
-                      <button type='submit' className='button button-strong button-full'>
-                        Submit answer
-                      </button>
-                    </form>
-                  )}
-                </>
-              ) : isAiMode ? (
-                <div className='solver-shell'>
-                  <p className='placeholder-text'>
-                    Start an AI round to auto-solve generated questions, or use the custom
-                    solver below for calculator-style expressions.
-                  </p>
-                  <form
-                    ref={customSolverFormRef}
-                    className='answer-form solver-form'
-                    onSubmit={handleCustomSolve}
-                  >
-                    <label htmlFor='custom-expression'>Custom solver</label>
+                    <label htmlFor='roundSize'>Questions per round</label>
                     <input
-                      id='custom-expression'
-                      type='text'
-                      autoComplete='off'
-                      value={customExpression}
-                      onChange={(event) => {
-                        setCustomExpression(event.target.value);
-                        if (customSolverState.status !== 'idle') {
-                          setCustomSolverState(DEFAULT_SOLVER_STATE);
-                        }
-                      }}
-                      placeholder='sqrt(144) + log(100, 10)'
+                      id='roundSize'
+                      type='number'
+                      min='3'
+                      max='10000'
+                      value={roundSizeDraft}
+                      onChange={(event) => updateSetting('roundSize', event.target.value)}
+                      onBlur={commitRoundSizeDraft}
+                      disabled={isLoadingPreferences}
                     />
+
+                    {isAiMode && renderAutoCycleToggle()}
+
                     <button
                       type='submit'
                       className='button button-strong button-full'
-                      disabled={customSolverState.status === 'working'}
+                      aria-keyshortcuts='Enter'
+                      disabled={isLoadingPreferences}
                     >
-                      {customSolverState.status === 'working'
-                        ? 'Solving...'
-                        : 'Solve expression'}
+                      {isLoadingPreferences
+                        ? 'Loading blueprint...'
+                        : isAiMode
+                        ? 'Start AI round'
+                        : 'Start round'}
                     </button>
                   </form>
-
-                  {customSolverState.error && (
-                    <p className='feedback warning'>{customSolverState.error}</p>
-                  )}
-
-                  {customSolverState.result && (
-                    <section className='solver-result'>
-                      <div className='solver-result-head'>
-                        <span className='mode-pill mode-pill-ai'>AI MODE</span>
-                        <span className='solver-latency'>
-                          {customSolverState.result.responseMs}ms
-                        </span>
-                      </div>
-                      <p className='solver-expression'>
-                        {customSolverState.result.normalizedExpression}
-                      </p>
-                      <div className='solver-grid'>
-                        <article>
-                          <h3>Exact</h3>
-                          <p>{customSolverState.result.exactText}</p>
-                        </article>
-                        <article>
-                          <h3>Decimal</h3>
-                          <p>{customSolverState.result.decimalText}</p>
-                        </article>
-                        <article>
-                          <h3>Kind</h3>
-                          <p>{customSolverState.result.kind}</p>
-                        </article>
-                      </div>
-                    </section>
-                  )}
-                </div>
-              ) : (
-                <p className='placeholder-text'>
-                  Start a round to receive timed questions. Each submission is
-                  tracked, scored, and ready for review.
-                </p>
+                </article>
               )}
-            </article>
-          </section>
 
-          {lastRound && (
-            <section className='summary-panel appear-up'>
-              <div className='panel-title-row'>
-                <h2>
-                  {lastRound.sourceMode === TRAINER_INPUT_MODES.AI
-                    ? 'Latest AI Round Summary'
-                    : 'Latest Round Summary'}
-                </h2>
-                <span
-                  className={`mode-pill ${
-                    lastRound.sourceMode === TRAINER_INPUT_MODES.AI
-                      ? 'mode-pill-ai'
-                      : 'mode-pill-manual'
-                  }`}
-                >
-                  {lastRound.sourceMode === TRAINER_INPUT_MODES.AI ? 'AI MODE' : 'Manual'}
-                </span>
-              </div>
-              <div className='summary-grid'>
-                <article>
-                  <h3>Accuracy</h3>
-                  <p>{lastRound.accuracy.toFixed(1)}%</p>
-                </article>
-                <article>
-                  <h3>Correct Answers</h3>
-                  <p>
-                    {lastRound.correct}/{lastRound.total}
+              <article className='panel chalk-panel'>
+                <div className='panel-title-row'>
+                  <h2>Live Arena</h2>
+                  <div className='panel-header-actions'>
+                    {activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
+                      <span className='mode-pill mode-pill-ai'>AI MODE</span>
+                    )}
+                    {(aiAutoCycleEnabled || aiCycleStopRequested) &&
+                      activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
+                        <button
+                          type='button'
+                          className='button button-danger button-inline'
+                          onClick={handleStopAiCycle}
+                          disabled={aiCycleStopRequested}
+                        >
+                          {aiCycleStopRequested ? 'Stopping...' : 'Stop'}
+                        </button>
+                      )}
+                  </div>
+                </div>
+                {activeRound ? (
+                  activeRound.sourceMode === TRAINER_INPUT_MODES.AI ? (
+                    <ProgressBar
+                      current={activeRound.attempts.length}
+                      total={activeRound.settings.roundSize}
+                      label={activeAiQuestionLabel}
+                    />
+                  ) : (
+                    <>
+                      <ProgressBar
+                        current={activeRound.attempts.length}
+                        total={activeRound.settings.roundSize}
+                        secondaryLabel={`Correct so far: ${activeStats.correct}/${activeStats.total}`}
+                      />
+                      <p className='problem-line'>
+                        {activeRound.currentProblem.operation === 'EXPONENTIATION' ? (
+                          <>
+                            <span>{activeRound.currentProblem.leftOperand}</span>
+                            <sup className='problem-exponent'>
+                              {activeRound.currentProblem.rightOperand}
+                            </sup>
+                          </>
+                        ) : (
+                          <>
+                            <span>{activeRound.currentProblem.leftOperand}</span>
+                            <span>{OPERATION_META[activeRound.currentProblem.operation].symbol}</span>
+                            <span>{activeRound.currentProblem.rightOperand}</span>
+                          </>
+                        )}
+                      </p>
+                      <form className='answer-form' onSubmit={handleAnswerSubmit}>
+                        <label htmlFor='answerInput'>Your answer</label>
+                        <input
+                          ref={answerInputRef}
+                          id='answerInput'
+                          type='text'
+                          inputMode='numeric'
+                          autoComplete='off'
+                          value={answerInput}
+                          onChange={handleAnswerChange}
+                          placeholder='Type integer answer'
+                        />
+                        <button type='submit' className='button button-strong button-full'>
+                          Submit answer
+                        </button>
+                      </form>
+                    </>
+                  )
+                ) : isAiMode ? (
+                  <div className='solver-shell'>
+                    <p className='placeholder-text'>
+                      Start an AI round to auto-solve generated questions, or use the custom
+                      solver below for calculator-style expressions.
+                    </p>
+                    <form
+                      ref={customSolverFormRef}
+                      className='answer-form solver-form'
+                      onSubmit={handleCustomSolve}
+                    >
+                      <label htmlFor='custom-expression'>Custom solver</label>
+                      <input
+                        id='custom-expression'
+                        type='text'
+                        autoComplete='off'
+                        value={customExpression}
+                        onChange={(event) => {
+                          setCustomExpression(event.target.value);
+                          if (customSolverState.status !== 'idle') {
+                            setCustomSolverState(DEFAULT_SOLVER_STATE);
+                          }
+                        }}
+                        placeholder='sqrt(144) + log(100, 10)'
+                      />
+                      <button
+                        type='submit'
+                        className='button button-strong button-full'
+                        disabled={customSolverState.status === 'working'}
+                      >
+                        {customSolverState.status === 'working'
+                          ? 'Solving...'
+                          : 'Solve expression'}
+                      </button>
+                    </form>
+
+                    {customSolverState.error && (
+                      <p className='feedback warning'>{customSolverState.error}</p>
+                    )}
+
+                    {customSolverState.result && (
+                      <section className='solver-result'>
+                        <div className='solver-result-head'>
+                          <span className='mode-pill mode-pill-ai'>AI MODE</span>
+                          <span className='solver-latency'>
+                            {customSolverState.result.responseMs}ms
+                          </span>
+                        </div>
+                        <p className='solver-expression'>
+                          {customSolverState.result.normalizedExpression}
+                        </p>
+                        <div className='solver-grid'>
+                          <article>
+                            <h3>Exact</h3>
+                            <p>{customSolverState.result.exactText}</p>
+                          </article>
+                          <article>
+                            <h3>Decimal</h3>
+                            <p>{customSolverState.result.decimalText}</p>
+                          </article>
+                          <article>
+                            <h3>Kind</h3>
+                            <p>{customSolverState.result.kind}</p>
+                          </article>
+                        </div>
+                      </section>
+                    )}
+                  </div>
+                ) : (
+                  <p className='placeholder-text'>
+                    Start a round to receive timed questions. Each submission is
+                    tracked, scored, and ready for review.
                   </p>
-                </article>
-                <article>
-                  <h3>Avg Response</h3>
-                  <p>{formatDuration(lastRound.averageResponseMs)}</p>
-                </article>
-                <article>
-                  <h3>Total Time</h3>
-                  <p>{formatDuration(lastRound.totalResponseMs)}</p>
-                </article>
-              </div>
-              <p className='save-status'>{getSaveStatusMessage(lastRound)}</p>
-              <Link href='/stats' className='button button-quiet'>
-                Open progress dashboard
-              </Link>
+                )}
+              </article>
+            </section>
+          )}
+
+          {isAiTransitioning && lastRound && (
+            <section className='finish-state-shell finish-state-shell-split'>
+              <RoundSummaryPanel
+                title='Round Summary'
+                badgeLabel='AI MODE'
+                badgeClassName='mode-pill-ai'
+                round={lastRound}
+                saveStatus={getSaveStatusMessage(lastRound)}
+              />
+              <article className='panel chalk-panel finish-secondary-panel ai-transition-panel appear-up'>
+                <div className='panel-title-row'>
+                  <h2>Auto Cycle</h2>
+                  <span className='mode-pill mode-pill-ai'>Next Blueprint</span>
+                </div>
+                <p className='placeholder-text'>
+                  Preparing {aiTransitionState.nextBlueprintLabel}
+                </p>
+                <ProgressBar
+                  label='Moving to the next round'
+                  secondaryLabel={aiTransitionState.nextBlueprintLabel}
+                  progressValue={0}
+                  animatedDurationMs={aiTransitionState.durationMs}
+                />
+                <div className='summary-actions summary-actions-left'>
+                  <button
+                    type='button'
+                    className='button button-danger'
+                    onClick={handleStopAiCycle}
+                  >
+                    Stop
+                  </button>
+                </div>
+              </article>
+            </section>
+          )}
+
+          {isManualTrainerFinishState && (
+            <section className='finish-state-shell finish-state-shell-centered'>
+              <RoundSummaryPanel
+                title='Round Summary'
+                badgeLabel='Manual'
+                badgeClassName='mode-pill-manual'
+                round={lastRound}
+                saveStatus={getSaveStatusMessage(lastRound)}
+                primaryAction={{ label: 'Start Again', onClick: () => void handleStartAgain() }}
+                secondaryAction={{
+                  label: 'Customize the blueprint',
+                  onClick: handleCustomizeBlueprint
+                }}
+                className='summary-panel-centered'
+              />
+            </section>
+          )}
+
+          {isAiTrainerFinishState && (
+            <section className='finish-state-shell finish-state-shell-split'>
+              <RoundSummaryPanel
+                title='Round Summary'
+                badgeLabel='AI MODE'
+                badgeClassName='mode-pill-ai'
+                round={lastRound}
+                saveStatus={getSaveStatusMessage(lastRound)}
+                primaryAction={{ label: 'Start Again', onClick: () => void handleStartAgain() }}
+                secondaryAction={{
+                  label: 'Customize the blueprint',
+                  onClick: handleCustomizeBlueprint
+                }}
+              />
+              {renderAiCalculatorPanel(
+                'Use Live Arena as a calculator, or restart the same mode when you are ready.'
+              )}
             </section>
           )}
         </>

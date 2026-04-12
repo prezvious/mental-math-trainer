@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import Keypad from 'components/mixed/Keypad.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import QuestionTimer from 'components/mixed/QuestionTimer.js';
@@ -27,7 +28,6 @@ import {
 } from 'utils/mixedTrainerRound.js';
 import {
   computeRoundStats,
-  formatDuration,
   parseIntegerInput
 } from 'utils/mathEngine.js';
 import {
@@ -372,8 +372,23 @@ function MixedTrainerContent() {
     [beginRound]
   );
 
+  const handleCustomizeBlueprint = useCallback(() => {
+    setLastRound(null);
+  }, []);
+
+  const handleStartAgain = useCallback(() => {
+    setLastRound(null);
+    beginRound();
+  }, [beginRound]);
+
   useEffect(() => {
-    if (!userId || activeRound || isLoadingMixedSettings || typeof window === 'undefined') {
+    if (
+      !userId ||
+      activeRound ||
+      lastRound ||
+      isLoadingMixedSettings ||
+      typeof window === 'undefined'
+    ) {
       return undefined;
     }
 
@@ -406,7 +421,7 @@ function MixedTrainerContent() {
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, beginRound, isLoadingMixedSettings, userId]);
+  }, [activeRound, beginRound, isLoadingMixedSettings, lastRound, userId]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
@@ -596,6 +611,10 @@ function MixedTrainerContent() {
     void upsertMixedSettings({ [key]: normalizedValue });
   };
 
+  const isMixedFinishState = Boolean(user && !activeRound && lastRound);
+  const shouldShowHeroPanel = !user || !isMixedFinishState;
+  const shouldShowMixedConfig = user && !activeRound && !lastRound;
+
   return (
     <>
       <Head>
@@ -606,20 +625,22 @@ function MixedTrainerContent() {
         />
       </Head>
 
-      <section className='hero-panel appear-up'>
-        <p className='hero-tag'>Discipline Through Numbers</p>
-        <h1>Mixed Trainer</h1>
-        <p>
-          Drill across multiple operations in a single run. Configure difficulty
-          per operation, set your target count, and go.
-        </p>
-        {!isConfigured && (
-          <p className='inline-warning'>
-            Account features are not configured yet, so saved progress is currently
-            unavailable.
+      {shouldShowHeroPanel && (
+        <section className='hero-panel appear-up'>
+          <p className='hero-tag'>Discipline Through Numbers</p>
+          <h1>Mixed Trainer</h1>
+          <p>
+            Drill across multiple operations in a single run. Configure difficulty
+            per operation, set your target count, and go.
           </p>
-        )}
-      </section>
+          {!isConfigured && (
+            <p className='inline-warning'>
+              Account features are not configured yet, so saved progress is currently
+              unavailable.
+            </p>
+          )}
+        </section>
+      )}
 
       {!user && (
         <section className='guest-layout appear-up'>
@@ -652,7 +673,7 @@ function MixedTrainerContent() {
         </section>
       )}
 
-      {user && !activeRound && (
+      {shouldShowMixedConfig && (
         <>
           <section className='mixed-config-layout appear-up'>
             <article className='panel paper-panel'>
@@ -742,36 +763,6 @@ function MixedTrainerContent() {
               </form>
             </article>
           </section>
-
-          {lastRound && (
-            <section className='summary-panel appear-up'>
-              <h2>Latest Round Summary</h2>
-              <div className='summary-grid'>
-                <article>
-                  <h3>Accuracy</h3>
-                  <p>{lastRound.accuracy.toFixed(1)}%</p>
-                </article>
-                <article>
-                  <h3>Correct Answers</h3>
-                  <p>
-                    {lastRound.correct}/{lastRound.total}
-                  </p>
-                </article>
-                <article>
-                  <h3>Avg Response</h3>
-                  <p>{formatDuration(lastRound.averageResponseMs)}</p>
-                </article>
-                <article>
-                  <h3>Total Time</h3>
-                  <p>{formatDuration(lastRound.totalResponseMs)}</p>
-                </article>
-              </div>
-              <p className='save-status'>{getSaveStatusMessage(lastRound)}</p>
-              <Link href='/stats' className='button button-quiet'>
-                Open progress dashboard
-              </Link>
-            </section>
-          )}
         </>
       )}
 
@@ -812,6 +803,24 @@ function MixedTrainerContent() {
               disabled={isCorrectFlash}
             />
           </article>
+        </section>
+      )}
+
+      {isMixedFinishState && (
+        <section className='finish-state-shell finish-state-shell-centered'>
+          <RoundSummaryPanel
+            title='Round Summary'
+            badgeLabel='Mixed'
+            badgeClassName='mode-pill-manual'
+            round={lastRound}
+            saveStatus={getSaveStatusMessage(lastRound)}
+            primaryAction={{ label: 'Start Again', onClick: handleStartAgain }}
+            secondaryAction={{
+              label: 'Customize the blueprint',
+              onClick: handleCustomizeBlueprint
+            }}
+            className='summary-panel-centered'
+          />
         </section>
       )}
     </>
