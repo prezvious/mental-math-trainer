@@ -5,6 +5,7 @@ const { pathToFileURL } = require('node:url');
 
 let buildAiModeCustomLogRow;
 let buildAiModeTrainerLogRow;
+let advanceAiTrainerRound;
 let createActiveRound;
 let processRoundSubmission;
 let solveTrainerProblem;
@@ -30,7 +31,7 @@ test.before(async () => {
   );
 
   ({ buildAiModeCustomLogRow, buildAiModeTrainerLogRow } = aiModeLogs);
-  ({ solveTrainerProblem } = aiTrainer);
+  ({ advanceAiTrainerRound, solveTrainerProblem } = aiTrainer);
   ({ createActiveRound, processRoundSubmission } = trainerRound);
 });
 
@@ -107,4 +108,63 @@ test('buildAiModeCustomLogRow stores custom solves as one-question custom sessio
   assert.equal(row.operation_label, 'CUSTOM');
   assert.equal(row.question_index, 1);
   assert.equal(row.result_exact_text, '1/3');
+});
+
+test('advanceAiTrainerRound progresses multiple AI questions in one batch', () => {
+  const activeRound = {
+    ...createActiveRound(
+      {
+        operation: 'ADDITION',
+        leftDigits: 2,
+        rightDigits: 2,
+        roundSize: 4
+      },
+      {
+        operation: 'ADDITION',
+        leftOperand: 11,
+        rightOperand: 12,
+        correctAnswer: 23n
+      },
+      1000,
+      'session-batch'
+    ),
+    sourceMode: 'ai'
+  };
+
+  let invocationCount = 0;
+  const result = advanceAiTrainerRound(activeRound, null, {
+    maxSteps: 3,
+    solveProblem: (problem) => {
+      invocationCount += 1;
+      return {
+        promptText: `${problem.leftOperand} + ${problem.rightOperand}`,
+        normalizedExpression: `${problem.leftOperand} + ${problem.rightOperand}`,
+        resultKind: 'integer',
+        resultExactText: String(problem.correctAnswer),
+        resultDecimalText: String(problem.correctAnswer),
+        submittedAnswer: problem.correctAnswer,
+        responseMs: 5
+      };
+    },
+    processSubmission: (roundSnapshot, submittedAnswer, submittedAt, handledQuestionId) =>
+      processRoundSubmission(
+        roundSnapshot,
+        submittedAnswer,
+        submittedAt,
+        handledQuestionId,
+        () => ({
+          operation: 'ADDITION',
+          leftOperand: 20 + invocationCount,
+          rightOperand: 3,
+          correctAnswer: BigInt(23 + invocationCount)
+        })
+      )
+  });
+
+  assert.equal(result.isComplete, false);
+  assert.equal(result.solvedSteps.length, 3);
+  assert.equal(result.handledQuestionId, 3);
+  assert.equal(result.attempts.length, 3);
+  assert.equal(result.nextActiveRound.questionId, 4);
+  assert.equal(result.nextActiveRound.attempts.length, 3);
 });

@@ -1,21 +1,12 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AI_MODE_LOG_TABLE,
-  fetchAllAiModeLogs
-} from 'utils/aiModeLogs.js';
+import { useCallback, useEffect, useState } from 'react';
+import { AI_MODE_LOG_TABLE } from 'utils/aiModeLogs.js';
 import { formatDuration } from 'utils/mathEngine.js';
-import { fetchAllProgressLogs } from 'utils/progressLogs.js';
 import {
-  buildOperationBreakdown,
-  buildProgressOverview,
-  buildRecentAttempts,
-  buildRecentSessions,
+  createEmptyProgressDashboard,
+  fetchProgressDashboardData,
   getOperationDisplayLabel,
-  getSessionDigitsLabel,
-  getSessionModeLabel,
-  mergeProgressEntries,
   PROGRESS_SOURCE_LABELS
 } from 'utils/progressDashboard.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
@@ -32,7 +23,7 @@ function formatTimestamp(isoDate) {
 export default function StatsPage() {
   const { client, user, isConfigured, isAdmin } = useSupabaseAuth();
   const userId = user?.id ?? null;
-  const [logs, setLogs] = useState([]);
+  const [dashboardData, setDashboardData] = useState(createEmptyProgressDashboard);
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,23 +37,19 @@ export default function StatsPage() {
     setErrorMessage('');
 
     try {
-      const [manualLogs, aiLogs] = await Promise.all([
-        fetchAllProgressLogs(client, userId),
-        isAdmin ? fetchAllAiModeLogs(client, userId) : Promise.resolve([])
-      ]);
-
-      setLogs(mergeProgressEntries(manualLogs, aiLogs));
+      const nextDashboardData = await fetchProgressDashboardData(client);
+      setDashboardData(nextDashboardData);
       setIsLoading(false);
     } catch (error) {
-      setLogs([]);
+      setDashboardData(createEmptyProgressDashboard());
       setErrorMessage(error?.message || 'Could not load progress data.');
       setIsLoading(false);
     }
-  }, [client, isAdmin, userId]);
+  }, [client, userId]);
 
   useEffect(() => {
     if (!userId) {
-      setLogs([]);
+      setDashboardData(createEmptyProgressDashboard());
       setIsLoading(false);
       return;
     }
@@ -70,10 +57,7 @@ export default function StatsPage() {
     loadLogs();
   }, [loadLogs, userId]);
 
-  const overview = useMemo(() => buildProgressOverview(logs), [logs]);
-  const operationBreakdown = useMemo(() => buildOperationBreakdown(logs), [logs]);
-  const recentSessions = useMemo(() => buildRecentSessions(logs), [logs]);
-  const recentAttempts = useMemo(() => buildRecentAttempts(logs), [logs]);
+  const { overview, operationBreakdown, recentSessions, recentAttempts } = dashboardData;
 
   const handleReset = async () => {
     if (!client || !userId || isResetting) {
@@ -105,7 +89,7 @@ export default function StatsPage() {
       return;
     }
 
-    setLogs([]);
+    setDashboardData(createEmptyProgressDashboard());
   };
 
   return (
@@ -185,7 +169,7 @@ export default function StatsPage() {
             </section>
           )}
 
-          {!isLoading && !errorMessage && logs.length === 0 && (
+          {!isLoading && !errorMessage && overview.totalAttempts === 0 && (
             <section className='panel paper-panel appear-up'>
               <h2>No Records Yet</h2>
               <p>
@@ -198,7 +182,7 @@ export default function StatsPage() {
             </section>
           )}
 
-          {!isLoading && !errorMessage && logs.length > 0 && (
+          {!isLoading && !errorMessage && overview.totalAttempts > 0 && (
             <>
               <section className='summary-panel appear-up'>
                 <h2>Overall Performance</h2>
@@ -259,12 +243,12 @@ export default function StatsPage() {
                               {PROGRESS_SOURCE_LABELS[session.sourceMode]}
                             </span>
                           </td>
-                          <td>{getSessionModeLabel(session)}</td>
-                          <td>{getSessionDigitsLabel(session)}</td>
+                          <td>{session.modeLabel}</td>
+                          <td>{session.digitsLabel}</td>
                           <td>
                             {session.correct}/{session.attempts}
                           </td>
-                          <td>{formatDuration(session.totalResponseMs / session.attempts)}</td>
+                          <td>{formatDuration(session.averageResponseMs)}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -4,13 +4,94 @@ export const PROGRESS_SOURCE_LABELS = Object.freeze({
   manual: 'Manual',
   ai: 'AI MODE'
 });
+export const PROGRESS_DASHBOARD_RPC = 'get_progress_dashboard_data';
+export const DEFAULT_RECENT_SESSION_LIMIT = 8;
+export const DEFAULT_RECENT_ATTEMPT_LIMIT = 12;
+
+const OPERATION_BREAKDOWN_ORDER = [...Object.keys(OPERATION_META), 'CUSTOM'];
 
 export function getOperationDisplayLabel(operation) {
   if (operation === 'CUSTOM') {
     return 'Custom';
   }
 
+  if (operation === 'SQUARES') {
+    return 'Exponentiation';
+  }
+
   return OPERATION_META[operation]?.label || operation;
+}
+
+export function createEmptyProgressDashboard() {
+  return {
+    overview: {
+      totalAttempts: 0,
+      correctAttempts: 0,
+      accuracy: 0,
+      averageResponseMs: 0,
+      totalResponseMs: 0,
+      fastest: 0
+    },
+    operationBreakdown: OPERATION_BREAKDOWN_ORDER.map((operation) => ({
+      operation,
+      attempts: 0,
+      correct: 0,
+      accuracy: 0,
+      averageResponseMs: 0,
+      totalResponseMs: 0
+    })),
+    recentSessions: [],
+    recentAttempts: []
+  };
+}
+
+function normalizeOperationBreakdown(rows) {
+  const byOperation = new Map(
+    (Array.isArray(rows) ? rows : []).map((row) => [row.operation, row])
+  );
+
+  return OPERATION_BREAKDOWN_ORDER.map((operation) => ({
+    operation,
+    attempts: 0,
+    correct: 0,
+    accuracy: 0,
+    averageResponseMs: 0,
+    totalResponseMs: 0,
+    ...(byOperation.get(operation) || {})
+  }));
+}
+
+export function normalizeProgressDashboardPayload(payload) {
+  const emptyDashboard = createEmptyProgressDashboard();
+
+  return {
+    overview: {
+      ...emptyDashboard.overview,
+      ...(payload?.overview || {})
+    },
+    operationBreakdown: normalizeOperationBreakdown(payload?.operationBreakdown),
+    recentSessions: Array.isArray(payload?.recentSessions) ? payload.recentSessions : [],
+    recentAttempts: Array.isArray(payload?.recentAttempts) ? payload.recentAttempts : []
+  };
+}
+
+export async function fetchProgressDashboardData(
+  client,
+  {
+    sessionLimit = DEFAULT_RECENT_SESSION_LIMIT,
+    attemptLimit = DEFAULT_RECENT_ATTEMPT_LIMIT
+  } = {}
+) {
+  const { data, error } = await client.rpc(PROGRESS_DASHBOARD_RPC, {
+    session_limit: sessionLimit,
+    attempt_limit: attemptLimit
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return normalizeProgressDashboardPayload(data);
 }
 
 function formatManualPrompt(entry) {

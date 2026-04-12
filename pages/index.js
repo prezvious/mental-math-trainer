@@ -12,6 +12,7 @@ import {
   persistAiModeLogBatches
 } from 'utils/aiModeLogs.js';
 import {
+  advanceAiTrainerRound,
   solveTrainerProblem,
   TRAINER_INPUT_MODES
 } from 'utils/aiTrainer.js';
@@ -116,6 +117,7 @@ const DEFAULT_SOLVER_STATE = Object.freeze({
   error: '',
   result: null
 });
+const AI_SOLVE_BATCH_SIZE = 25;
 
 export default function TrainerPage() {
   const router = useRouter();
@@ -586,64 +588,65 @@ export default function TrainerPage() {
       activeRound.sourceMode !== TRAINER_INPUT_MODES.AI ||
       aiSolveLockRef.current
     ) {
-      return;
+      return undefined;
     }
 
     aiSolveLockRef.current = true;
+    let isCancelled = false;
+    let timeoutId = null;
 
-    const solveCurrentQuestion = async () => {
-      const roundSnapshot = activeRoundRef.current;
-      if (!roundSnapshot || roundSnapshot.sourceMode !== TRAINER_INPUT_MODES.AI) {
-        return;
-      }
-
+    const solveCurrentBatch = async () => {
       try {
-        const solvedProblem = solveTrainerProblem(roundSnapshot.currentProblem);
-        const submittedAt = roundSnapshot.questionStartedAt + solvedProblem.responseMs;
-        const submission = processRoundSubmission(
-          roundSnapshot,
-          solvedProblem.submittedAnswer,
-          submittedAt,
-          handledQuestionIdRef.current
-        );
-
-        if (submission.ignored) {
+        const roundSnapshot = activeRoundRef.current;
+        if (!roundSnapshot || roundSnapshot.sourceMode !== TRAINER_INPUT_MODES.AI) {
           return;
         }
 
-        handledQuestionIdRef.current = submission.handledQuestionId;
+        const batchResult = advanceAiTrainerRound(
+          roundSnapshot,
+          handledQuestionIdRef.current,
+          {
+            maxSteps: AI_SOLVE_BATCH_SIZE,
+            solveProblem: solveTrainerProblem,
+            processSubmission: processRoundSubmission
+          }
+        );
 
-        if (userId) {
-          aiModeBuffer.enqueue(
-            buildAiModeTrainerLogRow(
-              roundSnapshot.currentProblem,
-              solvedProblem,
-              userId,
-              roundSnapshot.sessionId,
-              submission.attempts.length,
-              submission.attempt.createdAt
-            )
-          );
+        handledQuestionIdRef.current = batchResult.handledQuestionId;
+
+        if (userId && batchResult.solvedSteps.length) {
+          for (const step of batchResult.solvedSteps) {
+            aiModeBuffer.enqueue(
+              buildAiModeTrainerLogRow(
+                step.problem,
+                step.solvedProblem,
+                userId,
+                roundSnapshot.sessionId,
+                step.submission.attempts.length,
+                step.submission.attempt.createdAt
+              )
+            );
+          }
         }
 
-        if (submission.isComplete) {
-          await finalizeRound(submission.attempts, roundSnapshot.settings, {
+        if (batchResult.isComplete) {
+          await finalizeRound(batchResult.attempts, roundSnapshot.settings, {
             wasTerminated: false,
             sourceMode: TRAINER_INPUT_MODES.AI
           });
           return;
         }
 
-        setActiveRound({
-          ...submission.nextActiveRound,
-          sourceMode: TRAINER_INPUT_MODES.AI
-        });
+        if (!isCancelled && batchResult.nextActiveRound) {
+          setActiveRound(batchResult.nextActiveRound);
+        }
       } catch (error) {
+        const roundSnapshot = activeRoundRef.current;
         handledQuestionIdRef.current = null;
         setActiveRound(null);
         setAnswerInput('');
 
-        if (isMountedRef.current) {
+        if (isMountedRef.current && roundSnapshot) {
           setLastRound({
             ...createRoundSummary(
               roundSnapshot.attempts,
@@ -661,7 +664,17 @@ export default function TrainerPage() {
       }
     };
 
-    void solveCurrentQuestion();
+    timeoutId = window.setTimeout(() => {
+      void solveCurrentBatch();
+    }, 0);
+
+    return () => {
+      isCancelled = true;
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      aiSolveLockRef.current = false;
+    };
   }, [activeRound, aiModeBuffer, finalizeRound, userId]);
 
   const handleAnswerSubmit = async (event) => {

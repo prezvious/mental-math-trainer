@@ -1,4 +1,5 @@
 import { solveAiExpression } from './aiMath.js';
+import { processRoundSubmission } from './trainerRound.js';
 
 export const TRAINER_INPUT_MODES = Object.freeze({
   MANUAL: 'manual',
@@ -58,5 +59,80 @@ export function solveTrainerProblem(
     resultDecimalText: result.decimalText,
     submittedAnswer: BigInt(result.exactText),
     responseMs: Math.max(1, Math.round(finishedAt - startedAt))
+  };
+}
+
+export function advanceAiTrainerRound(
+  activeRound,
+  handledQuestionId = null,
+  {
+    maxSteps = 1,
+    solveProblem = solveTrainerProblem,
+    processSubmission = processRoundSubmission
+  } = {}
+) {
+  if (!activeRound || activeRound.sourceMode !== TRAINER_INPUT_MODES.AI) {
+    return {
+      handledQuestionId,
+      isComplete: false,
+      attempts: activeRound?.attempts || [],
+      nextActiveRound: activeRound,
+      solvedSteps: []
+    };
+  }
+
+  let nextHandledQuestionId = handledQuestionId;
+  let workingRound = activeRound;
+  const solvedSteps = [];
+
+  for (let step = 0; step < maxSteps; step += 1) {
+    const solvedProblem = solveProblem(workingRound.currentProblem);
+    const submittedAt = workingRound.questionStartedAt + solvedProblem.responseMs;
+    const submission = processSubmission(
+      workingRound,
+      solvedProblem.submittedAnswer,
+      submittedAt,
+      nextHandledQuestionId
+    );
+
+    if (submission.ignored) {
+      return {
+        handledQuestionId: nextHandledQuestionId,
+        isComplete: false,
+        attempts: workingRound.attempts,
+        nextActiveRound: workingRound,
+        solvedSteps
+      };
+    }
+
+    nextHandledQuestionId = submission.handledQuestionId;
+    solvedSteps.push({
+      problem: workingRound.currentProblem,
+      solvedProblem,
+      submission
+    });
+
+    if (submission.isComplete) {
+      return {
+        handledQuestionId: nextHandledQuestionId,
+        isComplete: true,
+        attempts: submission.attempts,
+        nextActiveRound: null,
+        solvedSteps
+      };
+    }
+
+    workingRound = {
+      ...submission.nextActiveRound,
+      sourceMode: TRAINER_INPUT_MODES.AI
+    };
+  }
+
+  return {
+    handledQuestionId: nextHandledQuestionId,
+    isComplete: false,
+    attempts: workingRound.attempts,
+    nextActiveRound: workingRound,
+    solvedSteps
   };
 }
