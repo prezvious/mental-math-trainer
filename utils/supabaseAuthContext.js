@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { isAdminEmail, normalizeEmail } from 'utils/adminAccess.js';
 import { getSupabaseClient, isSupabaseConfigured } from 'utils/supabaseClient.js';
 
 function areSessionsEquivalent(previousSession, nextSession) {
@@ -24,7 +25,9 @@ const SupabaseAuthContext = createContext({
   isConfigured: false,
   isLoading: true,
   session: null,
+  userEmail: '',
   user: null,
+  isAdmin: false,
   signOut: async () => ({ error: null })
 });
 
@@ -82,14 +85,20 @@ export function SupabaseAuthProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({
-      client,
-      isConfigured,
-      isLoading,
-      session,
-      user: session?.user ?? null,
-      signOut
-    }),
+    () => {
+      const userEmail = normalizeEmail(session?.user?.email ?? '');
+
+      return {
+        client,
+        isConfigured,
+        isLoading,
+        session,
+        userEmail,
+        user: session?.user ?? null,
+        isAdmin: isAdminEmail(userEmail),
+        signOut
+      };
+    },
     [client, isConfigured, isLoading, session]
   );
 
