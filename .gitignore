@@ -37,7 +37,10 @@ coverage/
 .netlify/
 
 # Private backend tooling
-supabase/
+supabase/*
+!supabase/migrations/
+supabase/migrations/*
+!supabase/migrations/*.sql
 
 # Secrets and credentials
 secrets/
@@ -72,4 +75,3 @@ temp/
 *.backup
 *.bak
 *.orig
-
