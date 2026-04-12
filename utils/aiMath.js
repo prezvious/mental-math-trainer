@@ -1,10 +1,65 @@
-import { all, create } from 'mathjs';
+import {
+  create,
+  absDependencies,
+  addDependencies,
+  bignumberDependencies,
+  ceilDependencies,
+  cosDependencies,
+  divideDependencies,
+  eDependencies,
+  evaluateDependencies,
+  expDependencies,
+  floorDependencies,
+  formatDependencies,
+  fractionDependencies,
+  logDependencies,
+  modDependencies,
+  multiplyDependencies,
+  parseDependencies,
+  piDependencies,
+  powDependencies,
+  roundDependencies,
+  sinDependencies,
+  sqrtDependencies,
+  subtractDependencies,
+  tanDependencies,
+  typeOfDependencies,
+  unaryMinusDependencies
+} from 'mathjs';
 
-const fractionMath = create(all, {
+const MATHJS_DEPENDENCIES = {
+  absDependencies,
+  addDependencies,
+  bignumberDependencies,
+  ceilDependencies,
+  cosDependencies,
+  divideDependencies,
+  eDependencies,
+  evaluateDependencies,
+  expDependencies,
+  floorDependencies,
+  formatDependencies,
+  fractionDependencies,
+  logDependencies,
+  modDependencies,
+  multiplyDependencies,
+  parseDependencies,
+  piDependencies,
+  powDependencies,
+  roundDependencies,
+  sinDependencies,
+  sqrtDependencies,
+  subtractDependencies,
+  tanDependencies,
+  typeOfDependencies,
+  unaryMinusDependencies
+};
+
+const fractionMath = create(MATHJS_DEPENDENCIES, {
   number: 'Fraction'
 });
 
-const decimalMath = create(all, {
+const decimalMath = create(MATHJS_DEPENDENCIES, {
   number: 'BigNumber',
   precision: 64,
   relTol: 1e-60,
@@ -17,7 +72,6 @@ const ALLOWED_FUNCTION_ARITY = Object.freeze({
   abs: [1],
   mod: [2],
   log: [1, 2],
-  ln: [1],
   exp: [1],
   sin: [1],
   cos: [1],
@@ -38,8 +92,12 @@ function getNodeExpression(node) {
   return node.toString().replace(/\s+/g, ' ').trim();
 }
 
+function normalizeSupportedAliases(expression) {
+  return expression.replace(/\bln(?=\s*\()/g, 'log');
+}
+
 function normalizeExpressionText(expression) {
-  return expression.replace(/\s+/g, ' ').trim();
+  return normalizeSupportedAliases(expression).replace(/\s+/g, ' ').trim();
 }
 
 function assertSupportedScalar(value, formatter) {
@@ -169,16 +227,17 @@ export function solveAiExpression(expression) {
     throw new Error('Enter a mathematical expression to solve.');
   }
 
+  const normalizedExpression = normalizeExpressionText(trimmedExpression);
+
   let parsedNode;
   try {
-    parsedNode = decimalMath.parse(trimmedExpression);
+    parsedNode = decimalMath.parse(normalizedExpression);
   } catch (_error) {
     throw new Error('The expression could not be parsed.');
   }
 
   validateExpressionNode(parsedNode);
 
-  const normalizedExpression = normalizeExpressionText(trimmedExpression);
   const result = isExactCapable(parsedNode)
     ? buildExactResult(normalizedExpression)
     : buildDecimalResult(normalizedExpression);

@@ -4,6 +4,11 @@ export const AI_MODE_LOG_FETCH_PAGE_SIZE = 1000;
 export const AI_MODE_LOG_BUFFER_FLUSH_SIZE = 20;
 export const AI_MODE_LOG_BUFFER_FLUSH_DELAY_MS = 2000;
 export const AI_MODE_LOG_UPSERT_ON_CONFLICT = 'user_id,session_id,question_index';
+export const AI_MODE_LOG_UPSERT_OPTIONS = Object.freeze({
+  onConflict: AI_MODE_LOG_UPSERT_ON_CONFLICT,
+  ignoreDuplicates: true
+});
+export const AI_MODE_LOG_KEEPALIVE_PREFER = 'resolution=ignore-duplicates,return=minimal';
 export const AI_MODE_LOG_SELECT_FIELDS = [
   'id',
   'session_id',
@@ -110,9 +115,10 @@ export async function persistAiModeLogBatches(
 ) {
   for (let start = 0; start < rows.length; start += batchSize) {
     const batch = rows.slice(start, start + batchSize);
-    const { error } = await client.from(AI_MODE_LOG_TABLE).upsert(batch, {
-      onConflict: AI_MODE_LOG_UPSERT_ON_CONFLICT
-    });
+    const { error } = await client.from(AI_MODE_LOG_TABLE).upsert(
+      batch,
+      AI_MODE_LOG_UPSERT_OPTIONS
+    );
 
     if (error) {
       throw error;
@@ -140,7 +146,7 @@ export async function persistAiModeLogRowsKeepalive(
         apikey: restConfig.key,
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=minimal'
+        Prefer: AI_MODE_LOG_KEEPALIVE_PREFER
       },
       body: JSON.stringify(rows),
       keepalive: true

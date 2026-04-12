@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
@@ -167,6 +166,7 @@ export default function TrainerPage() {
   const aiCycleStopRequestedRef = useRef(aiCycleStopRequested);
   const aiCycleBlueprintsRef = useRef(aiCycleBlueprints);
   const userId = user?.id ?? null;
+  const previousUserIdRef = useRef(userId);
   const isAiMode = isAdmin && trainerInputMode === TRAINER_INPUT_MODES.AI;
 
   const progressBuffer = useMemo(
@@ -235,7 +235,10 @@ export default function TrainerPage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    if (userId) {
+    const previousUserId = previousUserIdRef.current;
+    previousUserIdRef.current = userId;
+
+    if (previousUserId === null || previousUserId === userId) {
       return;
     }
 
@@ -588,7 +591,6 @@ export default function TrainerPage() {
 
   useEffect(() => {
     if (
-      !userId ||
       activeRound ||
       lastRound ||
       aiTransitionState ||
@@ -650,7 +652,7 @@ export default function TrainerPage() {
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, aiTransitionState, beginRound, isLoadingPreferences, lastRound, userId]);
+  }, [activeRound, aiTransitionState, beginRound, isLoadingPreferences, lastRound]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
@@ -1027,24 +1029,23 @@ export default function TrainerPage() {
     lastRound?.sourceMode === TRAINER_INPUT_MODES.AI
   );
   const isTrainerFinishState = Boolean(
-    user &&
     !activeRound &&
     lastRound &&
     !aiTransitionState
   );
   const isManualTrainerFinishState =
     isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.MANUAL;
-  const isAiTrainerFinishState =
-    isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.AI;
+  const isAiTrainerFinishState = Boolean(
+    user && isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.AI
+  );
   const shouldHideTrainerPanels = Boolean(
-    user &&
     !activeRound &&
     (lastRound || aiTransitionState)
   );
-  const shouldShowHeroPanel = !user || !shouldHideTrainerPanels;
+  const shouldShowHeroPanel = !shouldHideTrainerPanels;
   const shouldShowAdminControl = user && isAdmin && !shouldHideTrainerPanels;
   const shouldShowBlueprintPanel =
-    user && !activeRound && !lastRound && !aiTransitionState;
+    !activeRound && !lastRound && !aiTransitionState;
   const activeAiQuestionLabel = activeRound
     ? `Questions ${activeRound.attempts.length + 1} / ${activeRound.settings.roundSize}`
     : '';
@@ -1171,37 +1172,6 @@ export default function TrainerPage() {
         </section>
       )}
 
-      {!user && (
-        <section className='guest-layout appear-up'>
-          <article className='feature-card'>
-            <h2>Train With Intent</h2>
-            <p>
-              Pick operation, digit lengths, and round size. The system generates
-              clean drills with exact timing per response.
-            </p>
-          </article>
-          <article className='feature-card'>
-            <h2>Track Real Progress</h2>
-            <p>
-              Every submitted answer is saved to your account so you can inspect
-              accuracy, pacing, and session history.
-            </p>
-          </article>
-          <article className='feature-card'>
-            <h2>Start Now</h2>
-            <p>Create an account to keep data synced across devices.</p>
-            <div className='inline-actions'>
-              <Link href='/signup' className='button button-strong'>
-                Sign up
-              </Link>
-              <Link href='/login' className='button button-quiet'>
-                Log in
-              </Link>
-            </div>
-          </article>
-        </section>
-      )}
-
       {shouldShowAdminControl && (
         <section className='panel paper-panel mode-panel appear-up'>
           <div className='mode-panel-head'>
@@ -1240,8 +1210,7 @@ export default function TrainerPage() {
         </section>
       )}
 
-      {user && (
-        <>
+      <>
           {(shouldShowBlueprintPanel || activeRound) && (
             <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
               {shouldShowBlueprintPanel && (
@@ -1563,8 +1532,7 @@ export default function TrainerPage() {
               )}
             </section>
           )}
-        </>
-      )}
+      </>
     </>
   );
 }

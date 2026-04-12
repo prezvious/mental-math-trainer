@@ -13,6 +13,7 @@ let getSessionDigitsLabel;
 let getSessionModeLabel;
 let mergeProgressEntries;
 let normalizeProgressDashboardPayload;
+let RECENT_PROGRESS_WINDOW_DAYS;
 
 test.before(async () => {
   const progressDashboard = await import(
@@ -29,7 +30,8 @@ test.before(async () => {
     getSessionDigitsLabel,
     getSessionModeLabel,
     mergeProgressEntries,
-    normalizeProgressDashboardPayload
+    normalizeProgressDashboardPayload,
+    RECENT_PROGRESS_WINDOW_DAYS
   } = progressDashboard);
 });
 
@@ -133,6 +135,10 @@ test('normalizeProgressDashboardPayload restores defaults and pads missing opera
   );
   assert.deepEqual(dashboard.recentSessions, [{ sessionKey: 'manual:1' }]);
   assert.deepEqual(dashboard.recentAttempts, []);
+});
+
+test('recent dashboard window remains a labeled 90-day slice', () => {
+  assert.equal(RECENT_PROGRESS_WINDOW_DAYS, 90);
 });
 
 test('fetchProgressDashboardData loads the compact dashboard payload via rpc', async () => {

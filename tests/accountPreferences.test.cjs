@@ -5,9 +5,24 @@ const { pathToFileURL } = require('node:url');
 
 let buildUserPreferencesRow;
 let createDefaultAccountPreferences;
+let readGuestAccountPreferences;
 let mergeAccountPreferences;
 let sanitizeAccountPreferences;
+let writeGuestAccountPreferences;
 let DEFAULT_THEME_KEY;
+
+function createStorageMock(seed = {}) {
+  const store = new Map(Object.entries(seed));
+
+  return {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, value);
+    }
+  };
+}
 
 test.before(async () => {
   const accountPreferences = await import(
@@ -20,8 +35,10 @@ test.before(async () => {
   ({
     buildUserPreferencesRow,
     createDefaultAccountPreferences,
+    readGuestAccountPreferences,
     mergeAccountPreferences,
-    sanitizeAccountPreferences
+    sanitizeAccountPreferences,
+    writeGuestAccountPreferences
   } = accountPreferences);
   ({ DEFAULT_THEME_KEY } = themes);
 });
@@ -107,5 +124,35 @@ test('buildUserPreferencesRow produces the expected database payload', () => {
     trainer_max_base: 10,
     trainer_round_size: 250,
     updated_at: '2026-03-30T00:00:00.000Z'
+  });
+});
+
+test('guest account preferences persist through local storage helpers', () => {
+  const storage = createStorageMock();
+
+  const wrote = writeGuestAccountPreferences(
+    {
+      themeKey: 'paper-lantern',
+      trainerSettings: {
+        operation: 'DIVISION',
+        leftDigits: 3,
+        rightDigits: 8,
+        maxBase: 10,
+        roundSize: 99999
+      }
+    },
+    storage
+  );
+
+  assert.equal(wrote, true);
+  assert.deepEqual(readGuestAccountPreferences(storage), {
+    themeKey: 'paper-lantern',
+    trainerSettings: {
+      operation: 'DIVISION',
+      leftDigits: 3,
+      rightDigits: 3,
+      maxBase: 10,
+      roundSize: 10000
+    }
   });
 });

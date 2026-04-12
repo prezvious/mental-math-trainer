@@ -22,7 +22,7 @@ export function getSupabaseRestConfig() {
 }
 
 export function getSupabaseClient() {
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() || typeof window === 'undefined') {
     return null;
   }
 

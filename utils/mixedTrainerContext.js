@@ -12,7 +12,9 @@ import {
   buildMixedPreferencesRow,
   MIXED_PREFERENCES_COLUMNS,
   MIXED_PREFERENCES_TABLE,
-  sanitizeMixedPreferences
+  readGuestMixedPreferences,
+  sanitizeMixedPreferences,
+  writeGuestMixedPreferences
 } from './mixedTrainerPreferences.js';
 import { useSupabaseAuth } from './supabaseAuthContext.js';
 
@@ -49,9 +51,9 @@ export function MixedTrainerProvider({ children }) {
     }
 
     if (!client || !userId) {
-      const defaults = { ...DEFAULT_MIXED_SETTINGS };
-      latestRef.current = defaults;
-      setSettings(defaults);
+      const guestSettings = readGuestMixedPreferences();
+      latestRef.current = guestSettings;
+      setSettings(guestSettings);
       setIsLoading(false);
       return () => {
         isMounted = false;
@@ -133,6 +135,7 @@ export function MixedTrainerProvider({ children }) {
       setSettings(next);
 
       if (!client || !userId) {
+        writeGuestMixedPreferences(next);
         return { error: null };
       }
 

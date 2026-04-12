@@ -1,7 +1,10 @@
 import { sanitizeSettings } from './mathEngine.js';
 import { DEFAULT_THEME_KEY, THEME_OPTIONS } from './themes.js';
+import { readStorageJson, writeStorageJson } from './browserStorage.js';
 
 export const USER_PREFERENCES_TABLE = 'user_preferences';
+export const GUEST_ACCOUNT_PREFERENCES_STORAGE_KEY =
+  'mathtrainer:guest-account-preferences';
 export const USER_PREFERENCES_COLUMNS = [
   'user_id',
   'theme_key',
@@ -102,4 +105,18 @@ export function buildUserPreferencesRow(
     trainer_round_size: sanitized.trainerSettings.roundSize,
     updated_at: updatedAt
   };
+}
+
+export function readGuestAccountPreferences(storage = null) {
+  return sanitizeAccountPreferences(
+    readStorageJson(GUEST_ACCOUNT_PREFERENCES_STORAGE_KEY, storage) || {}
+  );
+}
+
+export function writeGuestAccountPreferences(preferences, storage = null) {
+  return writeStorageJson(
+    GUEST_ACCOUNT_PREFERENCES_STORAGE_KEY,
+    sanitizeAccountPreferences(preferences),
+    storage
+  );
 }

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import SettingsIcon from 'images/settings.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
@@ -17,6 +17,9 @@ export default function SiteLayout({ children }) {
   const { themeKey, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
+  const themeButtonRef = useRef(null);
+  const themeSelectRef = useRef(null);
+  const wasThemePanelOpenRef = useRef(false);
 
   useEffect(() => {
     const closeThemePanel = () => setIsThemePanelOpen(false);
@@ -37,6 +40,19 @@ export default function SiteLayout({ children }) {
 
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
+  }, [isThemePanelOpen]);
+
+  useEffect(() => {
+    if (isThemePanelOpen) {
+      wasThemePanelOpenRef.current = true;
+      themeSelectRef.current?.focus();
+      return;
+    }
+
+    if (wasThemePanelOpenRef.current) {
+      themeButtonRef.current?.focus();
+      wasThemePanelOpenRef.current = false;
+    }
   }, [isThemePanelOpen]);
 
   const activeTheme = useMemo(() => getThemeByKey(themeKey), [themeKey]);
@@ -172,6 +188,7 @@ export default function SiteLayout({ children }) {
       </footer>
       <div className='theme-floating-layer'>
         <button
+          ref={themeButtonRef}
           type='button'
           className='theme-fab'
           onClick={() => setIsThemePanelOpen((isOpen) => !isOpen)}
@@ -185,6 +202,8 @@ export default function SiteLayout({ children }) {
           id='theme-settings-panel'
           className={`theme-drawer ${isThemePanelOpen ? 'is-open' : ''}`}
           aria-label='Theme settings'
+          aria-hidden={!isThemePanelOpen}
+          hidden={!isThemePanelOpen}
         >
           <div className='theme-settings' role='group' aria-label='Theme settings'>
             <p className='theme-kicker'>Theme</p>
@@ -192,6 +211,7 @@ export default function SiteLayout({ children }) {
               Palette
             </label>
             <select
+              ref={themeSelectRef}
               id='theme-select'
               className='theme-select'
               value={activeTheme.key}

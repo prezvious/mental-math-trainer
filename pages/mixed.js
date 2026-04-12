@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
@@ -139,6 +138,7 @@ function MixedTrainerContent() {
   const terminationPromiseRef = useRef(null);
   const terminateSessionRef = useRef(async () => ({ handled: false }));
   const userId = user?.id ?? null;
+  const previousUserIdRef = useRef(userId);
   const progressBuffer = useMemo(
     () =>
       createProgressLogBuffer({
@@ -173,7 +173,10 @@ function MixedTrainerContent() {
   }, [activeRound]);
 
   useEffect(() => {
-    if (userId) {
+    const previousUserId = previousUserIdRef.current;
+    previousUserIdRef.current = userId;
+
+    if (previousUserId === null || previousUserId === userId) {
       return;
     }
 
@@ -383,7 +386,6 @@ function MixedTrainerContent() {
 
   useEffect(() => {
     if (
-      !userId ||
       activeRound ||
       lastRound ||
       isLoadingMixedSettings ||
@@ -421,7 +423,7 @@ function MixedTrainerContent() {
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, beginRound, isLoadingMixedSettings, lastRound, userId]);
+  }, [activeRound, beginRound, isLoadingMixedSettings, lastRound]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
@@ -611,9 +613,9 @@ function MixedTrainerContent() {
     void upsertMixedSettings({ [key]: normalizedValue });
   };
 
-  const isMixedFinishState = Boolean(user && !activeRound && lastRound);
-  const shouldShowHeroPanel = !user || !isMixedFinishState;
-  const shouldShowMixedConfig = user && !activeRound && !lastRound;
+  const isMixedFinishState = Boolean(!activeRound && lastRound);
+  const shouldShowHeroPanel = !isMixedFinishState;
+  const shouldShowMixedConfig = !activeRound && !lastRound;
 
   return (
     <>
@@ -639,37 +641,6 @@ function MixedTrainerContent() {
               unavailable.
             </p>
           )}
-        </section>
-      )}
-
-      {!user && (
-        <section className='guest-layout appear-up'>
-          <article className='feature-card'>
-            <h2>Mixed Drills</h2>
-            <p>
-              Choose which operations to train, set difficulty per type, and solve
-              problems one at a time with instant feedback.
-            </p>
-          </article>
-          <article className='feature-card'>
-            <h2>Track Real Progress</h2>
-            <p>
-              Every answer is saved so you can review accuracy, pacing, and
-              session history over time.
-            </p>
-          </article>
-          <article className='feature-card'>
-            <h2>Start Now</h2>
-            <p>Create an account to keep data synced across devices.</p>
-            <div className='inline-actions'>
-              <Link href='/signup' className='button button-strong'>
-                Sign up
-              </Link>
-              <Link href='/login' className='button button-quiet'>
-                Log in
-              </Link>
-            </div>
-          </article>
         </section>
       )}
 
@@ -766,7 +737,7 @@ function MixedTrainerContent() {
         </>
       )}
 
-      {user && activeRound && (
+      {activeRound && (
         <section className='mixed-solving-layout appear-up'>
           <article className='panel chalk-panel mixed-solving-panel'>
             <ProgressBar

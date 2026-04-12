@@ -11,9 +11,11 @@ import {
   buildUserPreferencesRow,
   createDefaultAccountPreferences,
   mergeAccountPreferences,
+  readGuestAccountPreferences,
   sanitizeAccountPreferences,
   USER_PREFERENCES_COLUMNS,
-  USER_PREFERENCES_TABLE
+  USER_PREFERENCES_TABLE,
+  writeGuestAccountPreferences
 } from './accountPreferences.js';
 import { useSupabaseAuth } from './supabaseAuthContext.js';
 
@@ -55,9 +57,9 @@ export function AccountPreferencesProvider({ children }) {
     }
 
     if (!client || !userId) {
-      const defaultPreferences = createDefaultAccountPreferences();
-      latestPreferencesRef.current = defaultPreferences;
-      setPreferences(defaultPreferences);
+      const guestPreferences = readGuestAccountPreferences();
+      latestPreferencesRef.current = guestPreferences;
+      setPreferences(guestPreferences);
       setIsLoadingPreferences(false);
       return () => {
         isMounted = false;
@@ -139,6 +141,7 @@ export function AccountPreferencesProvider({ children }) {
       setPreferences(nextPreferences);
 
       if (!client || !userId) {
+        writeGuestAccountPreferences(nextPreferences);
         return { error: null };
       }
 

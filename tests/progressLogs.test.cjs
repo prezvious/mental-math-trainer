@@ -184,7 +184,8 @@ test('persistProgressLogBatches splits a 10,000-question session into 500-row up
   assert.equal(client.upsertCalls.at(-1).rows.at(-1).question_index, 10000);
   assert.equal(client.upsertCalls.at(-1).rows.at(-1).session_id, 'session-123');
   assert.deepEqual(client.upsertCalls[0].options, {
-    onConflict: 'user_id,session_id,question_index'
+    onConflict: 'user_id,session_id,question_index',
+    ignoreDuplicates: true
   });
 });
 
@@ -232,6 +233,10 @@ test('persistProgressLogRowsKeepalive posts the buffered rows with keepalive ena
   assert.match(fetchCalls[0].url, /on_conflict=user_id%2Csession_id%2Cquestion_index/);
   assert.equal(fetchCalls[0].options.keepalive, true);
   assert.equal(fetchCalls[0].options.headers.Authorization, 'Bearer token-123');
+  assert.equal(
+    fetchCalls[0].options.headers.Prefer,
+    'resolution=ignore-duplicates,return=minimal'
+  );
 });
 
 test('createProgressLogBuffer flushes immediately at the queue threshold', async () => {

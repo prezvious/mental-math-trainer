@@ -1,6 +1,9 @@
 import { DEFAULT_MIXED_SETTINGS, sanitizeMixedSettings } from './mixedDifficulty.js';
+import { readStorageJson, writeStorageJson } from './browserStorage.js';
 
 export const MIXED_PREFERENCES_TABLE = 'mixed_trainer_preferences';
+export const GUEST_MIXED_PREFERENCES_STORAGE_KEY =
+  'mathtrainer:guest-mixed-preferences';
 
 export const MIXED_PREFERENCES_COLUMNS = [
   'user_id',
@@ -59,4 +62,18 @@ export function buildMixedPreferencesRow(
     hide_timer: sanitized.hideTimer,
     updated_at: updatedAt
   };
+}
+
+export function readGuestMixedPreferences(storage = null) {
+  return sanitizeMixedPreferences(
+    readStorageJson(GUEST_MIXED_PREFERENCES_STORAGE_KEY, storage) || {}
+  );
+}
+
+export function writeGuestMixedPreferences(settings, storage = null) {
+  return writeStorageJson(
+    GUEST_MIXED_PREFERENCES_STORAGE_KEY,
+    sanitizeMixedSettings(settings),
+    storage
+  );
 }

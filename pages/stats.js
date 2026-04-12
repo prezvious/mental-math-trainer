@@ -7,7 +7,8 @@ import {
   createEmptyProgressDashboard,
   fetchProgressDashboardData,
   getOperationDisplayLabel,
-  PROGRESS_SOURCE_LABELS
+  PROGRESS_SOURCE_LABELS,
+  RECENT_PROGRESS_WINDOW_DAYS
 } from 'utils/progressDashboard.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
@@ -222,6 +223,7 @@ export default function StatsPage() {
 
               <section className='panel chalk-panel appear-up'>
                 <h2>Recent Sessions</h2>
+                <p>Showing sessions from the last {RECENT_PROGRESS_WINDOW_DAYS} days.</p>
                 <div className='table-wrap'>
                   <table>
                     <thead>
@@ -258,6 +260,7 @@ export default function StatsPage() {
 
               <section className='panel paper-panel appear-up'>
                 <h2>Recent Attempts</h2>
+                <p>Showing attempts from the last {RECENT_PROGRESS_WINDOW_DAYS} days.</p>
                 <ul className='attempt-list'>
                   {recentAttempts.map((entry) => (
                     <li key={entry.id}>

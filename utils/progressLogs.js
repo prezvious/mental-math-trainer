@@ -3,6 +3,11 @@ export const PROGRESS_LOG_FETCH_PAGE_SIZE = 1000;
 export const PROGRESS_LOG_BUFFER_FLUSH_SIZE = 20;
 export const PROGRESS_LOG_BUFFER_FLUSH_DELAY_MS = 2000;
 export const PROGRESS_LOG_UPSERT_ON_CONFLICT = 'user_id,session_id,question_index';
+export const PROGRESS_LOG_UPSERT_OPTIONS = Object.freeze({
+  onConflict: PROGRESS_LOG_UPSERT_ON_CONFLICT,
+  ignoreDuplicates: true
+});
+export const PROGRESS_LOG_KEEPALIVE_PREFER = 'resolution=ignore-duplicates,return=minimal';
 export const PROGRESS_LOG_SELECT_FIELDS = [
   'id',
   'session_id',
@@ -70,9 +75,10 @@ export async function persistProgressLogBatches(
 ) {
   for (let start = 0; start < rows.length; start += batchSize) {
     const batch = rows.slice(start, start + batchSize);
-    const { error } = await client.from('progress_logs').upsert(batch, {
-      onConflict: PROGRESS_LOG_UPSERT_ON_CONFLICT
-    });
+    const { error } = await client.from('progress_logs').upsert(
+      batch,
+      PROGRESS_LOG_UPSERT_OPTIONS
+    );
 
     if (error) {
       throw error;
@@ -100,7 +106,7 @@ export async function persistProgressLogRowsKeepalive(
         apikey: restConfig.key,
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
-        Prefer: 'resolution=merge-duplicates,return=minimal'
+        Prefer: PROGRESS_LOG_KEEPALIVE_PREFER
       },
       body: JSON.stringify(rows),
       keepalive: true

@@ -7,6 +7,7 @@ export const PROGRESS_SOURCE_LABELS = Object.freeze({
 export const PROGRESS_DASHBOARD_RPC = 'get_progress_dashboard_data';
 export const DEFAULT_RECENT_SESSION_LIMIT = 8;
 export const DEFAULT_RECENT_ATTEMPT_LIMIT = 12;
+export const RECENT_PROGRESS_WINDOW_DAYS = 90;
 
 const OPERATION_BREAKDOWN_ORDER = [...Object.keys(OPERATION_META), 'CUSTOM'];
 

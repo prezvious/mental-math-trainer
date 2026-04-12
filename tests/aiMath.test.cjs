@@ -46,6 +46,23 @@ test('solveAiExpression allows approved calculator functions', () => {
   assert.equal(result.exactText, '6');
 });
 
+test('solveAiExpression normalizes ln to the natural log implementation', () => {
+  const result = solveAiExpression('ln(exp(2))');
+
+  assert.equal(result.normalizedExpression, 'log(exp(2))');
+  assert.equal(result.kind, 'decimal');
+  assert.equal(result.exactText, '2');
+});
+
+test('solveAiExpression supports approved constants and helper functions', () => {
+  const result = solveAiExpression(
+    'sin(pi / 2) + cos(0) + tan(0) + floor(3.7) - ceil(3.2) + mod(7, 4)'
+  );
+
+  assert.equal(result.kind, 'decimal');
+  assert.equal(result.exactText, '4');
+});
+
 test('solveAiExpression rejects invalid syntax', () => {
   assert.throws(() => solveAiExpression('2 +'), /could not be parsed/i);
 });
