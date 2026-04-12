@@ -4,14 +4,25 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
+import { solveAiExpression } from 'utils/aiMath.js';
+import {
+  buildAiModeCustomLogRow,
+  buildAiModeTrainerLogRow,
+  createAiModeLogBuffer,
+  persistAiModeLogBatches
+} from 'utils/aiModeLogs.js';
+import {
+  solveTrainerProblem,
+  TRAINER_INPUT_MODES
+} from 'utils/aiTrainer.js';
 import {
   computeRoundStats,
   createProblem,
   formatDuration,
   getOperationOptions,
   MAX_BASE,
-  OPERATION_META,
   operationRequiresOrderedDigits,
+  OPERATION_META,
   parseIntegerInput,
   resolveRoundSizeDraft,
   sanitizeSettings
@@ -20,13 +31,13 @@ import {
   buildProgressLogRow,
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
+import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
+import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   createActiveRound,
   processRoundSubmission,
   shouldAutoSubmitAnswer
 } from 'utils/trainerRound.js';
-import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
-import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import { DIGIT_OPTIONS } from 'utils/utils.js';
 
 function createSessionId() {
@@ -53,11 +64,18 @@ function getPathnameFromUrl(url) {
   }
 }
 
-function createRoundSummary(attempts, settings, userId, wasTerminated) {
+function getPerformanceNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function createRoundSummary(attempts, settings, userId, wasTerminated, sourceMode) {
   return {
     ...computeRoundStats(attempts),
     attempts,
     settings,
+    sourceMode,
     finishedAt: new Date().toISOString(),
     wasTerminated,
     saveState: userId ? 'saving' : 'idle',
@@ -93,9 +111,15 @@ function getSaveStatusMessage(lastRound) {
   return '';
 }
 
+const DEFAULT_SOLVER_STATE = Object.freeze({
+  status: 'idle',
+  error: '',
+  result: null
+});
+
 export default function TrainerPage() {
   const router = useRouter();
-  const { client, session, user, isConfigured } = useSupabaseAuth();
+  const { client, session, user, isConfigured, isAdmin } = useSupabaseAuth();
   const { registerActiveSessionTerminator } = useActiveSession();
   const { trainerSettings: settings, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
@@ -103,7 +127,11 @@ export default function TrainerPage() {
   const [answerInput, setAnswerInput] = useState('');
   const [lastRound, setLastRound] = useState(null);
   const [roundSizeDraft, setRoundSizeDraft] = useState(() => String(settings.roundSize));
+  const [trainerInputMode, setTrainerInputMode] = useState(TRAINER_INPUT_MODES.MANUAL);
+  const [customExpression, setCustomExpression] = useState('');
+  const [customSolverState, setCustomSolverState] = useState(DEFAULT_SOLVER_STATE);
   const settingsFormRef = useRef(null);
+  const customSolverFormRef = useRef(null);
   const answerInputRef = useRef(null);
   const handledQuestionIdRef = useRef(null);
   const activeRoundRef = useRef(activeRound);
@@ -112,11 +140,23 @@ export default function TrainerPage() {
   const isMountedRef = useRef(false);
   const terminationPromiseRef = useRef(null);
   const terminateSessionRef = useRef(async () => ({ handled: false }));
+  const aiSolveLockRef = useRef(false);
   const userId = user?.id ?? null;
+  const isAiMode = isAdmin && trainerInputMode === TRAINER_INPUT_MODES.AI;
 
   const progressBuffer = useMemo(
     () =>
       createProgressLogBuffer({
+        getClient: () => clientRef.current,
+        getAccessToken: () => accessTokenRef.current,
+        getRestConfig: getSupabaseRestConfig
+      }),
+    []
+  );
+
+  const aiModeBuffer = useMemo(
+    () =>
+      createAiModeLogBuffer({
         getClient: () => clientRef.current,
         getAccessToken: () => accessTokenRef.current,
         getRestConfig: getSupabaseRestConfig
@@ -129,8 +169,9 @@ export default function TrainerPage() {
     return () => {
       isMountedRef.current = false;
       progressBuffer.dispose();
+      aiModeBuffer.dispose();
     };
-  }, [progressBuffer]);
+  }, [aiModeBuffer, progressBuffer]);
 
   useEffect(() => {
     clientRef.current = client;
@@ -149,19 +190,31 @@ export default function TrainerPage() {
   }, [settings.roundSize]);
 
   useEffect(() => {
+    if (isAdmin) {
+      return;
+    }
+
+    setTrainerInputMode(TRAINER_INPUT_MODES.MANUAL);
+  }, [isAdmin]);
+
+  useEffect(() => {
     if (userId) {
       return;
     }
 
     progressBuffer.clear();
+    aiModeBuffer.clear();
     setActiveRound(null);
     setAnswerInput('');
     setLastRound(null);
+    setCustomExpression('');
+    setCustomSolverState(DEFAULT_SOLVER_STATE);
     handledQuestionIdRef.current = null;
-  }, [progressBuffer, userId]);
+    aiSolveLockRef.current = false;
+  }, [aiModeBuffer, progressBuffer, userId]);
 
   useEffect(() => {
-    if (!activeRound || !answerInputRef.current) {
+    if (!activeRound || activeRound.sourceMode === TRAINER_INPUT_MODES.AI || !answerInputRef.current) {
       return;
     }
 
@@ -215,13 +268,38 @@ export default function TrainerPage() {
     [progressBuffer, userId]
   );
 
+  const persistQueuedAiModeLogs = useCallback(
+    async ({ keepalive = false } = {}) => {
+      if (!userId || !clientRef.current) {
+        return;
+      }
+
+      await aiModeBuffer.flush({ keepalive });
+    },
+    [aiModeBuffer, userId]
+  );
+
   const finalizeRound = useCallback(
-    async (attempts, roundSettings, { wasTerminated, keepalive = false }) => {
+    async (
+      attempts,
+      roundSettings,
+      {
+        wasTerminated,
+        keepalive = false,
+        sourceMode = TRAINER_INPUT_MODES.MANUAL
+      }
+    ) => {
       handledQuestionIdRef.current = null;
       setActiveRound(null);
       setAnswerInput('');
 
-      const summary = createRoundSummary(attempts, roundSettings, userId, wasTerminated);
+      const summary = createRoundSummary(
+        attempts,
+        roundSettings,
+        userId,
+        wasTerminated,
+        sourceMode
+      );
       if (isMountedRef.current) {
         setLastRound(summary);
       }
@@ -231,7 +309,11 @@ export default function TrainerPage() {
       }
 
       try {
-        await persistQueuedProgress({ keepalive });
+        if (sourceMode === TRAINER_INPUT_MODES.AI) {
+          await persistQueuedAiModeLogs({ keepalive });
+        } else {
+          await persistQueuedProgress({ keepalive });
+        }
         markSummarySaved();
       } catch (error) {
         markSummaryError(
@@ -240,7 +322,13 @@ export default function TrainerPage() {
         );
       }
     },
-    [markSummaryError, markSummarySaved, persistQueuedProgress, userId]
+    [
+      markSummaryError,
+      markSummarySaved,
+      persistQueuedAiModeLogs,
+      persistQueuedProgress,
+      userId
+    ]
   );
 
   const terminateActiveRound = useCallback(
@@ -266,7 +354,8 @@ export default function TrainerPage() {
 
         await finalizeRound(roundSnapshot.attempts, roundSnapshot.settings, {
           wasTerminated: true,
-          keepalive
+          keepalive,
+          sourceMode: roundSnapshot.sourceMode || TRAINER_INPUT_MODES.MANUAL
         });
 
         return { handled: true, saved: true };
@@ -317,6 +406,7 @@ export default function TrainerPage() {
       await terminateActiveRound('restart');
     }
 
+    const sourceMode = isAiMode ? TRAINER_INPUT_MODES.AI : TRAINER_INPUT_MODES.MANUAL;
     const sanitizedSettings = commitRoundSizeDraft();
     const firstProblem = createProblem(
       sanitizedSettings.operation,
@@ -331,16 +421,18 @@ export default function TrainerPage() {
     setLastRound(null);
     setAnswerInput('');
     handledQuestionIdRef.current = null;
-    setActiveRound(
-      createActiveRound(
+    setActiveRound({
+      ...createActiveRound(
         sanitizedSettings,
         firstProblem,
         questionStartedAt,
         sessionId
-      )
-    );
+      ),
+      sourceMode
+    });
   }, [
     commitRoundSizeDraft,
+    isAiMode,
     isLoadingPreferences,
     terminateActiveRound,
     upsertPreferences
@@ -397,6 +489,14 @@ export default function TrainerPage() {
         return;
       }
 
+      if (
+        customSolverFormRef.current &&
+        target instanceof Node &&
+        customSolverFormRef.current.contains(target)
+      ) {
+        return;
+      }
+
       event.preventDefault();
       void beginRound();
     };
@@ -432,7 +532,7 @@ export default function TrainerPage() {
   const submitAnswer = useCallback(
     async (submittedAnswer, submittedAt = Date.now()) => {
       const roundSnapshot = activeRoundRef.current;
-      if (!roundSnapshot) {
+      if (!roundSnapshot || roundSnapshot.sourceMode === TRAINER_INPUT_MODES.AI) {
         return;
       }
 
@@ -465,16 +565,104 @@ export default function TrainerPage() {
 
       if (isComplete) {
         await finalizeRound(attempts, roundSnapshot.settings, {
-          wasTerminated: false
+          wasTerminated: false,
+          sourceMode: TRAINER_INPUT_MODES.MANUAL
         });
         return;
       }
 
       setAnswerInput('');
-      setActiveRound(nextActiveRound);
+      setActiveRound({
+        ...nextActiveRound,
+        sourceMode: TRAINER_INPUT_MODES.MANUAL
+      });
     },
     [finalizeRound, progressBuffer, userId]
   );
+
+  useEffect(() => {
+    if (
+      !activeRound ||
+      activeRound.sourceMode !== TRAINER_INPUT_MODES.AI ||
+      aiSolveLockRef.current
+    ) {
+      return;
+    }
+
+    aiSolveLockRef.current = true;
+
+    const solveCurrentQuestion = async () => {
+      const roundSnapshot = activeRoundRef.current;
+      if (!roundSnapshot || roundSnapshot.sourceMode !== TRAINER_INPUT_MODES.AI) {
+        return;
+      }
+
+      try {
+        const solvedProblem = solveTrainerProblem(roundSnapshot.currentProblem);
+        const submittedAt = roundSnapshot.questionStartedAt + solvedProblem.responseMs;
+        const submission = processRoundSubmission(
+          roundSnapshot,
+          solvedProblem.submittedAnswer,
+          submittedAt,
+          handledQuestionIdRef.current
+        );
+
+        if (submission.ignored) {
+          return;
+        }
+
+        handledQuestionIdRef.current = submission.handledQuestionId;
+
+        if (userId) {
+          aiModeBuffer.enqueue(
+            buildAiModeTrainerLogRow(
+              roundSnapshot.currentProblem,
+              solvedProblem,
+              userId,
+              roundSnapshot.sessionId,
+              submission.attempts.length,
+              submission.attempt.createdAt
+            )
+          );
+        }
+
+        if (submission.isComplete) {
+          await finalizeRound(submission.attempts, roundSnapshot.settings, {
+            wasTerminated: false,
+            sourceMode: TRAINER_INPUT_MODES.AI
+          });
+          return;
+        }
+
+        setActiveRound({
+          ...submission.nextActiveRound,
+          sourceMode: TRAINER_INPUT_MODES.AI
+        });
+      } catch (error) {
+        handledQuestionIdRef.current = null;
+        setActiveRound(null);
+        setAnswerInput('');
+
+        if (isMountedRef.current) {
+          setLastRound({
+            ...createRoundSummary(
+              roundSnapshot.attempts,
+              roundSnapshot.settings,
+              userId,
+              false,
+              TRAINER_INPUT_MODES.AI
+            ),
+            saveState: 'error',
+            saveError: error?.message || 'AI MODE could not solve this round.'
+          });
+        }
+      } finally {
+        aiSolveLockRef.current = false;
+      }
+    };
+
+    void solveCurrentQuestion();
+  }, [activeRound, aiModeBuffer, finalizeRound, userId]);
 
   const handleAnswerSubmit = async (event) => {
     event.preventDefault();
@@ -492,7 +680,7 @@ export default function TrainerPage() {
     setAnswerInput(nextValue);
 
     const roundSnapshot = activeRoundRef.current;
-    if (!roundSnapshot) {
+    if (!roundSnapshot || roundSnapshot.sourceMode === TRAINER_INPUT_MODES.AI) {
       return;
     }
 
@@ -517,7 +705,9 @@ export default function TrainerPage() {
       return;
     }
 
-    const normalizedValue = ['leftDigits', 'rightDigits', 'maxBase'].includes(key) ? Number(value) : value;
+    const normalizedValue = ['leftDigits', 'rightDigits', 'maxBase'].includes(key)
+      ? Number(value)
+      : value;
 
     const nextSettings = {
       ...settings,
@@ -533,6 +723,76 @@ export default function TrainerPage() {
     }
 
     void upsertPreferences({ trainerSettings: sanitizeSettings(nextSettings) });
+  };
+
+  const handleModeChange = (nextMode) => {
+    if (activeRound) {
+      return;
+    }
+
+    setTrainerInputMode(nextMode);
+    setCustomSolverState(DEFAULT_SOLVER_STATE);
+  };
+
+  const handleCustomSolve = async (event) => {
+    event.preventDefault();
+
+    if (!isAdmin || !userId || !clientRef.current) {
+      setCustomSolverState({
+        status: 'error',
+        error: 'AI MODE is available only to signed-in admin accounts.',
+        result: null
+      });
+      return;
+    }
+
+    const promptText = customExpression.trim();
+    if (!promptText) {
+      setCustomSolverState({
+        status: 'error',
+        error: 'Enter a mathematical expression to solve.',
+        result: null
+      });
+      return;
+    }
+
+    setCustomSolverState({
+      status: 'working',
+      error: '',
+      result: null
+    });
+
+    try {
+      const startedAt = getPerformanceNow();
+      const solvedExpression = solveAiExpression(promptText);
+      const responseMs = Math.max(1, Math.round(getPerformanceNow() - startedAt));
+      const persistedResult = {
+        ...solvedExpression,
+        responseMs,
+        promptText
+      };
+
+      await persistAiModeLogBatches(clientRef.current, [
+        buildAiModeCustomLogRow(
+          persistedResult,
+          promptText,
+          userId,
+          createSessionId()
+        )
+      ]);
+
+      setCustomSolverState({
+        status: 'success',
+        error: '',
+        result: persistedResult
+      });
+    } catch (error) {
+      setCustomSolverState({
+        status: 'error',
+        error: error?.message || 'The expression could not be solved.',
+        result: null
+      });
+    }
   };
 
   return (
@@ -590,104 +850,152 @@ export default function TrainerPage() {
         </section>
       )}
 
+      {user && isAdmin && (
+        <section className='panel paper-panel mode-panel appear-up'>
+          <div className='mode-panel-head'>
+            <div>
+              <p className='hero-tag'>Admin Control</p>
+              <h2>Input Mode</h2>
+            </div>
+            <div className='mode-toggle' role='tablist' aria-label='Trainer mode'>
+              <button
+                type='button'
+                role='tab'
+                aria-selected={trainerInputMode === TRAINER_INPUT_MODES.MANUAL}
+                className={`mode-toggle-button${trainerInputMode === TRAINER_INPUT_MODES.MANUAL ? ' is-active' : ''}`}
+                onClick={() => handleModeChange(TRAINER_INPUT_MODES.MANUAL)}
+                disabled={Boolean(activeRound)}
+              >
+                Manual
+              </button>
+              <button
+                type='button'
+                role='tab'
+                aria-selected={trainerInputMode === TRAINER_INPUT_MODES.AI}
+                className={`mode-toggle-button${trainerInputMode === TRAINER_INPUT_MODES.AI ? ' is-active' : ''}`}
+                onClick={() => handleModeChange(TRAINER_INPUT_MODES.AI)}
+                disabled={Boolean(activeRound)}
+              >
+                AI MODE
+              </button>
+            </div>
+          </div>
+          <p className='mode-panel-copy'>
+            {isAiMode
+              ? 'AI MODE solves trainer questions with the local math engine and stores every custom solve in the admin history.'
+              : 'Manual mode preserves the existing human-input flow with the same blueprint and progress tracking.'}
+          </p>
+        </section>
+      )}
+
       {user && (
         <>
           <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
-            {!activeRound && <article className='panel paper-panel'>
-              <h2>Round Blueprint</h2>
-              <form
-                ref={settingsFormRef}
-                className='settings-form'
-                onSubmit={startRound}
-              >
-                <label htmlFor='operation'>Operation</label>
-                <select
-                  id='operation'
-                  value={settings.operation}
-                  onChange={(event) => updateSetting('operation', event.target.value)}
-                  disabled={isLoadingPreferences}
+            {!activeRound && (
+              <article className='panel paper-panel'>
+                <div className='panel-title-row'>
+                  <h2>Round Blueprint</h2>
+                  {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
+                </div>
+                <form
+                  ref={settingsFormRef}
+                  className='settings-form'
+                  onSubmit={startRound}
                 >
-                  {getOperationOptions().map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <label htmlFor='operation'>Operation</label>
+                  <select
+                    id='operation'
+                    value={settings.operation}
+                    onChange={(event) => updateSetting('operation', event.target.value)}
+                    disabled={isLoadingPreferences}
+                  >
+                    {getOperationOptions().map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
 
-                {isExponentiation ? (
-                  <>
-                    <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
-                    <input
-                      id='maxBase'
-                      type='range'
-                      min='2'
-                      max={MAX_BASE}
-                      value={settings.maxBase}
-                      onChange={(event) => updateSetting('maxBase', event.target.value)}
-                      disabled={isLoadingPreferences}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <label htmlFor='leftDigits'>Left number digits</label>
-                    <select
-                      id='leftDigits'
-                      value={settings.leftDigits}
-                      onChange={(event) => updateSetting('leftDigits', event.target.value)}
-                      disabled={isLoadingPreferences}
-                    >
-                      {DIGIT_OPTIONS.map((digits) => (
-                        <option key={digits} value={digits}>
-                          {`${digits} digit${digits === 1 ? '' : 's'}`}
-                        </option>
-                      ))}
-                    </select>
+                  {isExponentiation ? (
+                    <>
+                      <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
+                      <input
+                        id='maxBase'
+                        type='range'
+                        min='2'
+                        max={MAX_BASE}
+                        value={settings.maxBase}
+                        onChange={(event) => updateSetting('maxBase', event.target.value)}
+                        disabled={isLoadingPreferences}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <label htmlFor='leftDigits'>Left number digits</label>
+                      <select
+                        id='leftDigits'
+                        value={settings.leftDigits}
+                        onChange={(event) => updateSetting('leftDigits', event.target.value)}
+                        disabled={isLoadingPreferences}
+                      >
+                        {DIGIT_OPTIONS.map((digits) => (
+                          <option key={digits} value={digits}>
+                            {`${digits} digit${digits === 1 ? '' : 's'}`}
+                          </option>
+                        ))}
+                      </select>
 
-                    <label htmlFor='rightDigits'>Right number digits</label>
-                    <select
-                      id='rightDigits'
-                      value={settings.rightDigits}
-                      onChange={(event) => updateSetting('rightDigits', event.target.value)}
-                      disabled={isLoadingPreferences}
-                    >
-                      {availableRightDigits.map((digits) => (
-                        <option key={digits} value={digits}>
-                          {`${digits} digit${digits === 1 ? '' : 's'}`}
-                        </option>
-                      ))}
-                    </select>
-                  </>
-                )}
+                      <label htmlFor='rightDigits'>Right number digits</label>
+                      <select
+                        id='rightDigits'
+                        value={settings.rightDigits}
+                        onChange={(event) => updateSetting('rightDigits', event.target.value)}
+                        disabled={isLoadingPreferences}
+                      >
+                        {availableRightDigits.map((digits) => (
+                          <option key={digits} value={digits}>
+                            {`${digits} digit${digits === 1 ? '' : 's'}`}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
 
-                <label htmlFor='roundSize'>Questions per round</label>
-                <input
-                  id='roundSize'
-                  type='number'
-                  min='3'
-                  max='10000'
-                  value={roundSizeDraft}
-                  onChange={(event) => updateSetting('roundSize', event.target.value)}
-                  onBlur={commitRoundSizeDraft}
-                  disabled={isLoadingPreferences}
-                />
+                  <label htmlFor='roundSize'>Questions per round</label>
+                  <input
+                    id='roundSize'
+                    type='number'
+                    min='3'
+                    max='10000'
+                    value={roundSizeDraft}
+                    onChange={(event) => updateSetting('roundSize', event.target.value)}
+                    onBlur={commitRoundSizeDraft}
+                    disabled={isLoadingPreferences}
+                  />
 
-                <button
-                  type='submit'
-                  className='button button-strong button-full'
-                  aria-keyshortcuts='Enter'
-                  disabled={isLoadingPreferences}
-                >
-                  {isLoadingPreferences
-                    ? 'Loading blueprint...'
-                    : activeRound
-                      ? 'Restart round'
+                  <button
+                    type='submit'
+                    className='button button-strong button-full'
+                    aria-keyshortcuts='Enter'
+                    disabled={isLoadingPreferences}
+                  >
+                    {isLoadingPreferences
+                      ? 'Loading blueprint...'
+                      : isAiMode
+                      ? 'Start AI round'
                       : 'Start round'}
-                </button>
-              </form>
-            </article>}
+                  </button>
+                </form>
+              </article>
+            )}
 
             <article className='panel chalk-panel'>
-              <h2>Live Arena</h2>
+              <div className='panel-title-row'>
+                <h2>Live Arena</h2>
+                {activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
+                  <span className='mode-pill mode-pill-ai'>AI MODE</span>
+                )}
+              </div>
               {activeRound ? (
                 <>
                   <div className='progress-meta'>
@@ -719,23 +1027,101 @@ export default function TrainerPage() {
                       </>
                     )}
                   </p>
-                  <form className='answer-form' onSubmit={handleAnswerSubmit}>
-                    <label htmlFor='answerInput'>Your answer</label>
+
+                  {activeRound.sourceMode === TRAINER_INPUT_MODES.AI ? (
+                    <div className='ai-run-status'>
+                      <p className='placeholder-text'>
+                        Local solver engaged. Each question is evaluated immediately and
+                        written to the admin progress log.
+                      </p>
+                    </div>
+                  ) : (
+                    <form className='answer-form' onSubmit={handleAnswerSubmit}>
+                      <label htmlFor='answerInput'>Your answer</label>
+                      <input
+                        ref={answerInputRef}
+                        id='answerInput'
+                        type='text'
+                        inputMode='numeric'
+                        autoComplete='off'
+                        value={answerInput}
+                        onChange={handleAnswerChange}
+                        placeholder='Type integer answer'
+                      />
+                      <button type='submit' className='button button-strong button-full'>
+                        Submit answer
+                      </button>
+                    </form>
+                  )}
+                </>
+              ) : isAiMode ? (
+                <div className='solver-shell'>
+                  <p className='placeholder-text'>
+                    Start an AI round to auto-solve generated questions, or use the custom
+                    solver below for calculator-style expressions.
+                  </p>
+                  <form
+                    ref={customSolverFormRef}
+                    className='answer-form solver-form'
+                    onSubmit={handleCustomSolve}
+                  >
+                    <label htmlFor='custom-expression'>Custom solver</label>
                     <input
-                      ref={answerInputRef}
-                      id='answerInput'
+                      id='custom-expression'
                       type='text'
-                      inputMode='numeric'
                       autoComplete='off'
-                      value={answerInput}
-                      onChange={handleAnswerChange}
-                      placeholder='Type integer answer'
+                      value={customExpression}
+                      onChange={(event) => {
+                        setCustomExpression(event.target.value);
+                        if (customSolverState.status !== 'idle') {
+                          setCustomSolverState(DEFAULT_SOLVER_STATE);
+                        }
+                      }}
+                      placeholder='sqrt(144) + log(100, 10)'
                     />
-                    <button type='submit' className='button button-strong button-full'>
-                      Submit answer
+                    <button
+                      type='submit'
+                      className='button button-strong button-full'
+                      disabled={customSolverState.status === 'working'}
+                    >
+                      {customSolverState.status === 'working'
+                        ? 'Solving...'
+                        : 'Solve expression'}
                     </button>
                   </form>
-                </>
+
+                  {customSolverState.error && (
+                    <p className='feedback warning'>{customSolverState.error}</p>
+                  )}
+
+                  {customSolverState.result && (
+                    <section className='solver-result'>
+                      <div className='solver-result-head'>
+                        <span className='mode-pill mode-pill-ai'>AI MODE</span>
+                        <span className='solver-latency'>
+                          {customSolverState.result.responseMs}ms
+                        </span>
+                      </div>
+                      <p className='solver-expression'>
+                        {customSolverState.result.normalizedExpression}
+                      </p>
+                      <div className='solver-grid'>
+                        <article>
+                          <h3>Exact</h3>
+                          <p>{customSolverState.result.exactText}</p>
+                        </article>
+                        <article>
+                          <h3>Decimal</h3>
+                          <p>{customSolverState.result.decimalText}</p>
+                        </article>
+                        <article>
+                          <h3>Kind</h3>
+                          <p>{customSolverState.result.kind}</p>
+                        </article>
+                      </div>
+                    </section>
+                  )}
+                </div>
               ) : (
                 <p className='placeholder-text'>
                   Start a round to receive timed questions. Each submission is
@@ -747,7 +1133,22 @@ export default function TrainerPage() {
 
           {lastRound && (
             <section className='summary-panel appear-up'>
-              <h2>Latest Round Summary</h2>
+              <div className='panel-title-row'>
+                <h2>
+                  {lastRound.sourceMode === TRAINER_INPUT_MODES.AI
+                    ? 'Latest AI Round Summary'
+                    : 'Latest Round Summary'}
+                </h2>
+                <span
+                  className={`mode-pill ${
+                    lastRound.sourceMode === TRAINER_INPUT_MODES.AI
+                      ? 'mode-pill-ai'
+                      : 'mode-pill-manual'
+                  }`}
+                >
+                  {lastRound.sourceMode === TRAINER_INPUT_MODES.AI ? 'AI MODE' : 'Manual'}
+                </span>
+              </div>
               <div className='summary-grid'>
                 <article>
                   <h3>Accuracy</h3>
