@@ -9,6 +9,7 @@ import HouseIcon from 'images/phosphor/house.svg';
 import KeyboardIcon from 'images/phosphor/keyboard-bold.svg';
 import PaletteIcon from 'images/phosphor/palette-bold.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
+import XIcon from 'images/phosphor/x-bold.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
@@ -42,6 +43,7 @@ export default function SiteLayout({ children }) {
   const [activeControlTab, setActiveControlTab] = useState(CONTROL_TABS.THEME);
   const themeButtonRef = useRef(null);
   const themeSelectRef = useRef(null);
+  const themeDrawerRef = useRef(null);
   const wasThemePanelOpenRef = useRef(false);
 
   useEffect(() => {
@@ -66,6 +68,26 @@ export default function SiteLayout({ children }) {
 
     window.addEventListener('keydown', onEscape);
     return () => window.removeEventListener('keydown', onEscape);
+  }, [isThemePanelOpen]);
+
+  useEffect(() => {
+    if (!isThemePanelOpen || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const onClickOutside = (event) => {
+      if (
+        themeDrawerRef.current &&
+        !themeDrawerRef.current.contains(event.target) &&
+        themeButtonRef.current &&
+        !themeButtonRef.current.contains(event.target)
+      ) {
+        setIsThemePanelOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', onClickOutside);
+    return () => window.removeEventListener('mousedown', onClickOutside);
   }, [isThemePanelOpen]);
 
   useEffect(() => {
@@ -353,6 +375,7 @@ export default function SiteLayout({ children }) {
           />
         </div>
         <section
+          ref={themeDrawerRef}
           id='appearance-hotkeys-panel'
           className={`theme-drawer ${isThemePanelOpen ? 'is-open' : ''}`}
           aria-label='Appearance and hotkeys'
@@ -360,7 +383,8 @@ export default function SiteLayout({ children }) {
           hidden={!isThemePanelOpen}
         >
           <div className='theme-settings control-drawer' role='group' aria-label='Appearance and hotkeys'>
-            <div className='control-drawer-tabs' role='tablist' aria-label='Appearance and hotkeys sections'>
+            <div className='control-drawer-header'>
+              <div className='control-drawer-tabs' role='tablist' aria-label='Appearance and hotkeys sections'>
               <button
                 id='appearance-tab'
                 type='button'
@@ -388,6 +412,15 @@ export default function SiteLayout({ children }) {
                 <IconLabel icon={KeyboardIcon} className='icon-label-button'>
                   Hotkeys
                 </IconLabel>
+              </button>
+              </div>
+              <button
+                type='button'
+                className='control-drawer-close'
+                onClick={() => setIsThemePanelOpen(false)}
+                aria-label='Close panel'
+              >
+                <XIcon className='control-drawer-close-icon' />
               </button>
             </div>
 
