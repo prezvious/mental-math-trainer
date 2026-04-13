@@ -1,8 +1,13 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import IconLabel from 'components/IconLabel.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
+import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
+import LightningIcon from 'images/phosphor/lightning.svg';
+import PlayCircleIcon from 'images/phosphor/play-circle.svg';
+import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
@@ -1075,7 +1080,11 @@ export default function TrainerPage() {
   const renderAiCalculatorPanel = (copy) => (
     <article className='panel chalk-panel finish-secondary-panel'>
       <div className='panel-title-row'>
-        <h2>Live Arena</h2>
+        <h2>
+          <IconLabel icon={LightningIcon} className='icon-label-heading'>
+            Live Arena
+          </IconLabel>
+        </h2>
         <span className='mode-pill mode-pill-ai'>AI MODE</span>
       </div>
       {renderAutoCycleToggle()}
@@ -1105,9 +1114,11 @@ export default function TrainerPage() {
             className='button button-strong button-full'
             disabled={customSolverState.status === 'working'}
           >
-            {customSolverState.status === 'working'
-              ? 'Solving...'
-              : 'Solve expression'}
+            <IconLabel icon={LightningIcon} className='icon-label-button'>
+              {customSolverState.status === 'working'
+                ? 'Solving...'
+                : 'Solve expression'}
+            </IconLabel>
           </button>
         </form>
 
@@ -1177,7 +1188,11 @@ export default function TrainerPage() {
           <div className='mode-panel-head'>
             <div>
               <p className='hero-tag'>Admin Control</p>
-              <h2>Input Mode</h2>
+              <h2>
+                <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
+                  Input Mode
+                </IconLabel>
+              </h2>
             </div>
             <div className='mode-toggle' role='tablist' aria-label='Trainer mode'>
               <button
@@ -1216,7 +1231,11 @@ export default function TrainerPage() {
               {shouldShowBlueprintPanel && (
                 <article className='panel paper-panel'>
                   <div className='panel-title-row'>
-                    <h2>Round Blueprint</h2>
+                    <h2>
+                      <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
+                        Round Blueprint
+                      </IconLabel>
+                    </h2>
                     {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
                   </div>
                   <form
@@ -1303,11 +1322,13 @@ export default function TrainerPage() {
                       aria-keyshortcuts='Enter'
                       disabled={isLoadingPreferences}
                     >
-                      {isLoadingPreferences
-                        ? 'Loading blueprint...'
-                        : isAiMode
-                        ? 'Start AI round'
-                        : 'Start round'}
+                      <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                        {isLoadingPreferences
+                          ? 'Loading blueprint...'
+                          : isAiMode
+                          ? 'Start AI round'
+                          : 'Start round'}
+                      </IconLabel>
                     </button>
                   </form>
                 </article>
@@ -1315,7 +1336,11 @@ export default function TrainerPage() {
 
               <article className='panel chalk-panel'>
                 <div className='panel-title-row'>
-                  <h2>Live Arena</h2>
+                  <h2>
+                    <IconLabel icon={LightningIcon} className='icon-label-heading'>
+                      Live Arena
+                    </IconLabel>
+                  </h2>
                   <div className='panel-header-actions'>
                     {activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
                       <span className='mode-pill mode-pill-ai'>AI MODE</span>
@@ -1470,7 +1495,11 @@ export default function TrainerPage() {
               />
               <article className='panel chalk-panel finish-secondary-panel ai-transition-panel appear-up'>
                 <div className='panel-title-row'>
-                  <h2>Auto Cycle</h2>
+                  <h2>
+                    <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-heading'>
+                      Auto Cycle
+                    </IconLabel>
+                  </h2>
                   <span className='mode-pill mode-pill-ai'>Next Blueprint</span>
                 </div>
                 <p className='placeholder-text'>

@@ -1,6 +1,13 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import IconLabel from 'components/IconLabel.js';
+import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
+import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
+import FunctionIcon from 'images/phosphor/function.svg';
+import HouseIcon from 'images/phosphor/house.svg';
+import ListChecksIcon from 'images/phosphor/list-checks.svg';
+import TimerIcon from 'images/phosphor/timer.svg';
 import { AI_MODE_LOG_TABLE } from 'utils/aiModeLogs.js';
 import { formatDuration } from 'utils/mathEngine.js';
 import {
@@ -145,7 +152,9 @@ export default function StatsPage() {
               className='button button-quiet'
               disabled={isLoading}
             >
-              {isLoading ? 'Refreshing...' : 'Refresh data'}
+              <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
+                {isLoading ? 'Refreshing...' : 'Refresh data'}
+              </IconLabel>
             </button>
             <button
               type='button'
@@ -178,7 +187,9 @@ export default function StatsPage() {
                 AI MODE activity will appear here.
               </p>
               <Link href='/' className='button button-strong'>
-                Open trainer
+                <IconLabel icon={HouseIcon} className='icon-label-button'>
+                  Open trainer
+                </IconLabel>
               </Link>
             </section>
           )}
@@ -186,7 +197,11 @@ export default function StatsPage() {
           {!isLoading && !errorMessage && overview.totalAttempts > 0 && (
             <>
               <section className='summary-panel appear-up'>
-                <h2>Overall Performance</h2>
+                <h2>
+                  <IconLabel icon={ChartLineUpIcon} className='icon-label-heading'>
+                    Overall Performance
+                  </IconLabel>
+                </h2>
                 <div className='summary-grid'>
                   <article>
                     <h3>Total Attempts</h3>
@@ -208,7 +223,11 @@ export default function StatsPage() {
               </section>
 
               <section className='panel paper-panel appear-up'>
-                <h2>Operation Breakdown</h2>
+                <h2>
+                  <IconLabel icon={FunctionIcon} className='icon-label-heading'>
+                    Operation Breakdown
+                  </IconLabel>
+                </h2>
                 <div className='operation-grid'>
                   {operationBreakdown.map((row) => (
                     <article key={row.operation} className='operation-card'>
@@ -222,7 +241,11 @@ export default function StatsPage() {
               </section>
 
               <section className='panel chalk-panel appear-up'>
-                <h2>Recent Sessions</h2>
+                <h2>
+                  <IconLabel icon={TimerIcon} className='icon-label-heading'>
+                    Recent Sessions
+                  </IconLabel>
+                </h2>
                 <p>Showing sessions from the last {RECENT_PROGRESS_WINDOW_DAYS} days.</p>
                 <div className='table-wrap'>
                   <table>
@@ -259,7 +282,11 @@ export default function StatsPage() {
               </section>
 
               <section className='panel paper-panel appear-up'>
-                <h2>Recent Attempts</h2>
+                <h2>
+                  <IconLabel icon={ListChecksIcon} className='icon-label-heading'>
+                    Recent Attempts
+                  </IconLabel>
+                </h2>
                 <p>Showing attempts from the last {RECENT_PROGRESS_WINDOW_DAYS} days.</p>
                 <ul className='attempt-list'>
                   {recentAttempts.map((entry) => (

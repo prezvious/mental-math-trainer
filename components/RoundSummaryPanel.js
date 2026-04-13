@@ -1,3 +1,7 @@
+import IconLabel from 'components/IconLabel.js';
+import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
+import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
+import TrophyIcon from 'images/phosphor/trophy.svg';
 import { formatDuration } from 'utils/mathEngine.js';
 
 export default function RoundSummaryPanel({
@@ -18,7 +22,11 @@ export default function RoundSummaryPanel({
   return (
     <section className={`summary-panel appear-up round-summary-panel ${className}`.trim()}>
       <div className='panel-title-row'>
-        <h2>{title}</h2>
+        <h2>
+          <IconLabel icon={TrophyIcon} className='icon-label-heading'>
+            {title}
+          </IconLabel>
+        </h2>
         {badgeLabel && <span className={`mode-pill ${badgeClassName}`}>{badgeLabel}</span>}
       </div>
       <div className='summary-grid'>
@@ -52,14 +60,18 @@ export default function RoundSummaryPanel({
             className='button button-strong'
             onClick={primaryAction.onClick}
           >
-            {primaryAction.label}
+            <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
+              {primaryAction.label}
+            </IconLabel>
           </button>
           <button
             type='button'
             className='button button-quiet'
             onClick={secondaryAction.onClick}
           >
-            {secondaryAction.label}
+            <IconLabel icon={SlidersHorizontalIcon} className='icon-label-button'>
+              {secondaryAction.label}
+            </IconLabel>
           </button>
         </div>
       )}

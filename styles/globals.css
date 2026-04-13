@@ -251,6 +251,49 @@ code {
   color: inherit;
 }
 
+.icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.48rem;
+  min-width: 0;
+}
+
+.icon-label-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  display: block;
+  color: inherit;
+}
+
+.icon-label-nav {
+  gap: 0.42rem;
+}
+
+.icon-label-nav .icon-label-icon {
+  width: 0.92rem;
+  height: 0.92rem;
+  opacity: 0.88;
+}
+
+.icon-label-heading {
+  gap: 0.55rem;
+}
+
+.icon-label-heading .icon-label-icon {
+  width: 1.08rem;
+  height: 1.08rem;
+}
+
+.icon-label-button {
+  gap: 0.46rem;
+}
+
+.icon-label-button .icon-label-icon {
+  width: 0.98rem;
+  height: 0.98rem;
+}
+
 .theme-drawer {
   width: min(340px, calc(100vw - 1.5rem));
   padding: 0.72rem;

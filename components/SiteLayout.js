@@ -1,7 +1,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import SettingsIcon from 'images/settings.svg';
+import IconLabel from 'components/IconLabel.js';
+import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
+import HouseIcon from 'images/phosphor/house.svg';
+import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
+import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
@@ -114,9 +118,9 @@ export default function SiteLayout({ children }) {
   );
 
   const navLinks = [
-    { href: '/', label: 'Trainer' },
-    { href: '/mixed', label: 'Mixed' },
-    { href: '/stats', label: 'Progress' }
+    { href: '/', label: 'Trainer', icon: HouseIcon },
+    { href: '/mixed', label: 'Mixed', icon: SquaresFourIcon },
+    { href: '/stats', label: 'Progress', icon: ChartLineUpIcon }
   ];
 
   const handleSignOut = async () => {
@@ -153,7 +157,9 @@ export default function SiteLayout({ children }) {
                   href={link.href}
                   className={`site-nav-link ${isActive ? 'is-active' : ''}`}
                 >
-                  {link.label}
+                  <IconLabel icon={link.icon} className='icon-label-nav'>
+                    {link.label}
+                  </IconLabel>
                 </Link>
               );
             })}
@@ -196,7 +202,7 @@ export default function SiteLayout({ children }) {
           aria-expanded={isThemePanelOpen}
           aria-controls='theme-settings-panel'
         >
-          <SettingsIcon className='theme-fab-icon' />
+          <SlidersHorizontalIcon className='theme-fab-icon' />
         </button>
         <section
           id='theme-settings-panel'

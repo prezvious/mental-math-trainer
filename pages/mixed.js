@@ -1,11 +1,14 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import IconLabel from 'components/IconLabel.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import Keypad from 'components/mixed/Keypad.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import QuestionTimer from 'components/mixed/QuestionTimer.js';
 import StackedProblem from 'components/mixed/StackedProblem.js';
+import PlayCircleIcon from 'images/phosphor/play-circle.svg';
+import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   createMixedProblem,
@@ -648,7 +651,11 @@ function MixedTrainerContent() {
         <>
           <section className='mixed-config-layout appear-up'>
             <article className='panel paper-panel'>
-              <h2>Your Selection</h2>
+              <h2>
+                <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
+                  Your Selection
+                </IconLabel>
+              </h2>
               <form className='settings-form' onSubmit={startRound}>
                 {MIXED_OPERATIONS.map((op) => {
                   const meta = MIXED_OPERATION_META[op];
@@ -725,11 +732,13 @@ function MixedTrainerContent() {
                   aria-keyshortcuts='Enter'
                   disabled={isLoadingMixedSettings || !canStart}
                 >
-                  {isLoadingMixedSettings
-                    ? 'Loading...'
-                    : !canStart
-                      ? 'Enable at least one operation'
-                      : 'Start Mixed Training'}
+                  <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                    {isLoadingMixedSettings
+                      ? 'Loading...'
+                      : !canStart
+                        ? 'Enable at least one operation'
+                        : 'Start Mixed Training'}
+                  </IconLabel>
                 </button>
               </form>
             </article>

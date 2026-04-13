@@ -35,6 +35,8 @@ coverage/
 
 .vercel/
 .netlify/
+.playwright-mcp/
+output/playwright/
 
 # Private backend tooling
 supabase/*
