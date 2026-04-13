@@ -1,8 +1,12 @@
+import HotkeyActionContent from 'components/HotkeyActionContent.js';
 import IconLabel from 'components/IconLabel.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
 import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
 import TrophyIcon from 'images/phosphor/trophy.svg';
 import { formatDuration } from 'utils/mathEngine.js';
+import { formatHotkeyLabel } from 'utils/hotkeys.js';
+
+const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel('Enter');
 
 export default function RoundSummaryPanel({
   title = 'Round Summary',
@@ -59,11 +63,15 @@ export default function RoundSummaryPanel({
             type='button'
             className='button button-strong'
             onClick={primaryAction.onClick}
-            aria-keyshortcuts='Enter'
+            aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
           >
-            <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
+            <HotkeyActionContent
+              hotkey={PRIMARY_ACTION_HOTKEY}
+              icon={ArrowsClockwiseIcon}
+              iconLabelClassName='icon-label-button'
+            >
               {primaryAction.label}
-            </IconLabel>
+            </HotkeyActionContent>
           </button>
           <button
             type='button'

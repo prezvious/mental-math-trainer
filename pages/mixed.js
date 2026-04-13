@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import HotkeyActionContent from 'components/HotkeyActionContent.js';
 import IconLabel from 'components/IconLabel.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import Keypad from 'components/mixed/Keypad.js';
@@ -35,9 +36,11 @@ import {
 import {
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
-import { isShortcutEventEligible } from 'utils/hotkeys.js';
+import { formatHotkeyLabel, isShortcutEventEligible } from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
+
+const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel('Enter');
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -724,16 +727,20 @@ function MixedTrainerContent() {
                 <button
                   type='submit'
                   className='button button-strong button-full'
-                  aria-keyshortcuts='Enter'
+                  aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
                   disabled={isLoadingMixedSettings || !canStart}
                 >
-                  <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                  <HotkeyActionContent
+                    hotkey={PRIMARY_ACTION_HOTKEY}
+                    icon={PlayCircleIcon}
+                    iconLabelClassName='icon-label-button'
+                  >
                     {isLoadingMixedSettings
                       ? 'Loading...'
                       : !canStart
                         ? 'Enable at least one operation'
                         : 'Start Mixed Training'}
-                  </IconLabel>
+                  </HotkeyActionContent>
                 </button>
               </form>
             </article>

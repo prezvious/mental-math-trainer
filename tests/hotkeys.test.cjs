@@ -4,7 +4,10 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 let GLOBAL_HOTKEY_ACTIONS;
+let GLOBAL_HOTKEY_KEYS;
+let formatHotkeyLabel;
 let getGlobalHotkeyAction;
+let getGlobalHotkeyLabel;
 let getNextThemeKey;
 let isShortcutEventEligible;
 
@@ -29,7 +32,10 @@ test.before(async () => {
 
   ({
     GLOBAL_HOTKEY_ACTIONS,
+    GLOBAL_HOTKEY_KEYS,
+    formatHotkeyLabel,
     getGlobalHotkeyAction,
+    getGlobalHotkeyLabel,
     getNextThemeKey,
     isShortcutEventEligible
   } = hotkeys);
@@ -44,6 +50,19 @@ test('getGlobalHotkeyAction resolves the configured plain-letter shortcuts', () 
   assert.equal(getGlobalHotkeyAction('u'), GLOBAL_HOTKEY_ACTIONS.SIGNUP);
   assert.equal(getGlobalHotkeyAction('O'), GLOBAL_HOTKEY_ACTIONS.LOGOUT);
   assert.equal(getGlobalHotkeyAction('x'), null);
+});
+
+test('visible hotkey labels stay aligned with the shortcut map', () => {
+  Object.values(GLOBAL_HOTKEY_ACTIONS).forEach((action) => {
+    assert.equal(
+      getGlobalHotkeyLabel(action),
+      formatHotkeyLabel(GLOBAL_HOTKEY_KEYS[action])
+    );
+  });
+
+  assert.equal(formatHotkeyLabel('r'), 'R');
+  assert.equal(formatHotkeyLabel(' Enter '), 'Enter');
+  assert.equal(formatHotkeyLabel(null), '');
 });
 
 test('isShortcutEventEligible blocks interactive targets and modified key presses', () => {
