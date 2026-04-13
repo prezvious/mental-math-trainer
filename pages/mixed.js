@@ -1,14 +1,14 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import HotkeyActionContent from 'components/HotkeyActionContent.js';
+import HotkeyHint from 'components/HotkeyHint.js';
 import IconLabel from 'components/IconLabel.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import Keypad from 'components/mixed/Keypad.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import QuestionTimer from 'components/mixed/QuestionTimer.js';
 import StackedProblem from 'components/mixed/StackedProblem.js';
-import PlayCircleIcon from 'images/phosphor/play-circle.svg';
+import PlayCircleIcon from 'images/phosphor/play-circle-bold.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
@@ -36,11 +36,15 @@ import {
 import {
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
-import { formatHotkeyLabel, isShortcutEventEligible } from 'utils/hotkeys.js';
+import {
+  ROUND_CONTROL_HOTKEY,
+  formatHotkeyLabel,
+  isShortcutEventEligible
+} from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
-const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel('Enter');
+const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel(ROUND_CONTROL_HOTKEY);
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -730,17 +734,16 @@ function MixedTrainerContent() {
                   aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
                   disabled={isLoadingMixedSettings || !canStart}
                 >
-                  <HotkeyActionContent
-                    hotkey={PRIMARY_ACTION_HOTKEY}
-                    icon={PlayCircleIcon}
-                    iconLabelClassName='icon-label-button'
-                  >
-                    {isLoadingMixedSettings
-                      ? 'Loading...'
-                      : !canStart
-                        ? 'Enable at least one operation'
-                        : 'Start Mixed Training'}
-                  </HotkeyActionContent>
+                  <span className='button-hotkey-label'>
+                    <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                      {isLoadingMixedSettings
+                        ? 'Loading...'
+                        : !canStart
+                          ? 'Enable at least one operation'
+                          : 'Start Mixed Training'}
+                    </IconLabel>
+                    <HotkeyHint label={PRIMARY_ACTION_HOTKEY} />
+                  </span>
                 </button>
               </form>
             </article>

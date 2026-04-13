@@ -18,6 +18,8 @@ export const GLOBAL_HOTKEY_KEYS = Object.freeze({
   [GLOBAL_HOTKEY_ACTIONS.LOGOUT]: 'o'
 });
 
+export const ROUND_CONTROL_HOTKEY = 'Enter';
+
 const INTERACTIVE_TAG_NAMES = new Set(['input', 'textarea', 'select', 'button', 'a']);
 
 function normalizeKey(key) {
@@ -34,9 +36,7 @@ export function formatHotkeyLabel(shortcut) {
     return '';
   }
 
-  return trimmedShortcut.length === 1
-    ? trimmedShortcut.toUpperCase()
-    : trimmedShortcut;
+  return trimmedShortcut.length === 1 ? trimmedShortcut.toUpperCase() : trimmedShortcut;
 }
 
 export function getGlobalHotkeyAction(key) {
@@ -52,6 +52,78 @@ export function getGlobalHotkeyAction(key) {
 export function getGlobalHotkeyLabel(action) {
   return formatHotkeyLabel(GLOBAL_HOTKEY_KEYS[action]);
 }
+
+export const HOTKEY_REFERENCE_GROUPS = Object.freeze([
+  Object.freeze({
+    id: 'navigation',
+    label: 'Navigation',
+    items: Object.freeze([
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.TRAINER],
+        label: 'Open Trainer',
+        description: 'Jump to the main trainer page.'
+      }),
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.MIXED],
+        label: 'Open Mixed',
+        description: 'Jump to the mixed arithmetic trainer.'
+      }),
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.PROGRESS],
+        label: 'Open Progress',
+        description: 'Jump to the progress dashboard.'
+      })
+    ])
+  }),
+  Object.freeze({
+    id: 'appearance',
+    label: 'Appearance',
+    items: Object.freeze([
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.THEME],
+        label: 'Cycle theme',
+        description: 'Rotate through the available palettes instantly.',
+        note: 'Cycles the palette directly; use the floating button to open this drawer.'
+      })
+    ])
+  }),
+  Object.freeze({
+    id: 'account',
+    label: 'Account',
+    items: Object.freeze([
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGIN],
+        label: 'Open Log in',
+        description: 'Go straight to the sign-in page.',
+        note: 'Logged out only.'
+      }),
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.SIGNUP],
+        label: 'Open Sign up',
+        description: 'Go straight to the account creation page.',
+        note: 'Logged out only.'
+      }),
+      Object.freeze({
+        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGOUT],
+        label: 'Log out',
+        description: 'Sign out and end the active synced session.',
+        note: 'Signed in only.'
+      })
+    ])
+  }),
+  Object.freeze({
+    id: 'round-control',
+    label: 'Round Control',
+    items: Object.freeze([
+      Object.freeze({
+        shortcut: ROUND_CONTROL_HOTKEY,
+        label: 'Primary round action',
+        description: 'Start the current round or restart the last finished one.',
+        note: 'Trainer and Mixed when no round is active.'
+      })
+    ])
+  })
+]);
 
 export function isInteractiveHotkeyTarget(target) {
   if (!target || typeof target !== 'object') {

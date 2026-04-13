@@ -1,13 +1,13 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import HotkeyActionContent from 'components/HotkeyActionContent.js';
+import HotkeyHint from 'components/HotkeyHint.js';
 import IconLabel from 'components/IconLabel.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
 import LightningIcon from 'images/phosphor/lightning.svg';
-import PlayCircleIcon from 'images/phosphor/play-circle.svg';
+import PlayCircleIcon from 'images/phosphor/play-circle-bold.svg';
 import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
@@ -43,7 +43,11 @@ import {
   buildProgressLogRow,
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
-import { formatHotkeyLabel, isShortcutEventEligible } from 'utils/hotkeys.js';
+import {
+  ROUND_CONTROL_HOTKEY,
+  formatHotkeyLabel,
+  isShortcutEventEligible
+} from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
@@ -146,7 +150,7 @@ const DEFAULT_SOLVER_STATE = Object.freeze({
   result: null
 });
 const AI_SOLVE_BATCH_SIZE = 25;
-const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel('Enter');
+const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel(ROUND_CONTROL_HOTKEY);
 
 export default function TrainerPage() {
   const router = useRouter();
@@ -1165,13 +1169,9 @@ export default function TrainerPage() {
                 onClick={primaryAction.onClick}
                 aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
               >
-                <HotkeyActionContent
-                  hotkey={PRIMARY_ACTION_HOTKEY}
-                  icon={ArrowsClockwiseIcon}
-                  iconLabelClassName='icon-label-button'
-                >
+                <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
                   {primaryAction.label}
-                </HotkeyActionContent>
+                </IconLabel>
               </button>
             )}
             {secondaryAction && (
@@ -1359,17 +1359,16 @@ export default function TrainerPage() {
                       aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
                       disabled={isLoadingPreferences}
                     >
-                      <HotkeyActionContent
-                        hotkey={PRIMARY_ACTION_HOTKEY}
-                        icon={PlayCircleIcon}
-                        iconLabelClassName='icon-label-button'
-                      >
-                        {isLoadingPreferences
-                          ? 'Loading blueprint...'
-                          : isAiMode
-                          ? 'Start AI round'
-                          : 'Start round'}
-                      </HotkeyActionContent>
+                      <span className='button-hotkey-label'>
+                        <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                          {isLoadingPreferences
+                            ? 'Loading blueprint...'
+                            : isAiMode
+                            ? 'Start AI round'
+                            : 'Start round'}
+                        </IconLabel>
+                        <HotkeyHint label={PRIMARY_ACTION_HOTKEY} />
+                      </span>
                     </button>
                   </form>
                 </article>

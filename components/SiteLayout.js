@@ -1,16 +1,21 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import HotkeyActionContent from 'components/HotkeyActionContent.js';
 import HotkeyHint from 'components/HotkeyHint.js';
+import IconLabel from 'components/IconLabel.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
+import CommandIcon from 'images/phosphor/command-bold.svg';
 import HouseIcon from 'images/phosphor/house.svg';
-import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
+import KeyboardIcon from 'images/phosphor/keyboard-bold.svg';
+import PaletteIcon from 'images/phosphor/palette-bold.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   GLOBAL_HOTKEY_ACTIONS,
+  GLOBAL_HOTKEY_KEYS,
+  HOTKEY_REFERENCE_GROUPS,
+  formatHotkeyLabel,
   getGlobalHotkeyAction,
   getGlobalHotkeyLabel,
   getNextThemeKey,
@@ -22,6 +27,11 @@ import {
   THEME_OPTIONS
 } from 'utils/themes.js';
 
+const CONTROL_TABS = Object.freeze({
+  THEME: 'theme',
+  HOTKEYS: 'hotkeys'
+});
+
 export default function SiteLayout({ children }) {
   const router = useRouter();
   const { user, isConfigured, signOut } = useSupabaseAuth();
@@ -29,12 +39,16 @@ export default function SiteLayout({ children }) {
   const { themeKey, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
+  const [activeControlTab, setActiveControlTab] = useState(CONTROL_TABS.THEME);
   const themeButtonRef = useRef(null);
   const themeSelectRef = useRef(null);
   const wasThemePanelOpenRef = useRef(false);
 
   useEffect(() => {
-    const closeThemePanel = () => setIsThemePanelOpen(false);
+    const closeThemePanel = () => {
+      setIsThemePanelOpen(false);
+      setActiveControlTab(CONTROL_TABS.THEME);
+    };
     router.events.on('routeChangeStart', closeThemePanel);
     return () => router.events.off('routeChangeStart', closeThemePanel);
   }, [router.events]);
@@ -57,7 +71,9 @@ export default function SiteLayout({ children }) {
   useEffect(() => {
     if (isThemePanelOpen) {
       wasThemePanelOpenRef.current = true;
-      themeSelectRef.current?.focus();
+      if (activeControlTab === CONTROL_TABS.THEME) {
+        themeSelectRef.current?.focus();
+      }
       return;
     }
 
@@ -65,16 +81,22 @@ export default function SiteLayout({ children }) {
       themeButtonRef.current?.focus();
       wasThemePanelOpenRef.current = false;
     }
+  }, [activeControlTab, isThemePanelOpen]);
+
+  useEffect(() => {
+    if (!isThemePanelOpen) {
+      setActiveControlTab(CONTROL_TABS.THEME);
+    }
   }, [isThemePanelOpen]);
 
   const activeTheme = useMemo(() => getThemeByKey(themeKey), [themeKey]);
   const trainerShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.TRAINER);
   const mixedShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.MIXED);
   const progressShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.PROGRESS);
-  const themeShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.THEME);
   const loginShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.LOGIN);
   const signupShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.SIGNUP);
   const logoutShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.LOGOUT);
+  const themeShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.THEME);
 
   const themeStyle = useMemo(
     () => ({
@@ -180,6 +202,11 @@ export default function SiteLayout({ children }) {
     });
   }, [isLoadingPreferences, themeKey, upsertPreferences, user]);
 
+  const handleThemeFabToggle = useCallback(() => {
+    setIsThemePanelOpen((isOpen) => !isOpen);
+    setActiveControlTab(CONTROL_TABS.THEME);
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return undefined;
@@ -257,13 +284,9 @@ export default function SiteLayout({ children }) {
                   className={`site-nav-link ${isActive ? 'is-active' : ''}`}
                   aria-keyshortcuts={link.hotkey}
                 >
-                  <HotkeyActionContent
-                    hotkey={link.hotkey}
-                    icon={link.icon}
-                    iconLabelClassName='icon-label-nav'
-                  >
+                  <IconLabel icon={link.icon} className='icon-label-nav'>
                     {link.label}
-                  </HotkeyActionContent>
+                  </IconLabel>
                 </Link>
               );
             })}
@@ -279,7 +302,7 @@ export default function SiteLayout({ children }) {
                   onClick={handleSignOut}
                   aria-keyshortcuts={logoutShortcut}
                 >
-                  <HotkeyActionContent hotkey={logoutShortcut}>Log out</HotkeyActionContent>
+                  Log out
                 </button>
               </div>
             ) : (
@@ -289,14 +312,14 @@ export default function SiteLayout({ children }) {
                   className='button button-quiet'
                   aria-keyshortcuts={loginShortcut}
                 >
-                  <HotkeyActionContent hotkey={loginShortcut}>Log in</HotkeyActionContent>
+                  Log in
                 </Link>
                 <Link
                   href='/signup'
                   className='button button-strong'
                   aria-keyshortcuts={signupShortcut}
                 >
-                  <HotkeyActionContent hotkey={signupShortcut}>Sign up</HotkeyActionContent>
+                  Sign up
                 </Link>
               </div>
             )}
@@ -315,55 +338,128 @@ export default function SiteLayout({ children }) {
             ref={themeButtonRef}
             type='button'
             className='theme-fab'
-            onClick={() => setIsThemePanelOpen((isOpen) => !isOpen)}
-            aria-label='Open theme settings'
+            onClick={handleThemeFabToggle}
+            aria-label='Open appearance and hotkeys'
             aria-expanded={isThemePanelOpen}
-            aria-controls='theme-settings-panel'
+            aria-controls='appearance-hotkeys-panel'
             aria-keyshortcuts={themeShortcut}
           >
-            <SlidersHorizontalIcon className='theme-fab-icon' />
+            <CommandIcon className='theme-fab-icon' />
           </button>
           <HotkeyHint
             label={themeShortcut}
             variant='floating'
-            className='theme-fab-shortcut'
+            className='theme-fab-hotkey'
           />
         </div>
         <section
-          id='theme-settings-panel'
+          id='appearance-hotkeys-panel'
           className={`theme-drawer ${isThemePanelOpen ? 'is-open' : ''}`}
-          aria-label='Theme settings'
+          aria-label='Appearance and hotkeys'
           aria-hidden={!isThemePanelOpen}
           hidden={!isThemePanelOpen}
         >
-          <div className='theme-settings' role='group' aria-label='Theme settings'>
-            <p className='theme-kicker'>Theme</p>
-            <label className='theme-label' htmlFor='theme-select'>
-              Palette
-            </label>
-            <select
-              ref={themeSelectRef}
-              id='theme-select'
-              className='theme-select'
-              value={activeTheme.key}
-              onChange={handleThemeChange}
-              disabled={Boolean(user) && isLoadingPreferences}
+          <div className='theme-settings control-drawer' role='group' aria-label='Appearance and hotkeys'>
+            <div className='control-drawer-tabs' role='tablist' aria-label='Appearance and hotkeys sections'>
+              <button
+                id='appearance-tab'
+                type='button'
+                role='tab'
+                className={`control-drawer-tab${activeControlTab === CONTROL_TABS.THEME ? ' is-active' : ''}`}
+                aria-selected={activeControlTab === CONTROL_TABS.THEME}
+                aria-controls='appearance-panel'
+                tabIndex={activeControlTab === CONTROL_TABS.THEME ? 0 : -1}
+                onClick={() => setActiveControlTab(CONTROL_TABS.THEME)}
+              >
+                <IconLabel icon={PaletteIcon} className='icon-label-button'>
+                  Theme
+                </IconLabel>
+              </button>
+              <button
+                id='hotkeys-tab'
+                type='button'
+                role='tab'
+                className={`control-drawer-tab${activeControlTab === CONTROL_TABS.HOTKEYS ? ' is-active' : ''}`}
+                aria-selected={activeControlTab === CONTROL_TABS.HOTKEYS}
+                aria-controls='hotkeys-panel'
+                tabIndex={activeControlTab === CONTROL_TABS.HOTKEYS ? 0 : -1}
+                onClick={() => setActiveControlTab(CONTROL_TABS.HOTKEYS)}
+              >
+                <IconLabel icon={KeyboardIcon} className='icon-label-button'>
+                  Hotkeys
+                </IconLabel>
+              </button>
+            </div>
+
+            <div
+              id='appearance-panel'
+              className='control-drawer-panel'
+              role='tabpanel'
+              aria-labelledby='appearance-tab'
+              hidden={activeControlTab !== CONTROL_TABS.THEME}
             >
-              {THEME_OPTIONS.map((theme) => (
-                <option key={theme.key} value={theme.key}>
-                  {theme.name}
-                </option>
-              ))}
-            </select>
-            <p className='theme-vibe'>{activeTheme.vibe}</p>
-            <div className='theme-swatches' aria-hidden='true'>
-              {activeTheme.colors.map((color) => (
-                <span
-                  key={`${activeTheme.key}-${color}`}
-                  className='theme-swatch'
-                  style={{ backgroundColor: color }}
-                />
-              ))}
+              <p className='theme-kicker'>Appearance</p>
+              <label className='theme-label' htmlFor='theme-select'>
+                Palette
+              </label>
+              <select
+                ref={themeSelectRef}
+                id='theme-select'
+                className='theme-select'
+                value={activeTheme.key}
+                onChange={handleThemeChange}
+                disabled={Boolean(user) && isLoadingPreferences}
+              >
+                {THEME_OPTIONS.map((theme) => (
+                  <option key={theme.key} value={theme.key}>
+                    {theme.name}
+                  </option>
+                ))}
+              </select>
+              <p className='theme-vibe'>{activeTheme.vibe}</p>
+              <div className='theme-swatches' aria-hidden='true'>
+                {activeTheme.colors.map((color) => (
+                  <span
+                    key={`${activeTheme.key}-${color}`}
+                    className='theme-swatch'
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div
+              id='hotkeys-panel'
+              className='control-drawer-panel'
+              role='tabpanel'
+              aria-labelledby='hotkeys-tab'
+              hidden={activeControlTab !== CONTROL_TABS.HOTKEYS}
+            >
+              <p className='theme-kicker'>Hotkeys</p>
+              <div className='hotkey-reference'>
+                {HOTKEY_REFERENCE_GROUPS.map((group) => (
+                  <section key={group.id} className='hotkey-group' aria-labelledby={`${group.id}-title`}>
+                    <h3 id={`${group.id}-title`} className='hotkey-group-title'>
+                      {group.label}
+                    </h3>
+                    <ul className='hotkey-group-list'>
+                      {group.items.map((item) => (
+                        <li key={`${group.id}-${item.shortcut}-${item.label}`} className='hotkey-row'>
+                          <HotkeyHint
+                            label={formatHotkeyLabel(item.shortcut)}
+                            variant='reference'
+                          />
+                          <div className='hotkey-row-copy'>
+                            <p className='hotkey-row-label'>{item.label}</p>
+                            <p className='hotkey-row-description'>{item.description}</p>
+                            {item.note && <p className='hotkey-row-note'>{item.note}</p>}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
             </div>
           </div>
         </section>

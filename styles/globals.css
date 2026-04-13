@@ -317,13 +317,38 @@ code {
   color: inherit;
 }
 
+.hotkey-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.18rem 0.44rem;
+  border: 1px solid rgba(50, 34, 68, 0.24);
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.45);
+  color: var(--text-subtle);
+  box-shadow: inset 0 -1px 0 rgba(50, 34, 68, 0.12);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.button .hotkey-hint {
+  border-color: rgba(255, 255, 255, 0.24);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(248, 248, 251, 0.92);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
 .hotkey-hint-floating {
   position: absolute;
   top: 0;
   right: 0;
   transform: translate(38%, -34%);
-  min-width: 1.4rem;
-  padding: 0.2rem 0.36rem;
+  min-width: 1.45rem;
+  padding: 0.2rem 0.34rem;
   border-color: var(--line);
   background: linear-gradient(145deg, var(--ink-900), var(--ink-700));
   color: #f7f9fc;
@@ -331,6 +356,12 @@ code {
   pointer-events: none;
 }
 
+.hotkey-hint-reference {
+  border-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f5f7fb;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
 .icon-label {
   display: inline-flex;
   align-items: center;
@@ -375,7 +406,7 @@ code {
 }
 
 .theme-drawer {
-  width: min(340px, calc(100vw - 1.5rem));
+  width: min(400px, calc(100vw - 1.5rem));
   padding: 0.72rem;
   border: 1px solid var(--line);
   border-radius: var(--layout-panel-radius);
@@ -396,10 +427,49 @@ code {
 
 .theme-settings {
   display: grid;
-  gap: 0.34rem;
+  gap: 0.6rem;
   border: 1px solid rgba(255, 255, 255, 0.26);
   padding: 0.52rem;
   background-color: rgba(0, 0, 0, 0.18);
+}
+
+.control-drawer-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.control-drawer-tab {
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: calc(var(--layout-panel-radius) * 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f4f7fb;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.84rem;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.control-drawer-tab:hover,
+.control-drawer-tab:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.control-drawer-tab.is-active {
+  background-color: var(--accent-soft);
+  border-color: rgba(255, 255, 255, 0.44);
+  color: var(--ink-900);
+}
+
+.control-drawer-panel {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.control-drawer-panel[hidden] {
+  display: none;
 }
 
 .theme-kicker {
@@ -439,6 +509,78 @@ code {
   color: rgba(247, 249, 252, 0.9);
   font-size: 0.69rem;
   line-height: 1.2;
+}
+
+.hotkey-reference {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hotkey-group {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.hotkey-group-title {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.67rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+}
+
+.hotkey-group-list {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+
+.hotkey-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.65rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hotkey-group-list .hotkey-row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.hotkey-row-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.hotkey-row-label,
+.hotkey-row-description,
+.hotkey-row-note {
+  margin: 0;
+}
+
+.hotkey-row-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.86rem;
+  color: #f7f9fc;
+}
+
+.hotkey-row-description {
+  color: rgba(247, 249, 252, 0.84);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.hotkey-row-note {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.63rem;
+  letter-spacing: 0.04em;
+  color: var(--accent-soft);
 }
 
 .theme-swatches {
@@ -522,6 +664,19 @@ code {
 
 .button-full {
   width: 100%;
+}
+
+.button-hotkey-label {
+  width: 100%;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.72rem;
+}
+
+.button-hotkey-label .icon-label {
+  min-width: 0;
 }
 
 .site-main {
@@ -771,10 +926,6 @@ code {
 .trainer-layout.arena-active .chalk-panel {
   width: 100%;
   max-width: 600px;
-}
-
-.app-shell:has(.arena-active) .theme-floating-layer {
-  display: none;
 }
 
 .settings-form,
@@ -1953,15 +2104,18 @@ th {
     flex: 1 1 0;
   }
 
-  .hotkey-action-content {
+  .button-hotkey-label {
     gap: 0.58rem;
   }
 
   .hotkey-hint {
-    min-width: 1.82rem;
+    min-width: 1.84rem;
     padding-inline: 0.36rem;
   }
 
+  .hotkey-row {
+    gap: 0.55rem;
+  }
   .summary-actions,
   .summary-actions-left {
     flex-direction: column;

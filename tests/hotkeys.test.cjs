@@ -5,6 +5,8 @@ const { pathToFileURL } = require('node:url');
 
 let GLOBAL_HOTKEY_ACTIONS;
 let GLOBAL_HOTKEY_KEYS;
+let HOTKEY_REFERENCE_GROUPS;
+let ROUND_CONTROL_HOTKEY;
 let formatHotkeyLabel;
 let getGlobalHotkeyAction;
 let getGlobalHotkeyLabel;
@@ -33,6 +35,8 @@ test.before(async () => {
   ({
     GLOBAL_HOTKEY_ACTIONS,
     GLOBAL_HOTKEY_KEYS,
+    HOTKEY_REFERENCE_GROUPS,
+    ROUND_CONTROL_HOTKEY,
     formatHotkeyLabel,
     getGlobalHotkeyAction,
     getGlobalHotkeyLabel,
@@ -52,17 +56,51 @@ test('getGlobalHotkeyAction resolves the configured plain-letter shortcuts', () 
   assert.equal(getGlobalHotkeyAction('x'), null);
 });
 
-test('visible hotkey labels stay aligned with the shortcut map', () => {
-  Object.values(GLOBAL_HOTKEY_ACTIONS).forEach((action) => {
-    assert.equal(
-      getGlobalHotkeyLabel(action),
-      formatHotkeyLabel(GLOBAL_HOTKEY_KEYS[action])
-    );
-  });
-
+test('formatHotkeyLabel and getGlobalHotkeyLabel produce the visible keycap labels', () => {
   assert.equal(formatHotkeyLabel('r'), 'R');
   assert.equal(formatHotkeyLabel(' Enter '), 'Enter');
   assert.equal(formatHotkeyLabel(null), '');
+  assert.equal(getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.THEME), 'T');
+});
+
+test('HOTKEY_REFERENCE_GROUPS exposes the full grouped shortcut reference', () => {
+  assert.deepEqual(
+    HOTKEY_REFERENCE_GROUPS.map((group) => group.label),
+    ['Navigation', 'Appearance', 'Account', 'Round Control']
+  );
+
+  assert.deepEqual(
+    HOTKEY_REFERENCE_GROUPS.flatMap((group) =>
+      group.items.map((item) => formatHotkeyLabel(item.shortcut))
+    ),
+    ['R', 'M', 'P', 'T', 'I', 'U', 'O', 'Enter']
+  );
+
+  const accountGroup = HOTKEY_REFERENCE_GROUPS.find((group) => group.id === 'account');
+  const roundControlGroup = HOTKEY_REFERENCE_GROUPS.find(
+    (group) => group.id === 'round-control'
+  );
+
+  assert.equal(
+    accountGroup.items.find(
+      (item) => item.shortcut === GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGIN]
+    ).note,
+    'Logged out only.'
+  );
+  assert.equal(
+    accountGroup.items.find(
+      (item) => item.shortcut === GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.SIGNUP]
+    ).note,
+    'Logged out only.'
+  );
+  assert.equal(
+    accountGroup.items.find(
+      (item) => item.shortcut === GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGOUT]
+    ).note,
+    'Signed in only.'
+  );
+  assert.equal(roundControlGroup.items[0].shortcut, ROUND_CONTROL_HOTKEY);
+  assert.match(roundControlGroup.items[0].note, /Trainer and Mixed/);
 });
 
 test('isShortcutEventEligible blocks interactive targets and modified key presses', () => {
