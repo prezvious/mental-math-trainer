@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import IconLabel from 'components/IconLabel.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import HouseIcon from 'images/phosphor/house.svg';
@@ -8,6 +8,13 @@ import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
+import {
+  GLOBAL_HOTKEY_ACTIONS,
+  GLOBAL_HOTKEY_KEYS,
+  getGlobalHotkeyAction,
+  getNextThemeKey,
+  isShortcutEventEligible
+} from 'utils/hotkeys.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   getThemeByKey,
@@ -118,12 +125,27 @@ export default function SiteLayout({ children }) {
   );
 
   const navLinks = [
-    { href: '/', label: 'Trainer', icon: HouseIcon },
-    { href: '/mixed', label: 'Mixed', icon: SquaresFourIcon },
-    { href: '/stats', label: 'Progress', icon: ChartLineUpIcon }
+    {
+      href: '/',
+      label: 'Trainer',
+      icon: HouseIcon,
+      hotkey: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.TRAINER].toUpperCase()
+    },
+    {
+      href: '/mixed',
+      label: 'Mixed',
+      icon: SquaresFourIcon,
+      hotkey: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.MIXED].toUpperCase()
+    },
+    {
+      href: '/stats',
+      label: 'Progress',
+      icon: ChartLineUpIcon,
+      hotkey: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.PROGRESS].toUpperCase()
+    }
   ];
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     try {
       await terminateActiveSession('sign-out');
     } catch (error) {
@@ -134,11 +156,80 @@ export default function SiteLayout({ children }) {
     if (!error) {
       await router.push('/login');
     }
-  };
+  }, [router, signOut, terminateActiveSession]);
 
   const handleThemeChange = (event) => {
     void upsertPreferences({ themeKey: event.target.value });
   };
+
+  const cycleTheme = useCallback(() => {
+    if (user && isLoadingPreferences) {
+      return;
+    }
+
+    void upsertPreferences({
+      themeKey: getNextThemeKey(themeKey, THEME_OPTIONS)
+    });
+  }, [isLoadingPreferences, themeKey, upsertPreferences, user]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const routeByAction = {
+      [GLOBAL_HOTKEY_ACTIONS.TRAINER]: '/',
+      [GLOBAL_HOTKEY_ACTIONS.MIXED]: '/mixed',
+      [GLOBAL_HOTKEY_ACTIONS.PROGRESS]: '/stats',
+      [GLOBAL_HOTKEY_ACTIONS.LOGIN]: '/login',
+      [GLOBAL_HOTKEY_ACTIONS.SIGNUP]: '/signup'
+    };
+
+    const handleGlobalShortcut = (event) => {
+      if (!isShortcutEventEligible(event)) {
+        return;
+      }
+
+      const action = getGlobalHotkeyAction(event.key);
+      if (!action) {
+        return;
+      }
+
+      if (
+        [GLOBAL_HOTKEY_ACTIONS.LOGIN, GLOBAL_HOTKEY_ACTIONS.SIGNUP].includes(action) &&
+        user
+      ) {
+        return;
+      }
+
+      if (action === GLOBAL_HOTKEY_ACTIONS.LOGOUT && !user) {
+        return;
+      }
+
+      if (action === GLOBAL_HOTKEY_ACTIONS.THEME) {
+        event.preventDefault();
+        cycleTheme();
+        return;
+      }
+
+      if (action === GLOBAL_HOTKEY_ACTIONS.LOGOUT) {
+        event.preventDefault();
+        void handleSignOut();
+        return;
+      }
+
+      const nextRoute = routeByAction[action];
+      if (!nextRoute || router.pathname === nextRoute) {
+        return;
+      }
+
+      event.preventDefault();
+      void router.push(nextRoute);
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcut);
+    return () => window.removeEventListener('keydown', handleGlobalShortcut);
+  }, [cycleTheme, handleSignOut, router, user]);
 
   return (
     <div className='app-shell' data-theme-key={activeTheme.key} style={themeStyle}>
@@ -156,6 +247,7 @@ export default function SiteLayout({ children }) {
                   key={link.href}
                   href={link.href}
                   className={`site-nav-link ${isActive ? 'is-active' : ''}`}
+                  aria-keyshortcuts={link.hotkey}
                 >
                   <IconLabel icon={link.icon} className='icon-label-nav'>
                     {link.label}
@@ -169,16 +261,29 @@ export default function SiteLayout({ children }) {
             {user ? (
               <div className='site-session'>
                 <span className='user-pill'>{user.email}</span>
-                <button type='button' className='button button-quiet' onClick={handleSignOut}>
+                <button
+                  type='button'
+                  className='button button-quiet'
+                  onClick={handleSignOut}
+                  aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGOUT].toUpperCase()}
+                >
                   Log out
                 </button>
               </div>
             ) : (
               <div className='site-auth-links'>
-                <Link href='/login' className='button button-quiet'>
+                <Link
+                  href='/login'
+                  className='button button-quiet'
+                  aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGIN].toUpperCase()}
+                >
                   Log in
                 </Link>
-                <Link href='/signup' className='button button-strong'>
+                <Link
+                  href='/signup'
+                  className='button button-strong'
+                  aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.SIGNUP].toUpperCase()}
+                >
                   Sign up
                 </Link>
               </div>
@@ -201,6 +306,7 @@ export default function SiteLayout({ children }) {
           aria-label='Open theme settings'
           aria-expanded={isThemePanelOpen}
           aria-controls='theme-settings-panel'
+          aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.THEME].toUpperCase()}
         >
           <SlidersHorizontalIcon className='theme-fab-icon' />
         </button>

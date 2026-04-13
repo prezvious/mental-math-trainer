@@ -42,8 +42,14 @@ import {
   buildProgressLogRow,
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
+import { isShortcutEventEligible } from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
+import {
+  TRAINER_COMPLETION_STATES,
+  TRAINER_FINISH_VIEWS,
+  getTrainerFinishView
+} from 'utils/trainerPresentation.js';
 import {
   createActiveRound,
   processRoundSubmission,
@@ -94,6 +100,8 @@ function createRoundSummary(
     attempts,
     settings,
     sourceMode,
+    completionState:
+      meta.completionState || TRAINER_COMPLETION_STATES.COMPLETED,
     aiAutoCycle: Boolean(meta.aiAutoCycle),
     blueprintLabel: meta.blueprintLabel || '',
     finishedAt: new Date().toISOString(),
@@ -594,10 +602,18 @@ export default function TrainerPage() {
     });
   }, [lastRound, startAiAutoCycle, startRoundWithSettings]);
 
+  const handlePrimaryRoundAction = useCallback(() => {
+    if (lastRound) {
+      void handleStartAgain();
+      return;
+    }
+
+    void beginRound();
+  }, [beginRound, handleStartAgain, lastRound]);
+
   useEffect(() => {
     if (
       activeRound ||
-      lastRound ||
       aiTransitionState ||
       isLoadingPreferences ||
       typeof window === 'undefined'
@@ -606,58 +622,33 @@ export default function TrainerPage() {
     }
 
     const handleStartShortcut = (event) => {
-      if (
-        event.defaultPrevented ||
-        event.key !== 'Enter' ||
-        event.repeat ||
-        event.isComposing ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-
-      const target = event.target;
-      if (
-        target instanceof HTMLSelectElement ||
-        target instanceof HTMLButtonElement ||
-        target instanceof HTMLAnchorElement
-      ) {
+      if (event.key !== 'Enter') {
         return;
       }
 
       if (
-        target instanceof HTMLElement &&
-        (target.isContentEditable || target.tagName === 'TEXTAREA')
-      ) {
-        return;
-      }
-
-      if (
-        settingsFormRef.current &&
-        target instanceof Node &&
-        settingsFormRef.current.contains(target)
-      ) {
-        return;
-      }
-
-      if (
-        customSolverFormRef.current &&
-        target instanceof Node &&
-        customSolverFormRef.current.contains(target)
+        !isShortcutEventEligible(event, {
+          blockedContainers: [
+            settingsFormRef.current,
+            customSolverFormRef.current
+          ].filter(Boolean)
+        })
       ) {
         return;
       }
 
       event.preventDefault();
-      void beginRound();
+      handlePrimaryRoundAction();
     };
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, aiTransitionState, beginRound, isLoadingPreferences, lastRound]);
+  }, [
+    activeRound,
+    aiTransitionState,
+    handlePrimaryRoundAction,
+    isLoadingPreferences
+  ]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {
@@ -834,6 +825,7 @@ export default function TrainerPage() {
               false,
               TRAINER_INPUT_MODES.AI,
               {
+                completionState: TRAINER_COMPLETION_STATES.ERROR,
                 aiAutoCycle: Boolean(roundSnapshot.aiAutoCycleRound),
                 blueprintLabel: formatAiCycleBlueprintLabel(roundSnapshot.settings)
               }
@@ -1027,22 +1019,20 @@ export default function TrainerPage() {
     }
   };
 
-  const isAiTransitioning = Boolean(
-    user &&
-    !activeRound &&
-    aiTransitionState &&
-    lastRound?.sourceMode === TRAINER_INPUT_MODES.AI
-  );
-  const isTrainerFinishState = Boolean(
-    !activeRound &&
-    lastRound &&
-    !aiTransitionState
-  );
+  const trainerFinishView = getTrainerFinishView({
+    user,
+    activeRound,
+    lastRound,
+    aiTransitionState
+  });
+  const isAiTransitioning =
+    trainerFinishView === TRAINER_FINISH_VIEWS.AI_TRANSITION;
   const isManualTrainerFinishState =
-    isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.MANUAL;
-  const isAiTrainerFinishState = Boolean(
-    user && isTrainerFinishState && lastRound.sourceMode === TRAINER_INPUT_MODES.AI
-  );
+    trainerFinishView === TRAINER_FINISH_VIEWS.MANUAL_SUMMARY;
+  const isAiTrainerErrorState =
+    trainerFinishView === TRAINER_FINISH_VIEWS.AI_ERROR_SUMMARY;
+  const isAiTrainerFinishState =
+    trainerFinishView === TRAINER_FINISH_VIEWS.AI_ACTIONS;
   const shouldHideTrainerPanels = Boolean(
     !activeRound &&
     (lastRound || aiTransitionState)
@@ -1077,8 +1067,16 @@ export default function TrainerPage() {
     </div>
   );
 
-  const renderAiCalculatorPanel = (copy) => (
-    <article className='panel chalk-panel finish-secondary-panel'>
+  const renderAiCalculatorPanel = ({
+    className = '',
+    copy = '',
+    saveStatus = '',
+    primaryAction = null,
+    secondaryAction = null
+  } = {}) => (
+    <article
+      className={`panel chalk-panel finish-secondary-panel ${className}`.trim()}
+    >
       <div className='panel-title-row'>
         <h2>
           <IconLabel icon={LightningIcon} className='icon-label-heading'>
@@ -1152,6 +1150,39 @@ export default function TrainerPage() {
               </article>
             </div>
           </section>
+        )}
+
+        {saveStatus && <p className='save-status'>{saveStatus}</p>}
+
+        {(primaryAction || secondaryAction) && (
+          <div className='summary-actions'>
+            {primaryAction && (
+              <button
+                type='button'
+                className='button button-strong'
+                onClick={primaryAction.onClick}
+                aria-keyshortcuts='Enter'
+              >
+                <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
+                  {primaryAction.label}
+                </IconLabel>
+              </button>
+            )}
+            {secondaryAction && (
+              <button
+                type='button'
+                className='button button-quiet'
+                onClick={secondaryAction.onClick}
+              >
+                <IconLabel
+                  icon={SlidersHorizontalIcon}
+                  className='icon-label-button'
+                >
+                  {secondaryAction.label}
+                </IconLabel>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </article>
@@ -1485,15 +1516,8 @@ export default function TrainerPage() {
           )}
 
           {isAiTransitioning && lastRound && (
-            <section className='finish-state-shell finish-state-shell-split'>
-              <RoundSummaryPanel
-                title='Round Summary'
-                badgeLabel='AI MODE'
-                badgeClassName='mode-pill-ai'
-                round={lastRound}
-                saveStatus={getSaveStatusMessage(lastRound)}
-              />
-              <article className='panel chalk-panel finish-secondary-panel ai-transition-panel appear-up'>
+            <section className='finish-state-shell finish-state-shell-centered'>
+              <article className='panel chalk-panel finish-secondary-panel ai-transition-panel appear-up summary-panel-centered'>
                 <div className='panel-title-row'>
                   <h2>
                     <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-heading'>
@@ -1505,6 +1529,7 @@ export default function TrainerPage() {
                 <p className='placeholder-text'>
                   Preparing {aiTransitionState.nextBlueprintLabel}
                 </p>
+                <p className='save-status'>{getSaveStatusMessage(lastRound)}</p>
                 <ProgressBar
                   label='Moving to the next round'
                   secondaryLabel={aiTransitionState.nextBlueprintLabel}
@@ -1542,7 +1567,25 @@ export default function TrainerPage() {
             </section>
           )}
 
-          {isAiTrainerFinishState && (
+          {isAiTrainerFinishState && lastRound && (
+            <section className='finish-state-shell finish-state-shell-centered'>
+              {renderAiCalculatorPanel({
+                className: 'summary-panel-centered',
+                copy: 'Use Live Arena as a calculator, or restart the same mode when you are ready.',
+                saveStatus: getSaveStatusMessage(lastRound),
+                primaryAction: {
+                  label: 'Start Again',
+                  onClick: () => void handleStartAgain()
+                },
+                secondaryAction: {
+                  label: 'Customize the blueprint',
+                  onClick: handleCustomizeBlueprint
+                }
+              })}
+            </section>
+          )}
+
+          {isAiTrainerErrorState && (
             <section className='finish-state-shell finish-state-shell-split'>
               <RoundSummaryPanel
                 title='Round Summary'
@@ -1556,9 +1599,9 @@ export default function TrainerPage() {
                   onClick: handleCustomizeBlueprint
                 }}
               />
-              {renderAiCalculatorPanel(
-                'Use Live Arena as a calculator, or restart the same mode when you are ready.'
-              )}
+              {renderAiCalculatorPanel({
+                copy: 'Use Live Arena as a calculator, or restart the same mode when you are ready.'
+              })}
             </section>
           )}
       </>

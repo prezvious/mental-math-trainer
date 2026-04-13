@@ -35,6 +35,7 @@ import {
 import {
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
+import { isShortcutEventEligible } from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
@@ -387,10 +388,18 @@ function MixedTrainerContent() {
     beginRound();
   }, [beginRound]);
 
+  const handlePrimaryRoundAction = useCallback(() => {
+    if (lastRound) {
+      handleStartAgain();
+      return;
+    }
+
+    beginRound();
+  }, [beginRound, handleStartAgain, lastRound]);
+
   useEffect(() => {
     if (
       activeRound ||
-      lastRound ||
       isLoadingMixedSettings ||
       typeof window === 'undefined'
     ) {
@@ -398,35 +407,21 @@ function MixedTrainerContent() {
     }
 
     const handleStartShortcut = (event) => {
-      if (
-        event.defaultPrevented ||
-        event.key !== 'Enter' ||
-        event.repeat ||
-        event.isComposing ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey
-      ) {
+      if (event.key !== 'Enter') {
         return;
       }
 
-      const target = event.target;
-      if (
-        target instanceof HTMLSelectElement ||
-        target instanceof HTMLButtonElement ||
-        target instanceof HTMLAnchorElement
-      ) {
+      if (!isShortcutEventEligible(event)) {
         return;
       }
 
       event.preventDefault();
-      beginRound();
+      handlePrimaryRoundAction();
     };
 
     window.addEventListener('keydown', handleStartShortcut);
     return () => window.removeEventListener('keydown', handleStartShortcut);
-  }, [activeRound, beginRound, isLoadingMixedSettings, lastRound]);
+  }, [activeRound, handlePrimaryRoundAction, isLoadingMixedSettings]);
 
   useEffect(() => {
     if (!activeRound || typeof window === 'undefined') {

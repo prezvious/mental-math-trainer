@@ -59,6 +59,7 @@ export default function RoundSummaryPanel({
             type='button'
             className='button button-strong'
             onClick={primaryAction.onClick}
+            aria-keyshortcuts='Enter'
           >
             <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
               {primaryAction.label}
