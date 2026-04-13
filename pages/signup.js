@@ -91,7 +91,7 @@ export default function SignupPage() {
       password,
       options: {
         emailRedirectTo:
-          typeof window === 'undefined' ? undefined : `${window.location.origin}/login`
+          typeof window === 'undefined' ? undefined : `${window.location.origin}/verify`
       }
     });
 
@@ -115,7 +115,7 @@ export default function SignupPage() {
     }
 
     setSuccessMessage(
-      'Account created. Check your inbox to confirm your email, then log in.'
+      'Account created. Check your inbox to confirm your email. The link will bring you back to the verification page and sign you in automatically.'
     );
   };
 

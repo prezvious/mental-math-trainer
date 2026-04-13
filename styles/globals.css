@@ -1137,6 +1137,115 @@ th {
   max-width: 560px;
 }
 
+.verify-shell {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.verify-hero {
+  padding: clamp(1.05rem, 3vw, 1.7rem);
+  box-shadow: 0 10px 24px rgba(24, 17, 34, 0.12);
+  background:
+    linear-gradient(
+      152deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.18) 100%
+    ),
+    rgba(236, 226, 212, 0.76);
+}
+
+.verify-hero::before {
+  width: 124px;
+  height: 124px;
+  right: -22px;
+  top: -32px;
+  background: rgba(91, 46, 109, 0.08);
+  border-color: rgba(50, 34, 68, 0.2);
+}
+
+.verify-hero::after {
+  width: 86px;
+  height: 10px;
+  left: 18px;
+  top: 18px;
+  background-color: rgba(185, 106, 75, 0.16);
+}
+
+.verify-hero h1 {
+  font-size: clamp(1.9rem, 4.6vw, 2.9rem);
+  line-height: 1.02;
+}
+
+.verify-hero p {
+  max-width: 54ch;
+}
+
+.verify-panel {
+  max-width: none;
+  display: grid;
+  gap: 0.95rem;
+  padding: 1rem 1.05rem 1.1rem;
+  background-color: rgba(255, 255, 255, 0.34);
+  box-shadow: 0 8px 22px rgba(24, 17, 34, 0.08);
+}
+
+.verify-status {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid rgba(50, 34, 68, 0.22);
+  border-radius: calc(var(--layout-panel-radius) * 0.55);
+  background-color: rgba(255, 255, 255, 0.54);
+  padding: 0.9rem 0.95rem;
+}
+
+.verify-status.is-success {
+  background-color: rgba(215, 241, 227, 0.34);
+}
+
+.verify-status-kicker {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.verify-status-copy {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.02rem;
+}
+
+.verify-status-note {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 0.94rem;
+}
+
+.verify-user-pill {
+  width: fit-content;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(50, 34, 68, 0.16);
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.6);
+  color: var(--text-main);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+}
+
+.verify-actions {
+  margin-top: 0;
+}
+
+.verify-helper {
+  margin-top: 0;
+  color: var(--text-subtle);
+}
+
 .password-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
