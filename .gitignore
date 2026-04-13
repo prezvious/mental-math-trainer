@@ -68,6 +68,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.pid
+*.pid.lock
+
+# Local test and browser artifacts
+.nyc_output/
+playwright-report/
+test-results/
 
 *.db
 *.sqlite

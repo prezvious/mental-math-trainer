@@ -24,6 +24,21 @@ function normalizeKey(key) {
   return typeof key === 'string' ? key.trim().toLowerCase() : '';
 }
 
+export function formatHotkeyLabel(shortcut) {
+  if (typeof shortcut !== 'string') {
+    return '';
+  }
+
+  const trimmedShortcut = shortcut.trim();
+  if (!trimmedShortcut) {
+    return '';
+  }
+
+  return trimmedShortcut.length === 1
+    ? trimmedShortcut.toUpperCase()
+    : trimmedShortcut;
+}
+
 export function getGlobalHotkeyAction(key) {
   const normalizedKey = normalizeKey(key);
 
@@ -32,6 +47,10 @@ export function getGlobalHotkeyAction(key) {
       ([, shortcutKey]) => shortcutKey === normalizedKey
     )?.[0] || null
   );
+}
+
+export function getGlobalHotkeyLabel(action) {
+  return formatHotkeyLabel(GLOBAL_HOTKEY_KEYS[action]);
 }
 
 export function isInteractiveHotkeyTarget(target) {

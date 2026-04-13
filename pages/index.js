@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import HotkeyActionContent from 'components/HotkeyActionContent.js';
 import IconLabel from 'components/IconLabel.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
@@ -42,7 +43,7 @@ import {
   buildProgressLogRow,
   createProgressLogBuffer
 } from 'utils/progressLogs.js';
-import { isShortcutEventEligible } from 'utils/hotkeys.js';
+import { formatHotkeyLabel, isShortcutEventEligible } from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
@@ -145,6 +146,7 @@ const DEFAULT_SOLVER_STATE = Object.freeze({
   result: null
 });
 const AI_SOLVE_BATCH_SIZE = 25;
+const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel('Enter');
 
 export default function TrainerPage() {
   const router = useRouter();
@@ -1161,11 +1163,15 @@ export default function TrainerPage() {
                 type='button'
                 className='button button-strong'
                 onClick={primaryAction.onClick}
-                aria-keyshortcuts='Enter'
+                aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
               >
-                <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
+                <HotkeyActionContent
+                  hotkey={PRIMARY_ACTION_HOTKEY}
+                  icon={ArrowsClockwiseIcon}
+                  iconLabelClassName='icon-label-button'
+                >
                   {primaryAction.label}
-                </IconLabel>
+                </HotkeyActionContent>
               </button>
             )}
             {secondaryAction && (
@@ -1350,16 +1356,20 @@ export default function TrainerPage() {
                     <button
                       type='submit'
                       className='button button-strong button-full'
-                      aria-keyshortcuts='Enter'
+                      aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
                       disabled={isLoadingPreferences}
                     >
-                      <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                      <HotkeyActionContent
+                        hotkey={PRIMARY_ACTION_HOTKEY}
+                        icon={PlayCircleIcon}
+                        iconLabelClassName='icon-label-button'
+                      >
                         {isLoadingPreferences
                           ? 'Loading blueprint...'
                           : isAiMode
                           ? 'Start AI round'
                           : 'Start round'}
-                      </IconLabel>
+                      </HotkeyActionContent>
                     </button>
                   </form>
                 </article>

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import IconLabel from 'components/IconLabel.js';
+import HotkeyActionContent from 'components/HotkeyActionContent.js';
+import HotkeyHint from 'components/HotkeyHint.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import HouseIcon from 'images/phosphor/house.svg';
 import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
@@ -10,8 +11,8 @@ import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   GLOBAL_HOTKEY_ACTIONS,
-  GLOBAL_HOTKEY_KEYS,
   getGlobalHotkeyAction,
+  getGlobalHotkeyLabel,
   getNextThemeKey,
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
@@ -67,6 +68,13 @@ export default function SiteLayout({ children }) {
   }, [isThemePanelOpen]);
 
   const activeTheme = useMemo(() => getThemeByKey(themeKey), [themeKey]);
+  const trainerShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.TRAINER);
+  const mixedShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.MIXED);
+  const progressShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.PROGRESS);
+  const themeShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.THEME);
+  const loginShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.LOGIN);
+  const signupShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.SIGNUP);
+  const logoutShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.LOGOUT);
 
   const themeStyle = useMemo(
     () => ({
@@ -129,19 +137,19 @@ export default function SiteLayout({ children }) {
       href: '/',
       label: 'Trainer',
       icon: HouseIcon,
-      hotkey: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.TRAINER].toUpperCase()
+      hotkey: trainerShortcut
     },
     {
       href: '/mixed',
       label: 'Mixed',
       icon: SquaresFourIcon,
-      hotkey: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.MIXED].toUpperCase()
+      hotkey: mixedShortcut
     },
     {
       href: '/stats',
       label: 'Progress',
       icon: ChartLineUpIcon,
-      hotkey: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.PROGRESS].toUpperCase()
+      hotkey: progressShortcut
     }
   ];
 
@@ -249,9 +257,13 @@ export default function SiteLayout({ children }) {
                   className={`site-nav-link ${isActive ? 'is-active' : ''}`}
                   aria-keyshortcuts={link.hotkey}
                 >
-                  <IconLabel icon={link.icon} className='icon-label-nav'>
+                  <HotkeyActionContent
+                    hotkey={link.hotkey}
+                    icon={link.icon}
+                    iconLabelClassName='icon-label-nav'
+                  >
                     {link.label}
-                  </IconLabel>
+                  </HotkeyActionContent>
                 </Link>
               );
             })}
@@ -265,9 +277,9 @@ export default function SiteLayout({ children }) {
                   type='button'
                   className='button button-quiet'
                   onClick={handleSignOut}
-                  aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGOUT].toUpperCase()}
+                  aria-keyshortcuts={logoutShortcut}
                 >
-                  Log out
+                  <HotkeyActionContent hotkey={logoutShortcut}>Log out</HotkeyActionContent>
                 </button>
               </div>
             ) : (
@@ -275,16 +287,16 @@ export default function SiteLayout({ children }) {
                 <Link
                   href='/login'
                   className='button button-quiet'
-                  aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGIN].toUpperCase()}
+                  aria-keyshortcuts={loginShortcut}
                 >
-                  Log in
+                  <HotkeyActionContent hotkey={loginShortcut}>Log in</HotkeyActionContent>
                 </Link>
                 <Link
                   href='/signup'
                   className='button button-strong'
-                  aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.SIGNUP].toUpperCase()}
+                  aria-keyshortcuts={signupShortcut}
                 >
-                  Sign up
+                  <HotkeyActionContent hotkey={signupShortcut}>Sign up</HotkeyActionContent>
                 </Link>
               </div>
             )}
@@ -298,18 +310,25 @@ export default function SiteLayout({ children }) {
         </p>
       </footer>
       <div className='theme-floating-layer'>
-        <button
-          ref={themeButtonRef}
-          type='button'
-          className='theme-fab'
-          onClick={() => setIsThemePanelOpen((isOpen) => !isOpen)}
-          aria-label='Open theme settings'
-          aria-expanded={isThemePanelOpen}
-          aria-controls='theme-settings-panel'
-          aria-keyshortcuts={GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.THEME].toUpperCase()}
-        >
-          <SlidersHorizontalIcon className='theme-fab-icon' />
-        </button>
+        <div className='theme-fab-shell'>
+          <button
+            ref={themeButtonRef}
+            type='button'
+            className='theme-fab'
+            onClick={() => setIsThemePanelOpen((isOpen) => !isOpen)}
+            aria-label='Open theme settings'
+            aria-expanded={isThemePanelOpen}
+            aria-controls='theme-settings-panel'
+            aria-keyshortcuts={themeShortcut}
+          >
+            <SlidersHorizontalIcon className='theme-fab-icon' />
+          </button>
+          <HotkeyHint
+            label={themeShortcut}
+            variant='floating'
+            className='theme-fab-shortcut'
+          />
+        </div>
         <section
           id='theme-settings-panel'
           className={`theme-drawer ${isThemePanelOpen ? 'is-open' : ''}`}
