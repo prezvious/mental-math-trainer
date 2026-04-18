@@ -1,6 +1,21 @@
 export const MAX_DIGITS = 8;
 export const MAX_ROUND_SIZE = 10000;
 export const MIN_ROUND_SIZE = 3;
+export const MAX_BASE = 20;
+
+export const PRACTICE_MODES = Object.freeze({
+  POSITIVE: 'POSITIVE',
+  DECIMAL: 'DECIMAL'
+});
+
+export const PRACTICE_MODE_META = Object.freeze({
+  [PRACTICE_MODES.POSITIVE]: {
+    label: 'Positive Numbers'
+  },
+  [PRACTICE_MODES.DECIMAL]: {
+    label: 'Decimals'
+  }
+});
 
 export const OPERATION_META = {
   ADDITION: { label: 'Addition', symbol: '+' },
@@ -11,18 +26,11 @@ export const OPERATION_META = {
 };
 
 const VALID_OPERATIONS = Object.keys(OPERATION_META);
+const VALID_PRACTICE_MODES = Object.values(PRACTICE_MODES);
+const DECIMAL_OPERATIONS = VALID_OPERATIONS.filter(
+  (operation) => operation !== 'EXPONENTIATION'
+);
 const ORDERED_DIGIT_OPERATIONS = ['SUBTRACTION', 'DIVISION'];
-
-export function getOperationOptions() {
-  return VALID_OPERATIONS.map((operation) => ({
-    value: operation,
-    ...OPERATION_META[operation]
-  }));
-}
-
-export function operationRequiresOrderedDigits(operation) {
-  return ORDERED_DIGIT_OPERATIONS.includes(operation);
-}
 
 function clampNumber(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -43,7 +51,122 @@ function randomIntegerByDigits(digits) {
   return randomInteger(min, max);
 }
 
-function getOperands(operation, leftDigits, rightDigits) {
+function randomDigitString(length) {
+  return Array.from({ length }, () => String(randomInteger(0, 10))).join('');
+}
+
+function pow10BigInt(exponent) {
+  return 10n ** BigInt(exponent);
+}
+
+function randomBigIntInclusive(minInclusive, maxInclusive) {
+  const minimum = BigInt(minInclusive);
+  const maximum = BigInt(maxInclusive);
+
+  if (maximum < minimum) {
+    throw new Error('Cannot pick a random BigInt from an empty range.');
+  }
+
+  const minLength = minimum.toString().length;
+  const maxLength = maximum.toString().length;
+
+  while (true) {
+    const length =
+      minLength === maxLength ? maxLength : randomInteger(minLength, maxLength + 1);
+    let candidateText = '';
+
+    if (length === 1) {
+      candidateText = String(randomInteger(0, 10));
+    } else {
+      candidateText = `${randomInteger(1, 10)}${randomDigitString(length - 1)}`;
+    }
+
+    const candidate = BigInt(candidateText);
+    if (candidate >= minimum && candidate <= maximum) {
+      return candidate;
+    }
+  }
+}
+
+function divideCeil(numerator, denominator) {
+  return (numerator + denominator - 1n) / denominator;
+}
+
+function trimLeadingZeros(value) {
+  return value.replace(/^0+(?=\d)/, '') || '0';
+}
+
+function formatCanonicalDecimal(numerator, scale) {
+  const absoluteValue = numerator < 0n ? -numerator : numerator;
+  const sign = numerator < 0n ? '-' : '';
+
+  if (!scale) {
+    return `${sign}${absoluteValue.toString()}`;
+  }
+
+  const rawText = absoluteValue.toString().padStart(scale + 1, '0');
+  const splitIndex = rawText.length - scale;
+  const wholePart = trimLeadingZeros(rawText.slice(0, splitIndex));
+  const fractionPart = rawText.slice(splitIndex).replace(/0+$/, '');
+
+  return fractionPart ? `${sign}${wholePart}.${fractionPart}` : `${sign}${wholePart}`;
+}
+
+function formatFixedDecimal(numerator, scale) {
+  if (!scale) {
+    return numerator.toString();
+  }
+
+  const rawText = numerator.toString().padStart(scale + 1, '0');
+  const splitIndex = rawText.length - scale;
+  const wholePart = trimLeadingZeros(rawText.slice(0, splitIndex));
+  const fractionPart = rawText.slice(splitIndex).padStart(scale, '0');
+
+  return `${wholePart}.${fractionPart}`;
+}
+
+function alignScaledNumerators(leftOperand, rightOperand) {
+  const scale = Math.max(leftOperand.scale, rightOperand.scale);
+  return {
+    scale,
+    leftNumerator: leftOperand.numerator * pow10BigInt(scale - leftOperand.scale),
+    rightNumerator: rightOperand.numerator * pow10BigInt(scale - rightOperand.scale)
+  };
+}
+
+function compareDecimalOperands(leftOperand, rightOperand) {
+  const aligned = alignScaledNumerators(leftOperand, rightOperand);
+  if (aligned.leftNumerator === aligned.rightNumerator) {
+    return 0;
+  }
+
+  return aligned.leftNumerator > aligned.rightNumerator ? 1 : -1;
+}
+
+function buildDecimalOperand(wholeDigits, decimalDigits) {
+  const wholePart =
+    wholeDigits === 1
+      ? String(randomInteger(0, 10))
+      : String(randomIntegerByDigits(wholeDigits));
+  const fractionalCeiling = Math.pow(10, decimalDigits);
+  let fractionalValue = randomInteger(0, fractionalCeiling);
+
+  // Keep Decimal mode visually decimal instead of showing ".00" style operands.
+  if (fractionalValue === 0) {
+    fractionalValue = randomInteger(1, fractionalCeiling);
+  }
+
+  const fractionPart = String(fractionalValue).padStart(decimalDigits, '0');
+  const numerator = BigInt(`${wholePart}${fractionPart}`);
+
+  return {
+    numerator,
+    scale: decimalDigits,
+    text: `${wholePart}.${fractionPart}`
+  };
+}
+
+function getPositiveOperands(operation, leftDigits, rightDigits) {
   switch (operation) {
     case 'ADDITION':
     case 'MULTIPLICATION':
@@ -103,7 +226,7 @@ function getExponentiationOperands(maxBase) {
   return [base, exponent];
 }
 
-function getCorrectAnswer(operation, leftOperand, rightOperand) {
+function getPositiveCorrectAnswer(operation, leftOperand, rightOperand) {
   const left = BigInt(leftOperand);
   const right = BigInt(rightOperand);
 
@@ -123,26 +246,238 @@ function getCorrectAnswer(operation, leftOperand, rightOperand) {
   }
 }
 
-export function createProblem(operation, leftDigits, rightDigits, maxBase) {
-  if (operation === 'EXPONENTIATION') {
-    const [base, exponent] = getExponentiationOperands(maxBase || 10);
+function createPositiveProblem(settings) {
+  if (settings.operation === 'EXPONENTIATION') {
+    const [base, exponent] = getExponentiationOperands(settings.maxBase || 10);
     return {
-      operation,
+      practiceMode: PRACTICE_MODES.POSITIVE,
+      operation: settings.operation,
       leftOperand: base,
       rightOperand: exponent,
-      correctAnswer: getCorrectAnswer(operation, base, exponent)
+      correctAnswer: getPositiveCorrectAnswer(settings.operation, base, exponent)
     };
   }
 
-  const [leftOperand, rightOperand] = getOperands(operation, leftDigits, rightDigits);
-  const correctAnswer = getCorrectAnswer(operation, leftOperand, rightOperand);
+  const [leftOperand, rightOperand] = getPositiveOperands(
+    settings.operation,
+    settings.leftDigits,
+    settings.rightDigits
+  );
 
   return {
-    operation,
+    practiceMode: PRACTICE_MODES.POSITIVE,
+    operation: settings.operation,
     leftOperand,
     rightOperand,
-    correctAnswer
+    correctAnswer: getPositiveCorrectAnswer(settings.operation, leftOperand, rightOperand)
   };
+}
+
+function createDecimalAdditionProblem(settings) {
+  const leftOperand = buildDecimalOperand(settings.leftDigits, settings.leftDecimalDigits);
+  const rightOperand = buildDecimalOperand(settings.rightDigits, settings.rightDecimalDigits);
+  const aligned = alignScaledNumerators(leftOperand, rightOperand);
+
+  return {
+    practiceMode: PRACTICE_MODES.DECIMAL,
+    operation: settings.operation,
+    leftOperand: leftOperand.text,
+    rightOperand: rightOperand.text,
+    correctAnswer: formatCanonicalDecimal(
+      aligned.leftNumerator + aligned.rightNumerator,
+      aligned.scale
+    )
+  };
+}
+
+function createDecimalSubtractionProblem(settings) {
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const leftOperand = buildDecimalOperand(settings.leftDigits, settings.leftDecimalDigits);
+    const rightOperand = buildDecimalOperand(settings.rightDigits, settings.rightDecimalDigits);
+
+    if (compareDecimalOperands(leftOperand, rightOperand) < 0) {
+      continue;
+    }
+
+    const aligned = alignScaledNumerators(leftOperand, rightOperand);
+    return {
+      practiceMode: PRACTICE_MODES.DECIMAL,
+      operation: settings.operation,
+      leftOperand: leftOperand.text,
+      rightOperand: rightOperand.text,
+      correctAnswer: formatCanonicalDecimal(
+        aligned.leftNumerator - aligned.rightNumerator,
+        aligned.scale
+      )
+    };
+  }
+
+  throw new Error('Unable to generate a non-negative decimal subtraction problem.');
+}
+
+function createDecimalMultiplicationProblem(settings) {
+  const leftOperand = buildDecimalOperand(settings.leftDigits, settings.leftDecimalDigits);
+  const rightOperand = buildDecimalOperand(settings.rightDigits, settings.rightDecimalDigits);
+
+  return {
+    practiceMode: PRACTICE_MODES.DECIMAL,
+    operation: settings.operation,
+    leftOperand: leftOperand.text,
+    rightOperand: rightOperand.text,
+    correctAnswer: formatCanonicalDecimal(
+      leftOperand.numerator * rightOperand.numerator,
+      leftOperand.scale + rightOperand.scale
+    )
+  };
+}
+
+function formatDecimalDivisionAnswer(quotient, leftScale, rightScale) {
+  if (leftScale >= rightScale) {
+    return formatCanonicalDecimal(quotient, leftScale - rightScale);
+  }
+
+  return formatCanonicalDecimal(
+    quotient * pow10BigInt(rightScale - leftScale),
+    0
+  );
+}
+
+function createDecimalDivisionProblem(settings) {
+  const minimumWholeDigitsNumerator =
+    settings.leftDigits === 1 ? 1n : pow10BigInt(settings.leftDigits - 1 + settings.leftDecimalDigits);
+  const maximumWholeDigitsNumerator = pow10BigInt(
+    settings.leftDigits + settings.leftDecimalDigits
+  ) - 1n;
+
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const rightOperand = buildDecimalOperand(
+      settings.rightDigits,
+      settings.rightDecimalDigits
+    );
+    const minimumQuotient = divideCeil(
+      minimumWholeDigitsNumerator,
+      rightOperand.numerator
+    );
+    const maximumQuotient = maximumWholeDigitsNumerator / rightOperand.numerator;
+
+    if (maximumQuotient < minimumQuotient || maximumQuotient <= 0n) {
+      continue;
+    }
+
+    const quotient = randomBigIntInclusive(
+      minimumQuotient < 1n ? 1n : minimumQuotient,
+      maximumQuotient
+    );
+    const leftNumerator = rightOperand.numerator * quotient;
+
+    return {
+      practiceMode: PRACTICE_MODES.DECIMAL,
+      operation: settings.operation,
+      leftOperand: formatFixedDecimal(leftNumerator, settings.leftDecimalDigits),
+      rightOperand: rightOperand.text,
+      correctAnswer: formatDecimalDivisionAnswer(
+        quotient,
+        settings.leftDecimalDigits,
+        settings.rightDecimalDigits
+      )
+    };
+  }
+
+  throw new Error('Unable to generate a terminating decimal division problem.');
+}
+
+function createDecimalProblem(settings) {
+  switch (settings.operation) {
+    case 'ADDITION':
+      return createDecimalAdditionProblem(settings);
+    case 'SUBTRACTION':
+      return createDecimalSubtractionProblem(settings);
+    case 'MULTIPLICATION':
+      return createDecimalMultiplicationProblem(settings);
+    case 'DIVISION':
+      return createDecimalDivisionProblem(settings);
+    default:
+      return createDecimalMultiplicationProblem({
+        ...settings,
+        operation: 'MULTIPLICATION'
+      });
+  }
+}
+
+function toProblemSettings(
+  settingsOrOperation,
+  leftDigits,
+  rightDigits,
+  maxBase,
+  leftDecimalDigits,
+  rightDecimalDigits
+) {
+  if (typeof settingsOrOperation === 'object' && settingsOrOperation !== null) {
+    return sanitizeSettings(settingsOrOperation);
+  }
+
+  return sanitizeSettings({
+    practiceMode: PRACTICE_MODES.POSITIVE,
+    operation: settingsOrOperation,
+    leftDigits,
+    rightDigits,
+    maxBase,
+    leftDecimalDigits,
+    rightDecimalDigits
+  });
+}
+
+export function getPracticeModeOptions() {
+  return VALID_PRACTICE_MODES.map((practiceMode) => ({
+    value: practiceMode,
+    ...PRACTICE_MODE_META[practiceMode]
+  }));
+}
+
+export function getOperationOptions(practiceMode = PRACTICE_MODES.POSITIVE) {
+  const allowedOperations =
+    practiceMode === PRACTICE_MODES.DECIMAL ? DECIMAL_OPERATIONS : VALID_OPERATIONS;
+
+  return allowedOperations.map((operation) => ({
+    value: operation,
+    ...OPERATION_META[operation]
+  }));
+}
+
+export function operationRequiresOrderedDigits(operation) {
+  return ORDERED_DIGIT_OPERATIONS.includes(operation);
+}
+
+export function formatSettingsDigitLabel(settings) {
+  if (settings.practiceMode === PRACTICE_MODES.DECIMAL) {
+    return `${settings.leftDigits}d/${settings.leftDecimalDigits}dp \u00D7 ${settings.rightDigits}d/${settings.rightDecimalDigits}dp`;
+  }
+
+  return `${settings.leftDigits}x${settings.rightDigits} digits`;
+}
+
+export function createProblem(
+  settingsOrOperation,
+  leftDigits,
+  rightDigits,
+  maxBase,
+  leftDecimalDigits,
+  rightDecimalDigits
+) {
+  const settings = toProblemSettings(
+    settingsOrOperation,
+    leftDigits,
+    rightDigits,
+    maxBase,
+    leftDecimalDigits,
+    rightDecimalDigits
+  );
+
+  if (settings.practiceMode === PRACTICE_MODES.DECIMAL) {
+    return createDecimalProblem(settings);
+  }
+
+  return createPositiveProblem(settings);
 }
 
 export function formatDuration(milliseconds) {
@@ -173,12 +508,47 @@ export function parseIntegerInput(value) {
   }
 }
 
-export const MAX_BASE = 20;
+export function parseTrainerAnswer(value, practiceMode = PRACTICE_MODES.POSITIVE) {
+  const trimmedValue =
+    typeof value === 'string' ? value.trim() : String(value ?? '').trim();
 
-export function sanitizeSettings(settings) {
-  const operation = VALID_OPERATIONS.includes(settings.operation)
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (practiceMode !== PRACTICE_MODES.DECIMAL) {
+    return parseIntegerInput(trimmedValue);
+  }
+
+  if (!/^\d+(?:[.,]\d+)?$/.test(trimmedValue)) {
+    return null;
+  }
+
+  const normalizedValue = trimmedValue.replace(',', '.');
+  const [wholePartText, fractionPartText = ''] = normalizedValue.split('.');
+  const wholePart = trimLeadingZeros(wholePartText);
+  const fractionPart = fractionPartText.replace(/0+$/, '');
+
+  return fractionPart ? `${wholePart}.${fractionPart}` : wholePart;
+}
+
+export function sanitizeSettings(settings = {}) {
+  const practiceMode = VALID_PRACTICE_MODES.includes(
+    settings.practiceMode ?? settings.trainer_practice_mode
+  )
+    ? settings.practiceMode ?? settings.trainer_practice_mode
+    : PRACTICE_MODES.POSITIVE;
+
+  let operation = VALID_OPERATIONS.includes(settings.operation)
     ? settings.operation
     : 'MULTIPLICATION';
+
+  if (
+    practiceMode === PRACTICE_MODES.DECIMAL &&
+    operation === 'EXPONENTIATION'
+  ) {
+    operation = 'MULTIPLICATION';
+  }
 
   const leftDigits = clampNumber(parseNumberOrFallback(settings.leftDigits, 2), 1, MAX_DIGITS);
   let rightDigits = clampNumber(
@@ -186,16 +556,37 @@ export function sanitizeSettings(settings) {
     1,
     MAX_DIGITS
   );
+
   if (operationRequiresOrderedDigits(operation)) {
     rightDigits = Math.min(rightDigits, leftDigits);
   }
 
+  const leftDecimalDigits = clampNumber(
+    parseNumberOrFallback(
+      settings.leftDecimalDigits ?? settings.trainer_left_decimal_digits,
+      2
+    ),
+    1,
+    MAX_DIGITS
+  );
+  const rightDecimalDigits = clampNumber(
+    parseNumberOrFallback(
+      settings.rightDecimalDigits ?? settings.trainer_right_decimal_digits,
+      2
+    ),
+    1,
+    MAX_DIGITS
+  );
+
   const maxBase = clampNumber(parseNumberOrFallback(settings.maxBase, 10), 2, MAX_BASE);
 
   return {
+    practiceMode,
     operation,
     leftDigits,
     rightDigits,
+    leftDecimalDigits,
+    rightDecimalDigits,
     maxBase,
     roundSize: clampNumber(
       parseNumberOrFallback(settings.roundSize, 10),

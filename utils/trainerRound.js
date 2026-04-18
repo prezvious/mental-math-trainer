@@ -1,4 +1,4 @@
-import { createProblem, parseIntegerInput } from './mathEngine.js';
+import { createProblem, parseTrainerAnswer } from './mathEngine.js';
 
 export function createActiveRound(
   settings,
@@ -16,9 +16,24 @@ export function createActiveRound(
   };
 }
 
-export function shouldAutoSubmitAnswer(inputValue, correctAnswer) {
-  const parsedAnswer = parseIntegerInput(inputValue);
-  return parsedAnswer !== null && parsedAnswer === correctAnswer ? parsedAnswer : null;
+export function shouldAutoSubmitAnswer(inputValue, currentProblemOrCorrectAnswer) {
+  const currentProblem =
+    typeof currentProblemOrCorrectAnswer === 'object' &&
+    currentProblemOrCorrectAnswer !== null &&
+    'correctAnswer' in currentProblemOrCorrectAnswer
+      ? currentProblemOrCorrectAnswer
+      : null;
+  const correctAnswer = currentProblem
+    ? currentProblem.correctAnswer
+    : currentProblemOrCorrectAnswer;
+  const parsedAnswer = parseTrainerAnswer(
+    inputValue,
+    currentProblem?.practiceMode
+  );
+
+  return parsedAnswer !== null && parsedAnswer === correctAnswer
+    ? parsedAnswer
+    : null;
 }
 
 export function createAttempt(
@@ -65,12 +80,7 @@ export function resolveRoundSubmission(
     };
   }
 
-  const nextProblem = createProblemImpl(
-    activeRound.settings.operation,
-    activeRound.settings.leftDigits,
-    activeRound.settings.rightDigits,
-    activeRound.settings.maxBase
-  );
+  const nextProblem = createProblemImpl(activeRound.settings);
 
     return {
       attempt,

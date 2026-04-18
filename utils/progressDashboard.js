@@ -1,4 +1,4 @@
-import { OPERATION_META } from './mathEngine.js';
+import { OPERATION_META, PRACTICE_MODES } from './mathEngine.js';
 
 export const PROGRESS_SOURCE_LABELS = Object.freeze({
   manual: 'Manual',
@@ -103,6 +103,18 @@ function formatManualPrompt(entry) {
   return `${entry.left_operand} ${OPERATION_META[entry.operation]?.symbol || '?'} ${entry.right_operand}`;
 }
 
+function formatManualDigitLabel(entry) {
+  if (entry.operation === 'EXPONENTIATION') {
+    return null;
+  }
+
+  if (entry.practice_mode === PRACTICE_MODES.DECIMAL) {
+    return `${entry.digits_left}d/${entry.left_decimal_digits}dp \u00D7 ${entry.digits_right}d/${entry.right_decimal_digits}dp`;
+  }
+
+  return `${entry.digits_left}x${entry.digits_right}`;
+}
+
 export function normalizeManualProgressLogs(rows) {
   return rows.map((entry) => ({
     id: `manual-${entry.id}`,
@@ -112,10 +124,11 @@ export function normalizeManualProgressLogs(rows) {
     questionIndex: entry.question_index,
     operation: entry.operation,
     operationLabel: entry.operation,
-    digitLabel: `${entry.digits_left}x${entry.digits_right}`,
+    digitLabel: formatManualDigitLabel(entry),
     promptText: formatManualPrompt(entry),
     normalizedExpression: formatManualPrompt(entry),
-    resultKind: 'integer',
+    resultKind:
+      entry.practice_mode === PRACTICE_MODES.DECIMAL ? 'decimal' : 'integer',
     resultExactText: entry.correct_answer,
     resultDecimalText: entry.correct_answer,
     submittedAnswerText: entry.submitted_answer,

@@ -31,11 +31,13 @@ import {
 import {
   computeRoundStats,
   createProblem,
+  getPracticeModeOptions,
   getOperationOptions,
   MAX_BASE,
   operationRequiresOrderedDigits,
   OPERATION_META,
-  parseIntegerInput,
+  parseTrainerAnswer,
+  PRACTICE_MODES,
   resolveRoundSizeDraft,
   sanitizeSettings
 } from 'utils/mathEngine.js';
@@ -289,11 +291,17 @@ export default function TrainerPage() {
     () => computeRoundStats(activeRound?.attempts || []),
     [activeRound]
   );
+  const isDecimalPracticeMode = settings.practiceMode === PRACTICE_MODES.DECIMAL;
   const isExponentiation = settings.operation === 'EXPONENTIATION';
   const isOrderedDigitOperation = operationRequiresOrderedDigits(settings.operation);
   const availableRightDigits = isOrderedDigitOperation
     ? DIGIT_OPTIONS.filter((digits) => digits <= settings.leftDigits)
     : DIGIT_OPTIONS;
+  const operationOptions = useMemo(
+    () => getOperationOptions(settings.practiceMode),
+    [settings.practiceMode]
+  );
+  const practiceModeOptions = useMemo(() => getPracticeModeOptions(), []);
 
   const markSummarySaved = useCallback(() => {
     if (!isMountedRef.current) {
@@ -486,12 +494,7 @@ export default function TrainerPage() {
       }
 
       const sanitizedSettings = sanitizeSettings(roundSettings);
-      const firstProblem = createProblem(
-        sanitizedSettings.operation,
-        sanitizedSettings.leftDigits,
-        sanitizedSettings.rightDigits,
-        sanitizedSettings.maxBase
-      );
+      const firstProblem = createProblem(sanitizedSettings);
       const questionStartedAt = Date.now();
       const sessionId = createSessionId();
 
@@ -890,7 +893,10 @@ export default function TrainerPage() {
   const handleAnswerSubmit = async (event) => {
     event.preventDefault();
 
-    const submittedAnswer = parseIntegerInput(answerInputRef.current?.value ?? answerInput);
+    const submittedAnswer = parseTrainerAnswer(
+      answerInputRef.current?.value ?? answerInput,
+      activeRoundRef.current?.currentProblem.practiceMode
+    );
     if (submittedAnswer === null) {
       return;
     }
@@ -907,10 +913,7 @@ export default function TrainerPage() {
       return;
     }
 
-    const autoSubmittedAnswer = shouldAutoSubmitAnswer(
-      nextValue,
-      roundSnapshot.currentProblem.correctAnswer
-    );
+      const autoSubmittedAnswer = shouldAutoSubmitAnswer(nextValue, roundSnapshot.currentProblem);
     if (autoSubmittedAnswer === null) {
       return;
     }
@@ -928,7 +931,13 @@ export default function TrainerPage() {
       return;
     }
 
-    const normalizedValue = ['leftDigits', 'rightDigits', 'maxBase'].includes(key)
+    const normalizedValue = [
+      'leftDigits',
+      'rightDigits',
+      'leftDecimalDigits',
+      'rightDecimalDigits',
+      'maxBase'
+    ].includes(key)
       ? Number(value)
       : value;
 
@@ -1277,79 +1286,186 @@ export default function TrainerPage() {
                   </div>
                   <form
                     ref={settingsFormRef}
-                    className='settings-form'
+                    className='settings-form settings-form-blueprint'
                     onSubmit={startRound}
                   >
-                    <label htmlFor='operation'>Operation</label>
-                    <select
-                      id='operation'
-                      value={settings.operation}
-                      onChange={(event) => updateSetting('operation', event.target.value)}
-                      disabled={isLoadingPreferences}
-                    >
-                      {getOperationOptions().map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <fieldset className='setting-group setting-group-span'>
+                      <legend>Practice mode</legend>
+                      <div className='practice-mode-grid' role='radiogroup' aria-label='Practice mode'>
+                        {practiceModeOptions.map((option) => (
+                          <label
+                            key={option.value}
+                            className={`practice-mode-option${
+                              settings.practiceMode === option.value ? ' is-active' : ''
+                            }`}
+                          >
+                            <input
+                              type='radio'
+                              name='practiceMode'
+                              value={option.value}
+                              checked={settings.practiceMode === option.value}
+                              onChange={(event) =>
+                                updateSetting('practiceMode', event.target.value)
+                              }
+                              disabled={isLoadingPreferences}
+                            />
+                            <span className='practice-mode-option-mark' aria-hidden='true' />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
 
-                    {isExponentiation ? (
-                      <>
-                        <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
+                    <div className='settings-grid'>
+                      <div className='setting-group setting-group-span'>
+                        <label htmlFor='operation'>Operation</label>
+                        <select
+                          id='operation'
+                          value={settings.operation}
+                          onChange={(event) => updateSetting('operation', event.target.value)}
+                          disabled={isLoadingPreferences}
+                        >
+                          {operationOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {isExponentiation ? (
+                        <div className='setting-group setting-group-span'>
+                          <label htmlFor='maxBase'>Maximum base ({settings.maxBase})</label>
+                          <input
+                            id='maxBase'
+                            type='range'
+                            min='2'
+                            max={MAX_BASE}
+                            value={settings.maxBase}
+                            onChange={(event) => updateSetting('maxBase', event.target.value)}
+                            disabled={isLoadingPreferences}
+                          />
+                        </div>
+                      ) : isDecimalPracticeMode ? (
+                        <>
+                          <div className='setting-group'>
+                            <label htmlFor='leftDigits'>Left digits before decimal</label>
+                            <select
+                              id='leftDigits'
+                              value={settings.leftDigits}
+                              onChange={(event) => updateSetting('leftDigits', event.target.value)}
+                              disabled={isLoadingPreferences}
+                            >
+                              {DIGIT_OPTIONS.map((digits) => (
+                                <option key={digits} value={digits}>
+                                  {`${digits} digit${digits === 1 ? '' : 's'}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className='setting-group'>
+                            <label htmlFor='leftDecimalDigits'>Left digits after decimal</label>
+                            <select
+                              id='leftDecimalDigits'
+                              value={settings.leftDecimalDigits}
+                              onChange={(event) =>
+                                updateSetting('leftDecimalDigits', event.target.value)
+                              }
+                              disabled={isLoadingPreferences}
+                            >
+                              {DIGIT_OPTIONS.map((digits) => (
+                                <option key={digits} value={digits}>
+                                  {`${digits} digit${digits === 1 ? '' : 's'}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className='setting-group'>
+                            <label htmlFor='rightDigits'>Right digits before decimal</label>
+                            <select
+                              id='rightDigits'
+                              value={settings.rightDigits}
+                              onChange={(event) => updateSetting('rightDigits', event.target.value)}
+                              disabled={isLoadingPreferences}
+                            >
+                              {availableRightDigits.map((digits) => (
+                                <option key={digits} value={digits}>
+                                  {`${digits} digit${digits === 1 ? '' : 's'}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className='setting-group'>
+                            <label htmlFor='rightDecimalDigits'>Right digits after decimal</label>
+                            <select
+                              id='rightDecimalDigits'
+                              value={settings.rightDecimalDigits}
+                              onChange={(event) =>
+                                updateSetting('rightDecimalDigits', event.target.value)
+                              }
+                              disabled={isLoadingPreferences}
+                            >
+                              {DIGIT_OPTIONS.map((digits) => (
+                                <option key={digits} value={digits}>
+                                  {`${digits} digit${digits === 1 ? '' : 's'}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className='setting-group'>
+                            <label htmlFor='leftDigits'>Left number digits</label>
+                            <select
+                              id='leftDigits'
+                              value={settings.leftDigits}
+                              onChange={(event) => updateSetting('leftDigits', event.target.value)}
+                              disabled={isLoadingPreferences}
+                            >
+                              {DIGIT_OPTIONS.map((digits) => (
+                                <option key={digits} value={digits}>
+                                  {`${digits} digit${digits === 1 ? '' : 's'}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className='setting-group'>
+                            <label htmlFor='rightDigits'>Right number digits</label>
+                            <select
+                              id='rightDigits'
+                              value={settings.rightDigits}
+                              onChange={(event) => updateSetting('rightDigits', event.target.value)}
+                              disabled={isLoadingPreferences}
+                            >
+                              {availableRightDigits.map((digits) => (
+                                <option key={digits} value={digits}>
+                                  {`${digits} digit${digits === 1 ? '' : 's'}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
+
+                      <div className='setting-group setting-group-span'>
+                        <label htmlFor='roundSize'>Questions per round</label>
                         <input
-                          id='maxBase'
-                          type='range'
-                          min='2'
-                          max={MAX_BASE}
-                          value={settings.maxBase}
-                          onChange={(event) => updateSetting('maxBase', event.target.value)}
+                          id='roundSize'
+                          type='number'
+                          min='3'
+                          max='10000'
+                          value={roundSizeDraft}
+                          onChange={(event) => updateSetting('roundSize', event.target.value)}
+                          onBlur={commitRoundSizeDraft}
                           disabled={isLoadingPreferences}
                         />
-                      </>
-                    ) : (
-                      <>
-                        <label htmlFor='leftDigits'>Left number digits</label>
-                        <select
-                          id='leftDigits'
-                          value={settings.leftDigits}
-                          onChange={(event) => updateSetting('leftDigits', event.target.value)}
-                          disabled={isLoadingPreferences}
-                        >
-                          {DIGIT_OPTIONS.map((digits) => (
-                            <option key={digits} value={digits}>
-                              {`${digits} digit${digits === 1 ? '' : 's'}`}
-                            </option>
-                          ))}
-                        </select>
-
-                        <label htmlFor='rightDigits'>Right number digits</label>
-                        <select
-                          id='rightDigits'
-                          value={settings.rightDigits}
-                          onChange={(event) => updateSetting('rightDigits', event.target.value)}
-                          disabled={isLoadingPreferences}
-                        >
-                          {availableRightDigits.map((digits) => (
-                            <option key={digits} value={digits}>
-                              {`${digits} digit${digits === 1 ? '' : 's'}`}
-                            </option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-
-                    <label htmlFor='roundSize'>Questions per round</label>
-                    <input
-                      id='roundSize'
-                      type='number'
-                      min='3'
-                      max='10000'
-                      value={roundSizeDraft}
-                      onChange={(event) => updateSetting('roundSize', event.target.value)}
-                      onBlur={commitRoundSizeDraft}
-                      disabled={isLoadingPreferences}
-                    />
+                      </div>
+                    </div>
 
                     {isAiMode && renderAutoCycleToggle()}
 
@@ -1434,11 +1550,19 @@ export default function TrainerPage() {
                           ref={answerInputRef}
                           id='answerInput'
                           type='text'
-                          inputMode='numeric'
+                          inputMode={
+                            activeRound.currentProblem.practiceMode === PRACTICE_MODES.DECIMAL
+                              ? 'decimal'
+                              : 'numeric'
+                          }
                           autoComplete='off'
                           value={answerInput}
                           onChange={handleAnswerChange}
-                          placeholder='Type integer answer'
+                          placeholder={
+                            activeRound.currentProblem.practiceMode === PRACTICE_MODES.DECIMAL
+                              ? 'Type decimal answer'
+                              : 'Type integer answer'
+                          }
                         />
                         <button type='submit' className='button button-strong button-full'>
                           Submit answer

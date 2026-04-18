@@ -1,4 +1,8 @@
-import { sanitizeSettings } from './mathEngine.js';
+import {
+  formatSettingsDigitLabel,
+  PRACTICE_MODES,
+  sanitizeSettings
+} from './mathEngine.js';
 
 export const AI_AUTO_CYCLE_OPERATION_ORDER = Object.freeze([
   'ADDITION',
@@ -19,7 +23,7 @@ const OPERATION_LABELS = Object.freeze({
   EXPONENTIATION: 'Exponentiation'
 });
 
-function buildDigitSweepBlueprints(operation, roundSize, maxBase) {
+function buildDigitSweepBlueprints(baseSettings, operation) {
   const blueprints = [];
 
   for (let leftDigits = 1; leftDigits <= AI_AUTO_CYCLE_DIGIT_MAX; leftDigits += 1) {
@@ -30,11 +34,14 @@ function buildDigitSweepBlueprints(operation, roundSize, maxBase) {
 
     for (let rightDigits = 1; rightDigits <= rightDigitLimit; rightDigits += 1) {
       blueprints.push({
+        practiceMode: baseSettings.practiceMode,
         operation,
         leftDigits,
         rightDigits,
-        maxBase,
-        roundSize
+        leftDecimalDigits: baseSettings.leftDecimalDigits,
+        rightDecimalDigits: baseSettings.rightDecimalDigits,
+        maxBase: baseSettings.maxBase,
+        roundSize: baseSettings.roundSize
       });
     }
   }
@@ -47,9 +54,12 @@ function buildExponentiationBlueprints(roundSize, maxBaseCeiling) {
 
   for (let maxBase = 2; maxBase <= maxBaseCeiling; maxBase += 1) {
     blueprints.push({
+      practiceMode: PRACTICE_MODES.POSITIVE,
       operation: 'EXPONENTIATION',
       leftDigits: 1,
       rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2,
       maxBase,
       roundSize
     });
@@ -61,8 +71,14 @@ function buildExponentiationBlueprints(roundSize, maxBaseCeiling) {
 export function buildAiCycleBlueprints(settings) {
   const sanitizedSettings = sanitizeSettings(settings);
   const blueprints = [];
+  const operationOrder =
+    sanitizedSettings.practiceMode === PRACTICE_MODES.DECIMAL
+      ? AI_AUTO_CYCLE_OPERATION_ORDER.filter(
+          (operation) => operation !== 'EXPONENTIATION'
+        )
+      : AI_AUTO_CYCLE_OPERATION_ORDER;
 
-  AI_AUTO_CYCLE_OPERATION_ORDER.forEach((operation) => {
+  operationOrder.forEach((operation) => {
     if (operation === 'EXPONENTIATION') {
       blueprints.push(
         ...buildExponentiationBlueprints(
@@ -74,11 +90,7 @@ export function buildAiCycleBlueprints(settings) {
     }
 
     blueprints.push(
-      ...buildDigitSweepBlueprints(
-        operation,
-        sanitizedSettings.roundSize,
-        sanitizedSettings.maxBase
-      )
+      ...buildDigitSweepBlueprints(sanitizedSettings, operation)
     );
   });
 
@@ -92,5 +104,7 @@ export function formatAiCycleBlueprintLabel(settings) {
     return `${OPERATION_LABELS.EXPONENTIATION} · Max base ${sanitizedSettings.maxBase}`;
   }
 
-  return `${OPERATION_LABELS[sanitizedSettings.operation]} · ${sanitizedSettings.leftDigits}x${sanitizedSettings.rightDigits} digits`;
+  return `${OPERATION_LABELS[sanitizedSettings.operation]} · ${formatSettingsDigitLabel(
+    sanitizedSettings
+  )}`;
 }

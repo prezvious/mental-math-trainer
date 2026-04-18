@@ -1,4 +1,4 @@
-import { sanitizeSettings } from './mathEngine.js';
+import { PRACTICE_MODES, sanitizeSettings } from './mathEngine.js';
 import { DEFAULT_THEME_KEY, THEME_OPTIONS } from './themes.js';
 import { readStorageJson, writeStorageJson } from './browserStorage.js';
 
@@ -8,18 +8,24 @@ export const GUEST_ACCOUNT_PREFERENCES_STORAGE_KEY =
 export const USER_PREFERENCES_COLUMNS = [
   'user_id',
   'theme_key',
+  'trainer_practice_mode',
   'trainer_operation',
   'trainer_left_digits',
   'trainer_right_digits',
+  'trainer_left_decimal_digits',
+  'trainer_right_decimal_digits',
   'trainer_max_base',
   'trainer_round_size',
   'updated_at'
 ].join(', ');
 
 export const DEFAULT_TRAINER_SETTINGS = Object.freeze({
+  practiceMode: PRACTICE_MODES.POSITIVE,
   operation: 'MULTIPLICATION',
   leftDigits: 2,
   rightDigits: 2,
+  leftDecimalDigits: 2,
+  rightDecimalDigits: 2,
   maxBase: 10,
   roundSize: 10
 });
@@ -43,6 +49,10 @@ export function sanitizeThemeKey(themeKey) {
 
 export function sanitizeTrainerSettings(settings = {}) {
   return sanitizeSettings({
+    practiceMode:
+      settings.practiceMode ??
+      settings.trainer_practice_mode ??
+      DEFAULT_TRAINER_SETTINGS.practiceMode,
     operation:
       settings.operation ??
       settings.trainer_operation ??
@@ -55,6 +65,14 @@ export function sanitizeTrainerSettings(settings = {}) {
       settings.rightDigits ??
       settings.trainer_right_digits ??
       DEFAULT_TRAINER_SETTINGS.rightDigits,
+    leftDecimalDigits:
+      settings.leftDecimalDigits ??
+      settings.trainer_left_decimal_digits ??
+      DEFAULT_TRAINER_SETTINGS.leftDecimalDigits,
+    rightDecimalDigits:
+      settings.rightDecimalDigits ??
+      settings.trainer_right_decimal_digits ??
+      DEFAULT_TRAINER_SETTINGS.rightDecimalDigits,
     maxBase:
       settings.maxBase ??
       settings.trainer_max_base ??
@@ -98,9 +116,12 @@ export function buildUserPreferencesRow(
   return {
     user_id: userId,
     theme_key: sanitized.themeKey,
+    trainer_practice_mode: sanitized.trainerSettings.practiceMode,
     trainer_operation: sanitized.trainerSettings.operation,
     trainer_left_digits: sanitized.trainerSettings.leftDigits,
     trainer_right_digits: sanitized.trainerSettings.rightDigits,
+    trainer_left_decimal_digits: sanitized.trainerSettings.leftDecimalDigits,
+    trainer_right_decimal_digits: sanitized.trainerSettings.rightDecimalDigits,
     trainer_max_base: sanitized.trainerSettings.maxBase,
     trainer_round_size: sanitized.trainerSettings.roundSize,
     updated_at: updatedAt

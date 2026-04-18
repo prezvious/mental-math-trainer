@@ -1,4 +1,5 @@
 import { solveAiExpression } from './aiMath.js';
+import { PRACTICE_MODES, parseTrainerAnswer } from './mathEngine.js';
 import { processRoundSubmission } from './trainerRound.js';
 
 export const TRAINER_INPUT_MODES = Object.freeze({
@@ -46,6 +47,30 @@ export function solveTrainerProblem(
   const startedAt = performanceNow();
   const result = solveExpression(formatTrainerProblem(problem));
   const finishedAt = performanceNow();
+
+  if (problem.practiceMode === PRACTICE_MODES.DECIMAL) {
+    if (result.kind === 'fraction' && /[()]/.test(result.decimalText)) {
+      throw new Error('AI MODE decimal trainer questions must resolve to terminating decimal answers.');
+    }
+
+    const submittedAnswer = parseTrainerAnswer(
+      result.kind === 'fraction' ? result.decimalText : result.exactText,
+      PRACTICE_MODES.DECIMAL
+    );
+    if (submittedAnswer === null) {
+      throw new Error('AI MODE could not normalize the decimal trainer answer.');
+    }
+
+    return {
+      promptText,
+      normalizedExpression: result.normalizedExpression,
+      resultKind: submittedAnswer.includes('.') ? 'decimal' : 'integer',
+      resultExactText: submittedAnswer,
+      resultDecimalText: submittedAnswer,
+      submittedAnswer,
+      responseMs: Math.max(1, Math.round(finishedAt - startedAt))
+    };
+  }
 
   if (result.kind !== 'integer') {
     throw new Error('AI MODE trainer questions must resolve to integer answers.');

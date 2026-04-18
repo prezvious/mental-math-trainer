@@ -10,12 +10,29 @@ let createActiveRound;
 let processRoundSubmission;
 let solveTrainerProblem;
 
-function createProblemStub(operation, leftDigits, rightDigits) {
+function createProblemStub(settingsOrOperation, leftDigits, rightDigits) {
+  const settings =
+    typeof settingsOrOperation === 'object'
+      ? settingsOrOperation
+      : {
+          practiceMode: 'POSITIVE',
+          operation: settingsOrOperation,
+          leftDigits,
+          rightDigits
+        };
+
   return {
-    operation,
-    leftOperand: Number(`${leftDigits}2`),
-    rightOperand: Number(`${rightDigits}3`),
-    correctAnswer: 25n
+    practiceMode: settings.practiceMode,
+    operation: settings.operation,
+    leftOperand:
+      settings.practiceMode === 'DECIMAL'
+        ? `${settings.leftDigits}.${'2'.repeat(settings.leftDecimalDigits)}`
+        : Number(`${settings.leftDigits}2`),
+    rightOperand:
+      settings.practiceMode === 'DECIMAL'
+        ? `${settings.rightDigits}.${'3'.repeat(settings.rightDecimalDigits)}`
+        : Number(`${settings.rightDigits}3`),
+    correctAnswer: settings.practiceMode === 'DECIMAL' ? '25.5' : 25n
   };
 }
 
@@ -37,6 +54,7 @@ test.before(async () => {
 
 test('solveTrainerProblem auto-solves a generated question and produces an AI trainer log row', () => {
   const problem = {
+    practiceMode: 'POSITIVE',
     operation: 'MULTIPLICATION',
     leftOperand: 123456789,
     rightOperand: 12,
@@ -56,9 +74,12 @@ test('solveTrainerProblem auto-solves a generated question and produces an AI tr
 
   const activeRound = createActiveRound(
     {
+      practiceMode: 'POSITIVE',
       operation: 'MULTIPLICATION',
       leftDigits: 3,
       rightDigits: 2,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2,
       roundSize: 2
     },
     problem,
@@ -90,6 +111,34 @@ test('solveTrainerProblem auto-solves a generated question and produces an AI tr
   assert.equal(row.normalized_expression, '123456789 * 12');
 });
 
+test('solveTrainerProblem normalizes terminating decimal results for decimal practice mode', () => {
+  const problem = {
+    practiceMode: 'DECIMAL',
+    operation: 'DIVISION',
+    leftOperand: '1.750',
+    rightOperand: '2.50',
+    correctAnswer: '0.7'
+  };
+
+  const solved = solveTrainerProblem(problem, {
+    solveExpression: () => ({
+      normalizedExpression: '1.750 / 2.50',
+      kind: 'fraction',
+      exactText: '7/10',
+      decimalText: '0.7'
+    }),
+    performanceNow: (() => {
+      const values = [100, 104];
+      return () => values.shift();
+    })()
+  });
+
+  assert.equal(solved.submittedAnswer, '0.7');
+  assert.equal(solved.resultKind, 'decimal');
+  assert.equal(solved.resultExactText, '0.7');
+  assert.equal(solved.resultDecimalText, '0.7');
+});
+
 test('buildAiModeCustomLogRow stores custom solves as one-question custom sessions', () => {
   const row = buildAiModeCustomLogRow(
     {
@@ -114,12 +163,16 @@ test('advanceAiTrainerRound progresses multiple AI questions in one batch', () =
   const activeRound = {
     ...createActiveRound(
       {
+        practiceMode: 'POSITIVE',
         operation: 'ADDITION',
         leftDigits: 2,
         rightDigits: 2,
+        leftDecimalDigits: 2,
+        rightDecimalDigits: 2,
         roundSize: 4
       },
       {
+        practiceMode: 'POSITIVE',
         operation: 'ADDITION',
         leftOperand: 11,
         rightOperand: 12,
@@ -153,6 +206,7 @@ test('advanceAiTrainerRound progresses multiple AI questions in one batch', () =
         submittedAt,
         handledQuestionId,
         () => ({
+          practiceMode: 'POSITIVE',
           operation: 'ADDITION',
           leftOperand: 20 + invocationCount,
           rightOperand: 3,

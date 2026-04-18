@@ -41,13 +41,16 @@ test('mergeProgressEntries combines manual and ai data with source tags', () => 
       id: 'm1',
       session_id: 'manual-session',
       question_index: 1,
+      practice_mode: 'DECIMAL',
       operation: 'ADDITION',
       digits_left: 2,
-      digits_right: 2,
-      left_operand: 12,
-      right_operand: 8,
-      submitted_answer: '20',
-      correct_answer: '20',
+      digits_right: 1,
+      left_decimal_digits: 2,
+      right_decimal_digits: 1,
+      left_operand: '12.50',
+      right_operand: '8.5',
+      submitted_answer: '21',
+      correct_answer: '21',
       is_correct: true,
       response_ms: 900,
       created_at: '2026-04-12T07:00:00.000Z'
@@ -97,6 +100,8 @@ test('mergeProgressEntries combines manual and ai data with source tags', () => 
   assert.equal(getSessionModeLabel(recentSessions[0]), 'Custom Solver');
   assert.equal(getSessionDigitsLabel(recentSessions[0]), '—');
   assert.equal(recentAttempts[0].promptText, 'sqrt(81)');
+  assert.equal(entries.at(-1).digitLabel, '2d/2dp × 1d/1dp');
+  assert.equal(entries.at(-1).resultKind, 'decimal');
   assert.equal(
     breakdown.find((row) => row.operation === 'CUSTOM').attempts,
     1

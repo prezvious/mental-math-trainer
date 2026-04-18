@@ -7,12 +7,29 @@ let createActiveRound;
 let processRoundSubmission;
 let shouldAutoSubmitAnswer;
 
-function createProblemStub(operation, leftDigits, rightDigits) {
+function createProblemStub(settingsOrOperation, leftDigits, rightDigits) {
+  const settings =
+    typeof settingsOrOperation === 'object'
+      ? settingsOrOperation
+      : {
+          practiceMode: 'POSITIVE',
+          operation: settingsOrOperation,
+          leftDigits,
+          rightDigits
+        };
+
   return {
-    operation,
-    leftOperand: Number(`${leftDigits}1`),
-    rightOperand: Number(`${rightDigits}1`),
-    correctAnswer: 11n
+    practiceMode: settings.practiceMode,
+    operation: settings.operation,
+    leftOperand:
+      settings.practiceMode === 'DECIMAL'
+        ? `${settings.leftDigits}.${'1'.repeat(settings.leftDecimalDigits)}`
+        : Number(`${settings.leftDigits}1`),
+    rightOperand:
+      settings.practiceMode === 'DECIMAL'
+        ? `${settings.rightDigits}.${'1'.repeat(settings.rightDecimalDigits)}`
+        : Number(`${settings.rightDigits}1`),
+    correctAnswer: settings.practiceMode === 'DECIMAL' ? '11.1' : 11n
   };
 }
 
@@ -24,7 +41,7 @@ test.before(async () => {
   ({ createActiveRound, processRoundSubmission, shouldAutoSubmitAnswer } = trainerRound);
 });
 
-test('shouldAutoSubmitAnswer only returns an exact correct integer answer', () => {
+test('shouldAutoSubmitAnswer only returns an exact correct positive answer', () => {
   assert.equal(shouldAutoSubmitAnswer('42', 42n), 42n);
   assert.equal(shouldAutoSubmitAnswer('0042', 42n), 42n);
   assert.equal(shouldAutoSubmitAnswer('41', 42n), null);
@@ -32,15 +49,32 @@ test('shouldAutoSubmitAnswer only returns an exact correct integer answer', () =
   assert.equal(shouldAutoSubmitAnswer('abc', 42n), null);
 });
 
+test('shouldAutoSubmitAnswer normalizes decimal input variants before comparison', () => {
+  const decimalProblem = {
+    practiceMode: 'DECIMAL',
+    correctAnswer: '0.58'
+  };
+
+  assert.equal(shouldAutoSubmitAnswer('0.58', decimalProblem), '0.58');
+  assert.equal(shouldAutoSubmitAnswer('0,580', decimalProblem), '0.58');
+  assert.equal(shouldAutoSubmitAnswer('00.5800', decimalProblem), '0.58');
+  assert.equal(shouldAutoSubmitAnswer('0.581', decimalProblem), null);
+  assert.equal(shouldAutoSubmitAnswer('0.', decimalProblem), null);
+});
+
 test('processRoundSubmission records an incorrect manual submit and advances', () => {
   const activeRound = createActiveRound(
     {
+      practiceMode: 'POSITIVE',
       operation: 'ADDITION',
       leftDigits: 2,
       rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2,
       roundSize: 3
     },
     {
+      practiceMode: 'POSITIVE',
       operation: 'ADDITION',
       leftOperand: 14,
       rightOperand: 2,
@@ -66,12 +100,16 @@ test('processRoundSubmission records an incorrect manual submit and advances', (
 test('processRoundSubmission records a correct submit and advances', () => {
   const activeRound = createActiveRound(
     {
+      practiceMode: 'POSITIVE',
       operation: 'MULTIPLICATION',
       leftDigits: 2,
       rightDigits: 2,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2,
       roundSize: 4
     },
     {
+      practiceMode: 'POSITIVE',
       operation: 'MULTIPLICATION',
       leftOperand: 12,
       rightOperand: 12,
@@ -92,17 +130,21 @@ test('processRoundSubmission records a correct submit and advances', () => {
 
 test('final question completion returns no nextActiveRound', () => {
   const activeRound = {
-    settings: {
-      operation: 'DIVISION',
-      leftDigits: 2,
-      rightDigits: 1,
-      roundSize: 2
-    },
-    attempts: [
-      {
+      settings: {
+        practiceMode: 'POSITIVE',
         operation: 'DIVISION',
-        leftOperand: 81,
-        rightOperand: 9,
+        leftDigits: 2,
+        rightDigits: 1,
+        leftDecimalDigits: 2,
+        rightDecimalDigits: 2,
+        roundSize: 2
+      },
+      attempts: [
+        {
+          practiceMode: 'POSITIVE',
+          operation: 'DIVISION',
+          leftOperand: 81,
+          rightOperand: 9,
         correctAnswer: 9n,
         submittedAnswer: 9n,
         isCorrect: true,
@@ -110,10 +152,11 @@ test('final question completion returns no nextActiveRound', () => {
         createdAt: '2026-03-28T00:00:00.000Z'
       }
     ],
-    currentProblem: {
-      operation: 'DIVISION',
-      leftOperand: 84,
-      rightOperand: 7,
+      currentProblem: {
+        practiceMode: 'POSITIVE',
+        operation: 'DIVISION',
+        leftOperand: 84,
+        rightOperand: 7,
       correctAnswer: 12n
     },
     questionStartedAt: 2000,
@@ -132,12 +175,16 @@ test('final question completion returns no nextActiveRound', () => {
 test('duplicate submissions for the same question are ignored', () => {
   const activeRound = createActiveRound(
     {
+      practiceMode: 'POSITIVE',
       operation: 'SUBTRACTION',
       leftDigits: 3,
       rightDigits: 2,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2,
       roundSize: 5
     },
     {
+      practiceMode: 'POSITIVE',
       operation: 'SUBTRACTION',
       leftOperand: 305,
       rightOperand: 14,
@@ -165,4 +212,41 @@ test('duplicate submissions for the same question are ignored', () => {
   assert.equal(firstSubmission.ignored, false);
   assert.equal(duplicateSubmission.ignored, true);
   assert.equal(duplicateSubmission.handledQuestionId, firstSubmission.handledQuestionId);
+});
+
+test('processRoundSubmission records decimal manual answers and advances with decimal settings', () => {
+  const activeRound = createActiveRound(
+    {
+      practiceMode: 'DECIMAL',
+      operation: 'ADDITION',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 1,
+      roundSize: 2
+    },
+    {
+      practiceMode: 'DECIMAL',
+      operation: 'ADDITION',
+      leftOperand: '12.50',
+      rightOperand: '1.25',
+      correctAnswer: '13.75'
+    },
+    1500,
+    'session-decimal'
+  );
+
+  const submission = processRoundSubmission(
+    activeRound,
+    '13.75',
+    1900,
+    null,
+    createProblemStub
+  );
+
+  assert.equal(submission.ignored, false);
+  assert.equal(submission.attempt.isCorrect, true);
+  assert.equal(submission.attempt.correctAnswer, '13.75');
+  assert.equal(submission.attempt.submittedAnswer, '13.75');
+  assert.equal(submission.nextActiveRound.currentProblem.practiceMode, 'DECIMAL');
 });

@@ -143,7 +143,13 @@ test.before(async () => {
 test('buildProgressLogRow maps one attempt into a persisted progress row', () => {
   const row = buildProgressLogRow(
     createAttempt(0),
-    { leftDigits: 2, rightDigits: 1 },
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
     'user-123',
     'session-123',
     4
@@ -153,11 +159,14 @@ test('buildProgressLogRow maps one attempt into a persisted progress row', () =>
     user_id: 'user-123',
     session_id: 'session-123',
     question_index: 4,
+    practice_mode: 'POSITIVE',
     operation: 'ADDITION',
     digits_left: 2,
     digits_right: 1,
-    left_operand: 10,
-    right_operand: 1,
+    left_decimal_digits: 0,
+    right_decimal_digits: 0,
+    left_operand: '10',
+    right_operand: '1',
     correct_answer: '11',
     submitted_answer: '11',
     is_correct: true,
@@ -165,11 +174,59 @@ test('buildProgressLogRow maps one attempt into a persisted progress row', () =>
   });
 });
 
+test('buildProgressLogRow persists decimal attempts with decimal metadata and text operands', () => {
+  const row = buildProgressLogRow(
+    {
+      operation: 'DIVISION',
+      leftOperand: '1.750',
+      rightOperand: '2.50',
+      correctAnswer: '0.7',
+      submittedAnswer: '0.7',
+      isCorrect: true,
+      responseMs: 240
+    },
+    {
+      practiceMode: 'DECIMAL',
+      leftDigits: 1,
+      rightDigits: 1,
+      leftDecimalDigits: 3,
+      rightDecimalDigits: 2
+    },
+    'user-123',
+    'session-decimal',
+    1
+  );
+
+  assert.deepEqual(row, {
+    user_id: 'user-123',
+    session_id: 'session-decimal',
+    question_index: 1,
+    practice_mode: 'DECIMAL',
+    operation: 'DIVISION',
+    digits_left: 1,
+    digits_right: 1,
+    left_decimal_digits: 3,
+    right_decimal_digits: 2,
+    left_operand: '1.750',
+    right_operand: '2.50',
+    correct_answer: '0.7',
+    submitted_answer: '0.7',
+    is_correct: true,
+    response_ms: 240
+  });
+});
+
 test('persistProgressLogBatches splits a 10,000-question session into 500-row upserts', async () => {
   const attempts = Array.from({ length: 10000 }, (_, index) => createAttempt(index));
   const rows = buildProgressLogRows(
     attempts,
-    { leftDigits: 2, rightDigits: 2 },
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 2,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
     'user-123',
     'session-123'
   );
@@ -192,7 +249,13 @@ test('persistProgressLogBatches splits a 10,000-question session into 500-row up
 test('persistProgressLogBatches stops and surfaces the first upsert failure', async () => {
   const rows = buildProgressLogRows(
     Array.from({ length: 1000 }, (_, index) => createAttempt(index)),
-    { leftDigits: 2, rightDigits: 1 },
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
     'user-123',
     'session-456'
   );
@@ -209,7 +272,21 @@ test('persistProgressLogRowsKeepalive posts the buffered rows with keepalive ena
   const fetchCalls = [];
 
   const didFlush = await persistProgressLogRowsKeepalive(
-    [buildProgressLogRow(createAttempt(0), { leftDigits: 2, rightDigits: 1 }, 'user-1', 'session-1', 1)],
+    [
+      buildProgressLogRow(
+        createAttempt(0),
+        {
+          practiceMode: 'POSITIVE',
+          leftDigits: 2,
+          rightDigits: 1,
+          leftDecimalDigits: 2,
+          rightDecimalDigits: 2
+        },
+        'user-1',
+        'session-1',
+        1
+      )
+    ],
     {
       accessToken: 'token-123',
       restConfig: {
@@ -250,8 +327,8 @@ test('createProgressLogBuffer flushes immediately at the queue threshold', async
     clearTimeoutImpl: timeoutHarness.clearTimeout
   });
 
-  buffer.enqueue(buildProgressLogRow(createAttempt(0), { leftDigits: 2, rightDigits: 1 }, 'user-1', 'session-1', 1));
-  buffer.enqueue(buildProgressLogRow(createAttempt(1), { leftDigits: 2, rightDigits: 1 }, 'user-1', 'session-1', 2));
+  buffer.enqueue(buildProgressLogRow(createAttempt(0), { practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1, leftDecimalDigits: 2, rightDecimalDigits: 2 }, 'user-1', 'session-1', 1));
+  buffer.enqueue(buildProgressLogRow(createAttempt(1), { practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1, leftDecimalDigits: 2, rightDecimalDigits: 2 }, 'user-1', 'session-1', 2));
 
   await Promise.resolve();
   await Promise.resolve();
@@ -273,7 +350,7 @@ test('createProgressLogBuffer flushes buffered rows after the inactivity timer',
     clearTimeoutImpl: timeoutHarness.clearTimeout
   });
 
-  buffer.enqueue(buildProgressLogRow(createAttempt(0), { leftDigits: 2, rightDigits: 1 }, 'user-1', 'session-1', 1));
+  buffer.enqueue(buildProgressLogRow(createAttempt(0), { practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1, leftDecimalDigits: 2, rightDecimalDigits: 2 }, 'user-1', 'session-1', 1));
 
   assert.equal(timeoutHarness.pendingCount(), 1);
   assert.equal(timeoutHarness.runNext(), true);
@@ -294,7 +371,13 @@ test('createProgressLogBuffer restores pending rows if a flush fails', async () 
   });
   const row = buildProgressLogRow(
     createAttempt(0),
-    { leftDigits: 2, rightDigits: 1 },
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
     'user-1',
     'session-1',
     1
@@ -328,7 +411,7 @@ test('createProgressLogBuffer triggers a keepalive flush before the regular upse
     }
   });
 
-  buffer.enqueue(buildProgressLogRow(createAttempt(0), { leftDigits: 2, rightDigits: 1 }, 'user-1', 'session-1', 1));
+  buffer.enqueue(buildProgressLogRow(createAttempt(0), { practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1, leftDecimalDigits: 2, rightDecimalDigits: 2 }, 'user-1', 'session-1', 1));
   await buffer.flush({ keepalive: true });
 
   assert.equal(keepaliveCalls.length, 1);
@@ -375,14 +458,26 @@ test('createProgressLogBuffer keepalive includes in-flight and pending rows duri
   });
   const firstRow = buildProgressLogRow(
     createAttempt(0),
-    { leftDigits: 2, rightDigits: 1 },
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
     'user-1',
     'session-1',
     1
   );
   const secondRow = buildProgressLogRow(
     createAttempt(1),
-    { leftDigits: 2, rightDigits: 1 },
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
     'user-1',
     'session-1',
     2

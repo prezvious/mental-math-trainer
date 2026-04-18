@@ -12,9 +12,12 @@ export const PROGRESS_LOG_SELECT_FIELDS = [
   'id',
   'session_id',
   'question_index',
+  'practice_mode',
   'operation',
   'digits_left',
   'digits_right',
+  'left_decimal_digits',
+  'right_decimal_digits',
   'left_operand',
   'right_operand',
   'submitted_answer',
@@ -35,6 +38,7 @@ export function buildProgressLogRow(
     user_id: userId,
     session_id: sessionId,
     question_index: questionIndex,
+    practice_mode: roundSettings.practiceMode || 'POSITIVE',
     operation: attempt.operation,
     digits_left: attempt.operation === 'EXPONENTIATION'
       ? String(attempt.leftOperand).length
@@ -42,8 +46,16 @@ export function buildProgressLogRow(
     digits_right: attempt.operation === 'EXPONENTIATION'
       ? 1
       : roundSettings.rightDigits,
-    left_operand: attempt.leftOperand,
-    right_operand: attempt.rightOperand,
+    left_decimal_digits:
+      roundSettings.practiceMode === 'DECIMAL'
+        ? roundSettings.leftDecimalDigits
+        : 0,
+    right_decimal_digits:
+      roundSettings.practiceMode === 'DECIMAL'
+        ? roundSettings.rightDecimalDigits
+        : 0,
+    left_operand: String(attempt.leftOperand),
+    right_operand: String(attempt.rightOperand),
     correct_answer: attempt.correctAnswer.toString(),
     submitted_answer: attempt.submittedAnswer.toString(),
     is_correct: attempt.isCorrect,
