@@ -264,17 +264,19 @@ function MixedTrainerContent() {
       }
 
       if (!userId || !clientRef.current) {
-        return;
+        return { saved: false, error: null };
       }
 
       try {
         await persistQueuedProgress({ keepalive });
         markSummarySaved();
+        return { saved: true, error: null };
       } catch (error) {
         markSummaryError(
           error,
           wasTerminated ? 'Unable to save this ended session.' : 'Unable to save this round.'
         );
+        return { saved: false, error };
       }
     },
     [markSummaryError, markSummarySaved, persistQueuedProgress, userId]
@@ -325,12 +327,16 @@ function MixedTrainerContent() {
           return { handled: true, saved: false };
         }
 
-        await finalizeRound(attempts, {
+        const persistenceResult = await finalizeRound(attempts, {
           wasTerminated: true,
           keepalive
         });
 
-        return { handled: true, saved: true };
+        return {
+          handled: true,
+          saved: Boolean(persistenceResult?.saved),
+          error: persistenceResult?.error ?? null
+        };
       })().finally(() => {
         if (terminationPromiseRef.current === promise) {
           terminationPromiseRef.current = null;

@@ -45,17 +45,33 @@ export function SupabaseAuthProvider({ children }) {
 
     let isMounted = true;
 
-    client.auth.getSession().then(({ data }) => {
-      if (!isMounted) {
-        return;
-      }
-      setSession((previousSession) =>
-        areSessionsEquivalent(previousSession, data.session ?? null)
-          ? previousSession
-          : (data.session ?? null)
-      );
-      setIsLoading(false);
-    });
+    client.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setSession((previousSession) =>
+          areSessionsEquivalent(previousSession, data.session ?? null)
+            ? previousSession
+            : (data.session ?? null)
+        );
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        setSession(null);
+      })
+      .finally(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsLoading(false);
+      });
 
     const {
       data: { subscription }

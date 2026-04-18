@@ -142,6 +142,89 @@ test('normalizeProgressDashboardPayload restores defaults and pads missing opera
   assert.deepEqual(dashboard.recentAttempts, []);
 });
 
+test('normalizeProgressDashboardPayload folds legacy SQUARES into EXPONENTIATION and keeps unknown operations', () => {
+  const dashboard = normalizeProgressDashboardPayload({
+    operationBreakdown: [
+      {
+        operation: 'SQUARES',
+        attempts: 2,
+        correct: 2,
+        accuracy: 100,
+        averageResponseMs: 200,
+        totalResponseMs: 400
+      },
+      {
+        operation: 'EXPONENTIATION',
+        attempts: 1,
+        correct: 1,
+        accuracy: 100,
+        averageResponseMs: 100,
+        totalResponseMs: 100
+      },
+      {
+        operation: 'ROOTS',
+        attempts: 3,
+        correct: 2,
+        accuracy: 66.7,
+        averageResponseMs: 300,
+        totalResponseMs: 900
+      }
+    ]
+  });
+
+  const exponentRow = dashboard.operationBreakdown.find(
+    (row) => row.operation === 'EXPONENTIATION'
+  );
+  const customIndex = dashboard.operationBreakdown.findIndex(
+    (row) => row.operation === 'CUSTOM'
+  );
+  const rootsIndex = dashboard.operationBreakdown.findIndex(
+    (row) => row.operation === 'ROOTS'
+  );
+
+  assert.ok(exponentRow);
+  assert.equal(exponentRow.attempts, 3);
+  assert.equal(exponentRow.correct, 3);
+  assert.equal(exponentRow.totalResponseMs, 500);
+  assert.equal(exponentRow.averageResponseMs, 167);
+  assert.equal(exponentRow.accuracy, 100);
+  assert.ok(rootsIndex > customIndex);
+  assert.equal(
+    dashboard.operationBreakdown[rootsIndex].attempts,
+    3
+  );
+});
+
+test('mergeProgressEntries normalizes legacy SQUARES manual rows as EXPONENTIATION', () => {
+  const manualLogs = [
+    {
+      id: 'm-square',
+      session_id: 'manual-square-session',
+      question_index: 1,
+      practice_mode: 'POSITIVE',
+      operation: 'SQUARES',
+      digits_left: 2,
+      digits_right: 1,
+      left_decimal_digits: 0,
+      right_decimal_digits: 0,
+      left_operand: '12',
+      right_operand: '2',
+      submitted_answer: '144',
+      correct_answer: '144',
+      is_correct: true,
+      response_ms: 1200,
+      created_at: '2026-04-12T08:00:00.000Z'
+    }
+  ];
+
+  const entries = mergeProgressEntries(manualLogs, []);
+
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].operation, 'EXPONENTIATION');
+  assert.equal(entries[0].promptText, '12 ^ 2');
+  assert.equal(entries[0].digitLabel, null);
+});
+
 test('recent dashboard window remains a labeled 90-day slice', () => {
   assert.equal(RECENT_PROGRESS_WINDOW_DAYS, 90);
 });

@@ -31,6 +31,17 @@ const DECIMAL_OPERATIONS = VALID_OPERATIONS.filter(
   (operation) => operation !== 'EXPONENTIATION'
 );
 const ORDERED_DIGIT_OPERATIONS = ['SUBTRACTION', 'DIVISION'];
+const LEGACY_OPERATION_ALIASES = Object.freeze({
+  SQUARES: 'EXPONENTIATION'
+});
+
+function normalizeOperationValue(operation) {
+  if (typeof operation !== 'string') {
+    return operation;
+  }
+
+  return LEGACY_OPERATION_ALIASES[operation] || operation;
+}
 
 function clampNumber(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -539,8 +550,11 @@ export function sanitizeSettings(settings = {}) {
     ? settings.practiceMode ?? settings.trainer_practice_mode
     : PRACTICE_MODES.POSITIVE;
 
-  let operation = VALID_OPERATIONS.includes(settings.operation)
-    ? settings.operation
+  const requestedOperation = normalizeOperationValue(
+    settings.operation ?? settings.trainer_operation
+  );
+  let operation = VALID_OPERATIONS.includes(requestedOperation)
+    ? requestedOperation
     : 'MULTIPLICATION';
 
   if (

@@ -9,18 +9,48 @@ export const DEFAULT_RECENT_SESSION_LIMIT = 8;
 export const DEFAULT_RECENT_ATTEMPT_LIMIT = 12;
 export const RECENT_PROGRESS_WINDOW_DAYS = 90;
 
+const LEGACY_OPERATION_ALIASES = Object.freeze({
+  SQUARES: 'EXPONENTIATION'
+});
 const OPERATION_BREAKDOWN_ORDER = [...Object.keys(OPERATION_META), 'CUSTOM'];
+const OPERATION_BREAKDOWN_DEFAULTS = Object.freeze({
+  attempts: 0,
+  correct: 0,
+  accuracy: 0,
+  averageResponseMs: 0,
+  totalResponseMs: 0
+});
+
+function normalizeOperationValue(operation) {
+  if (typeof operation !== 'string') {
+    return operation;
+  }
+
+  return LEGACY_OPERATION_ALIASES[operation] || operation;
+}
+
+function normalizeOperationMetrics(row = {}) {
+  const attempts = Number(row.attempts) || 0;
+  const correct = Number(row.correct) || 0;
+  const totalResponseMs = Number(row.totalResponseMs) || 0;
+
+  return {
+    attempts,
+    correct,
+    totalResponseMs,
+    accuracy: attempts ? (correct / attempts) * 100 : 0,
+    averageResponseMs: attempts ? Math.round(totalResponseMs / attempts) : 0
+  };
+}
 
 export function getOperationDisplayLabel(operation) {
-  if (operation === 'CUSTOM') {
+  const normalizedOperation = normalizeOperationValue(operation);
+
+  if (normalizedOperation === 'CUSTOM') {
     return 'Custom';
   }
 
-  if (operation === 'SQUARES') {
-    return 'Exponentiation';
-  }
-
-  return OPERATION_META[operation]?.label || operation;
+  return OPERATION_META[normalizedOperation]?.label || normalizedOperation;
 }
 
 export function createEmptyProgressDashboard() {
@@ -35,11 +65,7 @@ export function createEmptyProgressDashboard() {
     },
     operationBreakdown: OPERATION_BREAKDOWN_ORDER.map((operation) => ({
       operation,
-      attempts: 0,
-      correct: 0,
-      accuracy: 0,
-      averageResponseMs: 0,
-      totalResponseMs: 0
+      ...OPERATION_BREAKDOWN_DEFAULTS
     })),
     recentSessions: [],
     recentAttempts: []
@@ -47,19 +73,52 @@ export function createEmptyProgressDashboard() {
 }
 
 function normalizeOperationBreakdown(rows) {
-  const byOperation = new Map(
-    (Array.isArray(rows) ? rows : []).map((row) => [row.operation, row])
-  );
+  const byOperation = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const operation = normalizeOperationValue(row?.operation);
+    if (!operation) {
+      continue;
+    }
 
-  return OPERATION_BREAKDOWN_ORDER.map((operation) => ({
-    operation,
-    attempts: 0,
-    correct: 0,
-    accuracy: 0,
-    averageResponseMs: 0,
-    totalResponseMs: 0,
-    ...(byOperation.get(operation) || {})
-  }));
+    const current = byOperation.get(operation);
+    const normalizedRow = normalizeOperationMetrics(row);
+    if (!current) {
+      byOperation.set(operation, {
+        operation,
+        ...normalizedRow
+      });
+      continue;
+    }
+
+    byOperation.set(operation, {
+      operation,
+      ...normalizeOperationMetrics({
+        attempts: current.attempts + normalizedRow.attempts,
+        correct: current.correct + normalizedRow.correct,
+        totalResponseMs: current.totalResponseMs + normalizedRow.totalResponseMs
+      })
+    });
+  }
+
+  const knownRows = OPERATION_BREAKDOWN_ORDER.map((operation) => {
+    const row = byOperation.get(operation);
+    byOperation.delete(operation);
+    return {
+      operation,
+      ...OPERATION_BREAKDOWN_DEFAULTS,
+      ...(row || {})
+    };
+  });
+
+  const unexpectedRows = [...byOperation.values()]
+    .sort((rowA, rowB) => rowA.operation.localeCompare(rowB.operation))
+    .map((row) => ({
+      operation: row.operation,
+      ...OPERATION_BREAKDOWN_DEFAULTS,
+      ...row
+    }));
+
+  return [...knownRows, ...unexpectedRows];
 }
 
 export function normalizeProgressDashboardPayload(payload) {
@@ -96,15 +155,16 @@ export async function fetchProgressDashboardData(
 }
 
 function formatManualPrompt(entry) {
-  if (entry.operation === 'EXPONENTIATION') {
+  const operation = normalizeOperationValue(entry.operation);
+  if (operation === 'EXPONENTIATION') {
     return `${entry.left_operand} ^ ${entry.right_operand}`;
   }
 
-  return `${entry.left_operand} ${OPERATION_META[entry.operation]?.symbol || '?'} ${entry.right_operand}`;
+  return `${entry.left_operand} ${OPERATION_META[operation]?.symbol || '?'} ${entry.right_operand}`;
 }
 
 function formatManualDigitLabel(entry) {
-  if (entry.operation === 'EXPONENTIATION') {
+  if (normalizeOperationValue(entry.operation) === 'EXPONENTIATION') {
     return null;
   }
 
@@ -122,8 +182,8 @@ export function normalizeManualProgressLogs(rows) {
     sourceKind: 'trainer',
     sessionId: entry.session_id,
     questionIndex: entry.question_index,
-    operation: entry.operation,
-    operationLabel: entry.operation,
+    operation: normalizeOperationValue(entry.operation),
+    operationLabel: normalizeOperationValue(entry.operation),
     digitLabel: formatManualDigitLabel(entry),
     promptText: formatManualPrompt(entry),
     normalizedExpression: formatManualPrompt(entry),
@@ -146,8 +206,8 @@ export function normalizeAiModeLogs(rows) {
     sourceKind: entry.source_kind,
     sessionId: entry.session_id,
     questionIndex: entry.question_index,
-    operation: entry.operation_label,
-    operationLabel: entry.operation_label,
+    operation: normalizeOperationValue(entry.operation_label),
+    operationLabel: normalizeOperationValue(entry.operation_label),
     digitLabel: null,
     promptText: entry.prompt_text,
     normalizedExpression: entry.normalized_expression,

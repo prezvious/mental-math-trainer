@@ -105,6 +105,18 @@ test('sanitizeSettings caps rightDigits for subtraction and division and blocks 
   assert.equal(exponentiationSettings.operation, 'MULTIPLICATION');
 });
 
+test('sanitizeSettings remaps legacy SQUARES operation to EXPONENTIATION', () => {
+  const settings = sanitizeSettings({
+    practiceMode: PRACTICE_MODES.POSITIVE,
+    operation: 'SQUARES',
+    leftDigits: 2,
+    rightDigits: 2,
+    roundSize: 10
+  });
+
+  assert.equal(settings.operation, 'EXPONENTIATION');
+});
+
 test('resolveRoundSizeDraft restores invalid drafts and clamps oversized values', () => {
   const currentSettings = {
     practiceMode: PRACTICE_MODES.POSITIVE,

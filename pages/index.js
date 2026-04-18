@@ -383,7 +383,7 @@ export default function TrainerPage() {
       }
 
       if (!userId || !clientRef.current) {
-        return;
+        return { saved: false, error: null };
       }
 
       try {
@@ -393,11 +393,13 @@ export default function TrainerPage() {
           await persistQueuedProgress({ keepalive });
         }
         markSummarySaved();
+        return { saved: true, error: null };
       } catch (error) {
         markSummaryError(
           error,
           wasTerminated ? 'Unable to save this ended session.' : 'Unable to save this round.'
         );
+        return { saved: false, error };
       }
     },
     [
@@ -430,13 +432,21 @@ export default function TrainerPage() {
           return { handled: true, saved: false };
         }
 
-        await finalizeRound(roundSnapshot.attempts, roundSnapshot.settings, {
-          wasTerminated: true,
-          keepalive,
-          sourceMode: roundSnapshot.sourceMode || TRAINER_INPUT_MODES.MANUAL
-        });
+        const persistenceResult = await finalizeRound(
+          roundSnapshot.attempts,
+          roundSnapshot.settings,
+          {
+            wasTerminated: true,
+            keepalive,
+            sourceMode: roundSnapshot.sourceMode || TRAINER_INPUT_MODES.MANUAL
+          }
+        );
 
-        return { handled: true, saved: true };
+        return {
+          handled: true,
+          saved: Boolean(persistenceResult?.saved),
+          error: persistenceResult?.error ?? null
+        };
       })().finally(() => {
         if (terminationPromiseRef.current === promise) {
           terminationPromiseRef.current = null;
