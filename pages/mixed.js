@@ -807,7 +807,7 @@ function MixedTrainerContent() {
             saveStatus={getSaveStatusMessage(lastRound)}
             primaryAction={{ label: 'Start Again', onClick: handleStartAgain }}
             secondaryAction={{
-              label: 'Customize the blueprint',
+              label: 'Change round setup',
               onClick: handleCustomizeBlueprint
             }}
             className='summary-panel-centered'

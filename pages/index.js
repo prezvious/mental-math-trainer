@@ -1276,7 +1276,7 @@ export default function TrainerPage() {
           <p className='mode-panel-copy'>
             {isAiMode
               ? 'AI MODE solves trainer questions with the local math engine and stores every custom solve in the admin history.'
-              : 'Manual mode preserves the existing human-input flow with the same blueprint and progress tracking.'}
+              : 'Manual mode preserves the existing human-input flow with the same round setup and progress tracking.'}
           </p>
         </section>
       )}
@@ -1289,7 +1289,7 @@ export default function TrainerPage() {
                   <div className='panel-title-row'>
                     <h2>
                       <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
-                        Round Blueprint
+                        Round Setup
                       </IconLabel>
                     </h2>
                     {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
@@ -1359,7 +1359,10 @@ export default function TrainerPage() {
                       ) : isDecimalPracticeMode ? (
                         <>
                           <div className='setting-group'>
-                            <label htmlFor='leftDigits'>Left digits before decimal</label>
+                            <label htmlFor='leftDigits' className='setting-label-pair setting-label-pair-long'>
+                              <span className='setting-label-pair-line'>First number</span>
+                              <span className='setting-label-pair-line'>digits before decimal</span>
+                            </label>
                             <select
                               id='leftDigits'
                               value={settings.leftDigits}
@@ -1375,7 +1378,10 @@ export default function TrainerPage() {
                           </div>
 
                           <div className='setting-group'>
-                            <label htmlFor='leftDecimalDigits'>Left digits after decimal</label>
+                            <label htmlFor='leftDecimalDigits' className='setting-label-pair setting-label-pair-long'>
+                              <span className='setting-label-pair-line'>First number</span>
+                              <span className='setting-label-pair-line'>decimal places</span>
+                            </label>
                             <select
                               id='leftDecimalDigits'
                               value={settings.leftDecimalDigits}
@@ -1393,7 +1399,10 @@ export default function TrainerPage() {
                           </div>
 
                           <div className='setting-group'>
-                            <label htmlFor='rightDigits'>Right digits before decimal</label>
+                            <label htmlFor='rightDigits' className='setting-label-pair setting-label-pair-long'>
+                              <span className='setting-label-pair-line'>Second number</span>
+                              <span className='setting-label-pair-line'>digits before decimal</span>
+                            </label>
                             <select
                               id='rightDigits'
                               value={settings.rightDigits}
@@ -1409,7 +1418,10 @@ export default function TrainerPage() {
                           </div>
 
                           <div className='setting-group'>
-                            <label htmlFor='rightDecimalDigits'>Right digits after decimal</label>
+                            <label htmlFor='rightDecimalDigits' className='setting-label-pair setting-label-pair-long'>
+                              <span className='setting-label-pair-line'>Second number</span>
+                              <span className='setting-label-pair-line'>decimal places</span>
+                            </label>
                             <select
                               id='rightDecimalDigits'
                               value={settings.rightDecimalDigits}
@@ -1429,7 +1441,10 @@ export default function TrainerPage() {
                       ) : (
                         <>
                           <div className='setting-group'>
-                            <label htmlFor='leftDigits'>Left number digits</label>
+                            <label htmlFor='leftDigits' className='setting-label-pair'>
+                              <span className='setting-label-pair-line'>First number</span>
+                              <span className='setting-label-pair-line'>digits</span>
+                            </label>
                             <select
                               id='leftDigits'
                               value={settings.leftDigits}
@@ -1445,7 +1460,10 @@ export default function TrainerPage() {
                           </div>
 
                           <div className='setting-group'>
-                            <label htmlFor='rightDigits'>Right number digits</label>
+                            <label htmlFor='rightDigits' className='setting-label-pair'>
+                              <span className='setting-label-pair-line'>Second number</span>
+                              <span className='setting-label-pair-line'>digits</span>
+                            </label>
                             <select
                               id='rightDigits'
                               value={settings.rightDigits}
@@ -1463,7 +1481,7 @@ export default function TrainerPage() {
                       )}
 
                       <div className='setting-group setting-group-span'>
-                        <label htmlFor='roundSize'>Questions per round</label>
+                        <label htmlFor='roundSize'>Questions in this round</label>
                         <input
                           id='roundSize'
                           type='number'
@@ -1488,7 +1506,7 @@ export default function TrainerPage() {
                       <span className='button-hotkey-label'>
                         <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
                           {isLoadingPreferences
-                            ? 'Loading blueprint...'
+                            ? 'Loading round setup...'
                             : isAiMode
                             ? 'Start AI round'
                             : 'Start round'}
@@ -1667,7 +1685,7 @@ export default function TrainerPage() {
                       Auto Cycle
                     </IconLabel>
                   </h2>
-                  <span className='mode-pill mode-pill-ai'>Next Blueprint</span>
+                  <span className='mode-pill mode-pill-ai'>Next Round Setup</span>
                 </div>
                 <p className='placeholder-text'>
                   Preparing {aiTransitionState.nextBlueprintLabel}
@@ -1702,7 +1720,7 @@ export default function TrainerPage() {
                 saveStatus={getSaveStatusMessage(lastRound)}
                 primaryAction={{ label: 'Start Again', onClick: () => void handleStartAgain() }}
                 secondaryAction={{
-                  label: 'Customize the blueprint',
+                  label: 'Change round setup',
                   onClick: handleCustomizeBlueprint
                 }}
                 className='summary-panel-centered'
@@ -1721,7 +1739,7 @@ export default function TrainerPage() {
                   onClick: () => void handleStartAgain()
                 },
                 secondaryAction: {
-                  label: 'Customize the blueprint',
+                  label: 'Change round setup',
                   onClick: handleCustomizeBlueprint
                 }
               })}
@@ -1738,7 +1756,7 @@ export default function TrainerPage() {
                 saveStatus={getSaveStatusMessage(lastRound)}
                 primaryAction={{ label: 'Start Again', onClick: () => void handleStartAgain() }}
                 secondaryAction={{
-                  label: 'Customize the blueprint',
+                  label: 'Change round setup',
                   onClick: handleCustomizeBlueprint
                 }}
               />

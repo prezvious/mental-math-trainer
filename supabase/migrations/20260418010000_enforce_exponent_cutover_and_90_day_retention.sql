@@ -56,7 +56,7 @@ as $$
           end || ' ' || p.right_operand
       end as prompt_text,
       case
-        when p.practice_mode = 'DECIMAL' then 'decimal'
+        when coalesce(to_jsonb(p)->>'practice_mode', 'POSITIVE') = 'DECIMAL' then 'decimal'
         else 'integer'
       end as result_kind,
       p.correct_answer as result_exact_text,
@@ -68,9 +68,9 @@ as $$
       p.created_at,
       case
         when p.operation = 'EXPONENTIATION' then null
-        when p.practice_mode = 'DECIMAL' then
-          p.digits_left::text || 'd/' || p.left_decimal_digits::text || 'dp x ' ||
-          p.digits_right::text || 'd/' || p.right_decimal_digits::text || 'dp'
+        when coalesce(to_jsonb(p)->>'practice_mode', 'POSITIVE') = 'DECIMAL' then
+          p.digits_left::text || 'd/' || coalesce(to_jsonb(p)->>'left_decimal_digits', '0') || 'dp x ' ||
+          p.digits_right::text || 'd/' || coalesce(to_jsonb(p)->>'right_decimal_digits', '0') || 'dp'
         else
           p.digits_left::text || 'x' || p.digits_right::text
       end as digit_label

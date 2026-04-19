@@ -1017,6 +1017,22 @@ fieldset.setting-group legend {
   text-transform: uppercase;
 }
 
+.settings-form .setting-label-pair {
+  display: grid;
+  align-content: end;
+  gap: 0.05rem;
+  min-block-size: calc(2 * 1.2em + 0.1rem);
+  line-height: 1.2;
+}
+
+.settings-form .setting-label-pair-long {
+  min-block-size: calc(3 * 1.2em + 0.1rem);
+}
+
+.settings-form .setting-label-pair-line {
+  display: block;
+}
+
 .settings-form input,
 .settings-form select,
 .answer-form input,
@@ -2130,6 +2146,10 @@ th {
   .settings-grid,
   .practice-mode-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-form .setting-label-pair-long {
+    min-block-size: calc(2 * 1.2em + 0.1rem);
   }
 
   .finish-state-shell-split {
