@@ -22,7 +22,14 @@ function createAttempt(index) {
   };
 }
 
-function createUpsertClient(failOnCall = null) {
+function createSchemaCacheError(column) {
+  return {
+    code: 'PGRST204',
+    message: `Could not find the '${column}' column of 'progress_logs' in the schema cache`
+  };
+}
+
+function createUpsertClient(failOnCall = null, errorOverride = null) {
   const upsertCalls = [];
 
   return {
@@ -33,7 +40,10 @@ function createUpsertClient(failOnCall = null) {
         async upsert(rows, options) {
           upsertCalls.push({ rows, options });
           if (failOnCall && upsertCalls.length === failOnCall) {
-            return { error: new Error(`upsert failed on call ${failOnCall}`) };
+            return {
+              error:
+                errorOverride || new Error(`upsert failed on call ${failOnCall}`)
+            };
           }
           return { error: null };
         }
@@ -42,8 +52,9 @@ function createUpsertClient(failOnCall = null) {
   };
 }
 
-function createFetchClient(pages, failOnStart = null) {
+function createFetchClient(pages, failOnStart = null, errorOverride = null) {
   const calls = [];
+  const failedStarts = new Set();
 
   return {
     calls,
@@ -69,8 +80,12 @@ function createFetchClient(pages, failOnStart = null) {
         },
         async range(start, end) {
           calls.push({ start, end, userId: this.userId, selectFields: this.selectFields });
-          if (failOnStart !== null && start === failOnStart) {
-            return { data: null, error: new Error('fetch failed') };
+          if (failOnStart !== null && start === failOnStart && !failedStarts.has(start)) {
+            failedStarts.add(start);
+            return {
+              data: null,
+              error: errorOverride || new Error('fetch failed')
+            };
           }
 
           const pageIndex = start / 1000;
@@ -268,6 +283,76 @@ test('persistProgressLogBatches stops and surfaces the first upsert failure', as
   assert.equal(client.upsertCalls.length, 2);
 });
 
+test('persistProgressLogBatches retries positive rounds with the legacy schema payload', async () => {
+  const rows = buildProgressLogRows(
+    [createAttempt(0), createAttempt(1)],
+    {
+      practiceMode: 'POSITIVE',
+      leftDigits: 2,
+      rightDigits: 1,
+      leftDecimalDigits: 2,
+      rightDecimalDigits: 2
+    },
+    'user-123',
+    'session-legacy'
+  );
+  const client = createUpsertClient(1, createSchemaCacheError('left_decimal_digits'));
+
+  await persistProgressLogBatches(client, rows);
+
+  assert.equal(client.upsertCalls.length, 2);
+  assert.deepEqual(
+    Object.keys(client.upsertCalls[1].rows[0]).sort(),
+    [
+      'correct_answer',
+      'digits_left',
+      'digits_right',
+      'is_correct',
+      'left_operand',
+      'operation',
+      'question_index',
+      'response_ms',
+      'right_operand',
+      'session_id',
+      'submitted_answer',
+      'user_id'
+    ]
+  );
+  assert.equal(typeof client.upsertCalls[1].rows[0].left_operand, 'number');
+  assert.equal(client.upsertCalls[1].rows[0].left_operand, 10);
+});
+
+test('persistProgressLogBatches surfaces a migration-required error for decimal rounds on the legacy schema', async () => {
+  const rows = buildProgressLogRows(
+    [
+      {
+        operation: 'DIVISION',
+        leftOperand: '1.750',
+        rightOperand: '2.50',
+        correctAnswer: '0.7',
+        submittedAnswer: '0.7',
+        isCorrect: true,
+        responseMs: 240
+      }
+    ],
+    {
+      practiceMode: 'DECIMAL',
+      leftDigits: 1,
+      rightDigits: 1,
+      leftDecimalDigits: 3,
+      rightDecimalDigits: 2
+    },
+    'user-123',
+    'session-decimal'
+  );
+  const client = createUpsertClient(1, createSchemaCacheError('left_decimal_digits'));
+
+  await assert.rejects(
+    persistProgressLogBatches(client, rows),
+    /missing the decimal progress log migration/i
+  );
+});
+
 test('persistProgressLogRowsKeepalive posts the buffered rows with keepalive enabled', async () => {
   const fetchCalls = [];
 
@@ -314,6 +399,62 @@ test('persistProgressLogRowsKeepalive posts the buffered rows with keepalive ena
     fetchCalls[0].options.headers.Prefer,
     'resolution=ignore-duplicates,return=minimal'
   );
+});
+
+test('persistProgressLogRowsKeepalive retries positive rounds with the legacy schema payload', async () => {
+  const fetchCalls = [];
+
+  const didFlush = await persistProgressLogRowsKeepalive(
+    [
+      buildProgressLogRow(
+        createAttempt(0),
+        {
+          practiceMode: 'POSITIVE',
+          leftDigits: 2,
+          rightDigits: 1,
+          leftDecimalDigits: 2,
+          rightDecimalDigits: 2
+        },
+        'user-1',
+        'session-1',
+        1
+      )
+    ],
+    {
+      accessToken: 'token-123',
+      restConfig: {
+        url: 'https://example.supabase.co',
+        key: 'anon-key'
+      },
+      fetchImpl: async (_url, options) => {
+        fetchCalls.push(JSON.parse(options.body));
+
+        if (fetchCalls.length === 1) {
+          return {
+            ok: false,
+            status: 400,
+            async text() {
+              return JSON.stringify(createSchemaCacheError('left_decimal_digits'));
+            }
+          };
+        }
+
+        return {
+          ok: true,
+          async text() {
+            return '';
+          }
+        };
+      }
+    }
+  );
+
+  assert.equal(didFlush, true);
+  assert.equal(fetchCalls.length, 2);
+  assert.equal(fetchCalls[0][0].left_decimal_digits, 0);
+  assert.equal(fetchCalls[1][0].left_decimal_digits, undefined);
+  assert.equal(fetchCalls[1][0].right_decimal_digits, undefined);
+  assert.equal(typeof fetchCalls[1][0].left_operand, 'number');
 });
 
 test('createProgressLogBuffer flushes immediately at the queue threshold', async () => {
@@ -536,4 +677,41 @@ test('fetchAllProgressLogs surfaces page fetch failures', async () => {
   const client = createFetchClient([Array.from({ length: 1000 }, () => ({}))], 1000);
 
   await assert.rejects(fetchAllProgressLogs(client, 'user-123'), /fetch failed/);
+});
+
+test('fetchAllProgressLogs retries with legacy select fields and backfills decimal metadata', async () => {
+  const client = createFetchClient(
+    [
+      [
+        {
+          id: 'row-1',
+          session_id: 'session-1',
+          question_index: 1,
+          operation: 'ADDITION',
+          digits_left: 2,
+          digits_right: 1,
+          left_operand: 10,
+          right_operand: 1,
+          correct_answer: '11',
+          submitted_answer: '11',
+          is_correct: true,
+          response_ms: 120,
+          created_at: '2026-04-20T00:00:00.000Z'
+        }
+      ]
+    ],
+    0,
+    createSchemaCacheError('left_decimal_digits')
+  );
+
+  const rows = await fetchAllProgressLogs(client, 'user-123');
+
+  assert.equal(client.calls.length, 2);
+  assert.match(client.calls[0].selectFields, /left_decimal_digits/);
+  assert.doesNotMatch(client.calls[1].selectFields, /left_decimal_digits/);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].practice_mode, 'POSITIVE');
+  assert.equal(rows[0].left_decimal_digits, 0);
+  assert.equal(rows[0].right_decimal_digits, 0);
+  assert.equal(rows[0].left_operand, '10');
 });
