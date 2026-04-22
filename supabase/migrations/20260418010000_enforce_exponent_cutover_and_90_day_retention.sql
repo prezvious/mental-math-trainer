@@ -1,10 +1,43 @@
 update public.user_preferences
+set trainer_operation = upper(trim(trainer_operation))
+where trainer_operation is distinct from upper(trim(trainer_operation));
+
+update public.user_preferences
 set trainer_operation = 'EXPONENTIATION'
 where trainer_operation = 'SQUARES';
+
+update public.user_preferences
+set trainer_operation = 'MULTIPLICATION'
+where trainer_operation not in (
+  'ADDITION',
+  'SUBTRACTION',
+  'MULTIPLICATION',
+  'DIVISION',
+  'EXPONENTIATION'
+);
+
+delete from public.progress_logs
+where created_at < now() - interval '90 days';
+
+update public.progress_logs
+set operation = upper(trim(operation))
+where operation is distinct from upper(trim(operation));
 
 update public.progress_logs
 set operation = 'EXPONENTIATION'
 where operation = 'SQUARES';
+
+delete from public.progress_logs
+where operation not in (
+  'ADDITION',
+  'SUBTRACTION',
+  'MULTIPLICATION',
+  'DIVISION',
+  'EXPONENTIATION'
+);
+
+delete from public.ai_mode_logs
+where created_at < now() - interval '90 days';
 
 alter table public.user_preferences
   drop constraint if exists user_preferences_trainer_operation_check;
@@ -19,12 +52,6 @@ alter table public.progress_logs
 alter table public.progress_logs
   add constraint progress_logs_operation_check
   check (operation in ('ADDITION', 'SUBTRACTION', 'MULTIPLICATION', 'DIVISION', 'EXPONENTIATION'));
-
-delete from public.progress_logs
-where created_at < now() - interval '90 days';
-
-delete from public.ai_mode_logs
-where created_at < now() - interval '90 days';
 
 create or replace function public.get_progress_dashboard_data(
   session_limit integer default 8,

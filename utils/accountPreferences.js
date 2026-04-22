@@ -1,5 +1,5 @@
 import { PRACTICE_MODES, sanitizeSettings } from './mathEngine.js';
-import { DEFAULT_THEME_KEY, THEME_OPTIONS } from './themes.js';
+import { DEFAULT_THEME_KEY, resolveThemeKey } from './themes.js';
 import { readStorageJson, writeStorageJson } from './browserStorage.js';
 
 export const USER_PREFERENCES_TABLE = 'user_preferences';
@@ -30,8 +30,6 @@ export const DEFAULT_TRAINER_SETTINGS = Object.freeze({
   roundSize: 10
 });
 
-const VALID_THEME_KEYS = new Set(THEME_OPTIONS.map((theme) => theme.key));
-
 export function createDefaultTrainerSettings() {
   return { ...DEFAULT_TRAINER_SETTINGS };
 }
@@ -44,7 +42,7 @@ export function createDefaultAccountPreferences() {
 }
 
 export function sanitizeThemeKey(themeKey) {
-  return VALID_THEME_KEYS.has(themeKey) ? themeKey : DEFAULT_THEME_KEY;
+  return resolveThemeKey(themeKey) || DEFAULT_THEME_KEY;
 }
 
 export function sanitizeTrainerSettings(settings = {}) {

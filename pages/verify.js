@@ -35,45 +35,54 @@ export default function VerifyPage() {
       </Head>
 
       <div className='verify-shell'>
-        <section className='hero-panel verify-hero appear-up'>
-          <p className='hero-tag'>Account Access</p>
-          <h1>
-            {isLoading
-              ? 'Checking your link'
-              : user
-              ? 'Email confirmed'
-              : 'Confirm your email'}
-          </h1>
-          <p>
-            {isLoading
-              ? 'We are finishing the sign-in step from your verification email.'
-              : user
-              ? 'Your account is ready. We signed you in and will move you into the trainer in a moment.'
-              : 'Open the confirmation link from your inbox. When it lands here, the site will sign you in automatically.'}
-          </p>
+        <section className='hero-panel hero-panel-compact verify-hero appear-up'>
+          <div className='hero-layout'>
+            <div className='hero-copy'>
+              <p className='hero-tag'>Account Access</p>
+              <h1>
+                {isLoading
+                  ? 'Checking your link'
+                  : user
+                  ? 'Email confirmed'
+                  : 'Confirm your email'}
+              </h1>
+              <p>
+                {isLoading
+                  ? 'We are finishing the sign-in step from your verification email.'
+                  : user
+                  ? 'Your account is ready. We signed you in and will move you into the trainer in a moment.'
+                  : 'Open the confirmation link from your inbox. When it lands here, the site will sign you in automatically.'}
+              </p>
+            </div>
+            <div className='hero-sidebar'>
+              <p className='hero-sidebar-label'>Verification flow</p>
+              <ul className='hero-checklist'>
+                <li>Open the email link and land here.</li>
+                <li>Let the session restore automatically.</li>
+                <li>Jump straight into the trainer or progress desk.</li>
+              </ul>
+            </div>
+          </div>
         </section>
 
         <section className='panel paper-panel auth-panel verify-panel appear-up'>
+          <p className='panel-kicker'>Current status</p>
           <div
             className={`verify-status${
               isLoading ? ' is-pending' : user ? ' is-success' : ' is-idle'
             }`}
             aria-live='polite'
           >
-            <p className='verify-status-kicker'>Current status</p>
             {isLoading ? (
               <>
                 <p className='verify-status-copy'>
-                  Checking your verification link and restoring your session if it is
-                  available.
+                  Checking your verification link and restoring your session if it is available.
                 </p>
                 <p className='verify-status-note'>This usually takes a moment.</p>
               </>
             ) : user ? (
               <>
-                <p className='verify-status-copy'>
-                  You are verified and already signed in.
-                </p>
+                <p className='verify-status-copy'>You are verified and already signed in.</p>
                 {user.email && <p className='verify-user-pill'>{user.email}</p>}
                 <p className='verify-status-note'>
                   Redirecting to the trainer in {redirectSeconds} seconds.
@@ -81,12 +90,9 @@ export default function VerifyPage() {
               </>
             ) : (
               <>
-                <p className='verify-status-copy'>
-                  No verified session is active yet.
-                </p>
+                <p className='verify-status-copy'>No verified session is active yet.</p>
                 <p className='verify-status-note'>
-                  Use the email link to return here. If you already confirmed your
-                  account, you can log in now.
+                  Use the email link to return here. If you already confirmed your account, you can log in now.
                 </p>
               </>
             )}

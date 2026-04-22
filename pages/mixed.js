@@ -639,13 +639,25 @@ function MixedTrainerContent() {
       </Head>
 
       {shouldShowHeroPanel && (
-        <section className='hero-panel appear-up'>
-          <p className='hero-tag'>Discipline Through Numbers</p>
-          <h1>Mixed Trainer</h1>
-          <p>
-            Drill across multiple operations in a single run. Configure difficulty
-            per operation, set your target count, and go.
-          </p>
+        <section className='hero-panel hero-panel-command appear-up'>
+          <div className='hero-layout'>
+            <div className='hero-copy'>
+              <p className='hero-tag'>Discipline Through Numbers</p>
+              <h1>Mixed Trainer</h1>
+              <p>
+                Drill across multiple operations in a single run. Configure difficulty
+                per operation, set your target count, and go.
+              </p>
+            </div>
+            <div className='hero-sidebar'>
+              <p className='hero-sidebar-label'>How this stays sharp</p>
+              <ul className='hero-checklist'>
+                <li>Pick only the operations you want to rehearse.</li>
+                <li>Keep each difficulty level deliberate.</li>
+                <li>Run the keypad like a focused speed station.</li>
+              </ul>
+            </div>
+          </div>
           {!isConfigured && (
             <p className='inline-warning'>
               Account features are not configured yet, so saved progress is currently
@@ -658,13 +670,21 @@ function MixedTrainerContent() {
       {shouldShowMixedConfig && (
         <>
           <section className='mixed-config-layout appear-up'>
-            <article className='panel paper-panel'>
-              <h2>
-                <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
-                  Your Selection
-                </IconLabel>
-              </h2>
-              <form className='settings-form' onSubmit={startRound}>
+            <article className='panel paper-panel mixed-setup-panel'>
+              <div className='panel-title-row'>
+                <div>
+                  <p className='panel-kicker'>Blueprint</p>
+                  <h2>
+                    <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
+                      Your Selection
+                    </IconLabel>
+                  </h2>
+                </div>
+              </div>
+              <p className='panel-copy'>
+                Turn mixed mode into a deliberate control panel instead of a random drill.
+              </p>
+              <form className='settings-form mixed-settings-form' onSubmit={startRound}>
                 {MIXED_OPERATIONS.map((op) => {
                   const meta = MIXED_OPERATION_META[op];
                   const settingKey = OPERATION_SETTING_KEYS[op];
@@ -706,32 +726,34 @@ function MixedTrainerContent() {
                   </select>
                 </div>
 
-                <div className='toggle-row'>
-                  <span>Right-to-left</span>
-                  <button
-                    type='button'
-                    role='switch'
-                    aria-checked={settings.rtlInput}
-                    className={`toggle-switch${settings.rtlInput ? ' is-active' : ''}`}
-                    onClick={() => updateSetting('rtlInput', !settings.rtlInput)}
-                    disabled={isLoadingMixedSettings}
-                  >
-                    <span className='toggle-switch-thumb' />
-                  </button>
-                </div>
+                <div className='mixed-toggle-grid'>
+                  <div className='toggle-row'>
+                    <span>Right-to-left</span>
+                    <button
+                      type='button'
+                      role='switch'
+                      aria-checked={settings.rtlInput}
+                      className={`toggle-switch${settings.rtlInput ? ' is-active' : ''}`}
+                      onClick={() => updateSetting('rtlInput', !settings.rtlInput)}
+                      disabled={isLoadingMixedSettings}
+                    >
+                      <span className='toggle-switch-thumb' />
+                    </button>
+                  </div>
 
-                <div className='toggle-row'>
-                  <span>Hide Timer</span>
-                  <button
-                    type='button'
-                    role='switch'
-                    aria-checked={settings.hideTimer}
-                    className={`toggle-switch${settings.hideTimer ? ' is-active' : ''}`}
-                    onClick={() => updateSetting('hideTimer', !settings.hideTimer)}
-                    disabled={isLoadingMixedSettings}
-                  >
-                    <span className='toggle-switch-thumb' />
-                  </button>
+                  <div className='toggle-row'>
+                    <span>Hide Timer</span>
+                    <button
+                      type='button'
+                      role='switch'
+                      aria-checked={settings.hideTimer}
+                      className={`toggle-switch${settings.hideTimer ? ' is-active' : ''}`}
+                      onClick={() => updateSetting('hideTimer', !settings.hideTimer)}
+                      disabled={isLoadingMixedSettings}
+                    >
+                      <span className='toggle-switch-thumb' />
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -759,21 +781,34 @@ function MixedTrainerContent() {
 
       {activeRound && (
         <section className='mixed-solving-layout appear-up'>
-          <article className='panel chalk-panel mixed-solving-panel'>
+          <article className='panel chalk-panel mixed-solving-panel mixed-solving-stage'>
+            <div className='mixed-solving-head'>
+              <div>
+                <p className='panel-kicker'>Focused Run</p>
+                <h2>
+                  <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
+                    Live Stack
+                  </IconLabel>
+                </h2>
+              </div>
+              <QuestionTimer
+                startedAt={activeRound.questionStartedAt}
+                hidden={activeRound.settings.hideTimer}
+                frozen={isCorrectFlash}
+              />
+            </div>
             <ProgressBar
               current={activeRound.attempts.length}
               total={activeRound.settings.roundSize}
-            />
-            <QuestionTimer
-              startedAt={activeRound.questionStartedAt}
-              hidden={activeRound.settings.hideTimer}
-              frozen={isCorrectFlash}
             />
             <StackedProblem
               problem={activeRound.currentProblem}
               answerDisplay={answerInput}
               isCorrect={isCorrectFlash}
             />
+            <p className='mixed-solving-hint'>
+              Type from the keyboard or drive the on-screen keypad.
+            </p>
             <input
               ref={hiddenInputRef}
               className='mixed-hidden-input'

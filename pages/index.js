@@ -1103,11 +1103,14 @@ export default function TrainerPage() {
       className={`panel chalk-panel finish-secondary-panel ${className}`.trim()}
     >
       <div className='panel-title-row'>
-        <h2>
-          <IconLabel icon={LightningIcon} className='icon-label-heading'>
-            Live Arena
-          </IconLabel>
-        </h2>
+        <div>
+          <p className='panel-kicker'>AI Utilities</p>
+          <h2>
+            <IconLabel icon={LightningIcon} className='icon-label-heading'>
+              Live Arena
+            </IconLabel>
+          </h2>
+        </div>
         <span className='mode-pill mode-pill-ai'>AI MODE</span>
       </div>
       {renderAutoCycleToggle()}
@@ -1223,13 +1226,25 @@ export default function TrainerPage() {
         />
       </Head>
       {shouldShowHeroPanel && (
-        <section className='hero-panel appear-up'>
-          <p className='hero-tag'>Discipline Through Numbers</p>
-          <h1>Mental Math Studio</h1>
-          <p>
-            Sprint through targeted arithmetic rounds, keep every attempt, and track
-            your long-term speed over time.
-          </p>
+        <section className='hero-panel hero-panel-command appear-up'>
+          <div className='hero-layout'>
+            <div className='hero-copy'>
+              <p className='hero-tag'>Discipline Through Numbers</p>
+              <h1>Mental Math Studio</h1>
+              <p>
+                Train one operation at a time, keep every attempt, and make the next
+                action obvious.
+              </p>
+            </div>
+            <div className='hero-sidebar'>
+              <p className='hero-sidebar-label'>Built for fast reps</p>
+              <ul className='hero-checklist'>
+                <li>Dial in the round without hunting through the page.</li>
+                <li>Launch instantly with Enter.</li>
+                <li>Review pace and accuracy after every run.</li>
+              </ul>
+            </div>
+          </div>
           {!isConfigured && (
             <p className='inline-warning'>
               Account features are not configured yet, so saved progress is currently
@@ -1285,18 +1300,24 @@ export default function TrainerPage() {
           {(shouldShowBlueprintPanel || activeRound) && (
             <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
               {shouldShowBlueprintPanel && (
-                <article className='panel paper-panel'>
+                <article className='panel paper-panel trainer-blueprint'>
                   <div className='panel-title-row'>
-                    <h2>
-                      <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
-                        Round Setup
-                      </IconLabel>
-                    </h2>
+                    <div>
+                      <p className='panel-kicker'>Blueprint</p>
+                      <h2>
+                        <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
+                          Round Setup
+                        </IconLabel>
+                      </h2>
+                    </div>
                     {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
                   </div>
+                  <p className='panel-copy'>
+                    Choose the exact repetition pattern before you commit to the run.
+                  </p>
                   <form
                     ref={settingsFormRef}
-                    className='settings-form settings-form-blueprint'
+                    className='settings-form settings-form-blueprint trainer-blueprint-form'
                     onSubmit={startRound}
                   >
                     <fieldset className='setting-group setting-group-span'>
@@ -1518,13 +1539,16 @@ export default function TrainerPage() {
                 </article>
               )}
 
-              <article className='panel chalk-panel'>
+              <article className='panel chalk-panel arena-panel'>
                 <div className='panel-title-row'>
-                  <h2>
-                    <IconLabel icon={LightningIcon} className='icon-label-heading'>
-                      Live Arena
-                    </IconLabel>
-                  </h2>
+                  <div>
+                    <p className='panel-kicker'>Practice Surface</p>
+                    <h2>
+                      <IconLabel icon={LightningIcon} className='icon-label-heading'>
+                        Live Arena
+                      </IconLabel>
+                    </h2>
+                  </div>
                   <div className='panel-header-actions'>
                     {activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
                       <span className='mode-pill mode-pill-ai'>AI MODE</span>
@@ -1544,13 +1568,18 @@ export default function TrainerPage() {
                 </div>
                 {activeRound ? (
                   activeRound.sourceMode === TRAINER_INPUT_MODES.AI ? (
-                    <ProgressBar
-                      current={activeRound.attempts.length}
-                      total={activeRound.settings.roundSize}
-                      label={activeAiQuestionLabel}
-                    />
+                    <div className='arena-progress-shell'>
+                      <p className='placeholder-text'>
+                        The local solver is moving through the configured round automatically.
+                      </p>
+                      <ProgressBar
+                        current={activeRound.attempts.length}
+                        total={activeRound.settings.roundSize}
+                        label={activeAiQuestionLabel}
+                      />
+                    </div>
                   ) : (
-                    <>
+                    <div className='arena-problem-shell'>
                       <ProgressBar
                         current={activeRound.attempts.length}
                         total={activeRound.settings.roundSize}
@@ -1572,7 +1601,7 @@ export default function TrainerPage() {
                           </>
                         )}
                       </p>
-                      <form className='answer-form' onSubmit={handleAnswerSubmit}>
+                      <form className='answer-form answer-form-inline' onSubmit={handleAnswerSubmit}>
                         <label htmlFor='answerInput'>Your answer</label>
                         <input
                           ref={answerInputRef}
@@ -1596,10 +1625,10 @@ export default function TrainerPage() {
                           Submit answer
                         </button>
                       </form>
-                    </>
+                    </div>
                   )
                 ) : isAiMode ? (
-                  <div className='solver-shell'>
+                  <div className='solver-shell arena-idle'>
                     <p className='placeholder-text'>
                       Start an AI round to auto-solve generated questions, or use the custom
                       solver below for calculator-style expressions.
@@ -1667,10 +1696,26 @@ export default function TrainerPage() {
                     )}
                   </div>
                 ) : (
-                  <p className='placeholder-text'>
-                    Start a round to receive timed questions. Each submission is
-                    tracked, scored, and ready for review.
-                  </p>
+                  <div className='arena-idle'>
+                    <p className='placeholder-text'>
+                      Round Setup stays close. Lock the operation, digits, and length,
+                      then press Enter to start.
+                    </p>
+                    <div className='arena-idle-grid'>
+                      <article>
+                        <h3>Set the round</h3>
+                        <p>Choose practice mode, operation, and question count in one pass.</p>
+                      </article>
+                      <article>
+                        <h3>Start fast</h3>
+                        <p>Use the primary button or press Enter when the arena is idle.</p>
+                      </article>
+                      <article>
+                        <h3>Review immediately</h3>
+                        <p>Each finished round rolls straight into a compact performance summary.</p>
+                      </article>
+                    </div>
+                  </div>
                 )}
               </article>
             </section>

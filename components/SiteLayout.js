@@ -6,15 +6,12 @@ import IconLabel from 'components/IconLabel.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import CommandIcon from 'images/phosphor/command-bold.svg';
 import HouseIcon from 'images/phosphor/house.svg';
-import KeyboardIcon from 'images/phosphor/keyboard-bold.svg';
-import PaletteIcon from 'images/phosphor/palette-bold.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import XIcon from 'images/phosphor/x-bold.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   GLOBAL_HOTKEY_ACTIONS,
-  GLOBAL_HOTKEY_KEYS,
   HOTKEY_REFERENCE_GROUPS,
   formatHotkeyLabel,
   getGlobalHotkeyAction,
@@ -23,15 +20,7 @@ import {
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
-import {
-  getThemeByKey,
-  THEME_OPTIONS
-} from 'utils/themes.js';
-
-const CONTROL_TABS = Object.freeze({
-  THEME: 'theme',
-  HOTKEYS: 'hotkeys'
-});
+import { getThemeByKey, THEME_OPTIONS } from 'utils/themes.js';
 
 export default function SiteLayout({ children }) {
   const router = useRouter();
@@ -39,77 +28,139 @@ export default function SiteLayout({ children }) {
   const { terminateActiveSession } = useActiveSession();
   const { themeKey, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
-  const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
-  const [activeControlTab, setActiveControlTab] = useState(CONTROL_TABS.THEME);
-  const themeButtonRef = useRef(null);
-  const themeSelectRef = useRef(null);
-  const themeDrawerRef = useRef(null);
-  const wasThemePanelOpenRef = useRef(false);
+  const [isUtilityDrawerOpen, setIsUtilityDrawerOpen] = useState(false);
+  const utilityButtonRef = useRef(null);
+  const utilityCloseButtonRef = useRef(null);
+  const utilityDrawerRef = useRef(null);
+  const wasUtilityDrawerOpenRef = useRef(false);
+
+  const closeUtilityDrawer = useCallback(() => {
+    setIsUtilityDrawerOpen(false);
+  }, []);
 
   useEffect(() => {
-    const closeThemePanel = () => {
-      setIsThemePanelOpen(false);
-      setActiveControlTab(CONTROL_TABS.THEME);
-    };
-    router.events.on('routeChangeStart', closeThemePanel);
-    return () => router.events.off('routeChangeStart', closeThemePanel);
-  }, [router.events]);
+    router.events.on('routeChangeStart', closeUtilityDrawer);
+    return () => router.events.off('routeChangeStart', closeUtilityDrawer);
+  }, [closeUtilityDrawer, router.events]);
 
   useEffect(() => {
-    if (!isThemePanelOpen || typeof window === 'undefined') {
+    if (
+      !isUtilityDrawerOpen ||
+      typeof window === 'undefined' ||
+      typeof document === 'undefined'
+    ) {
       return undefined;
     }
 
-    const onEscape = (event) => {
+    const getFocusableUtilityElements = () => {
+      if (!utilityDrawerRef.current) {
+        return [];
+      }
+
+      return Array.from(
+        utilityDrawerRef.current.querySelectorAll(
+          'a[href], button:not([disabled]), select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(
+        (element) =>
+          !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true'
+      );
+    };
+
+    const onKeyDown = (event) => {
       if (event.key === 'Escape') {
-        setIsThemePanelOpen(false);
+        closeUtilityDrawer();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusableElements = getFocusableUtilityElements();
+      if (!focusableElements.length) {
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!utilityDrawerRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        firstElement.focus();
+        return;
+      }
+
+      if (event.shiftKey) {
+        if (document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        }
+        return;
+      }
+
+      if (document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     };
 
-    window.addEventListener('keydown', onEscape);
-    return () => window.removeEventListener('keydown', onEscape);
-  }, [isThemePanelOpen]);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [closeUtilityDrawer, isUtilityDrawerOpen]);
 
   useEffect(() => {
-    if (!isThemePanelOpen || typeof window === 'undefined') {
+    if (!isUtilityDrawerOpen || typeof window === 'undefined') {
       return undefined;
     }
 
     const onClickOutside = (event) => {
       if (
-        themeDrawerRef.current &&
-        !themeDrawerRef.current.contains(event.target) &&
-        themeButtonRef.current &&
-        !themeButtonRef.current.contains(event.target)
+        utilityDrawerRef.current &&
+        !utilityDrawerRef.current.contains(event.target) &&
+        utilityButtonRef.current &&
+        !utilityButtonRef.current.contains(event.target)
       ) {
-        setIsThemePanelOpen(false);
+        closeUtilityDrawer();
       }
     };
 
     window.addEventListener('mousedown', onClickOutside);
     return () => window.removeEventListener('mousedown', onClickOutside);
-  }, [isThemePanelOpen]);
+  }, [closeUtilityDrawer, isUtilityDrawerOpen]);
 
   useEffect(() => {
-    if (isThemePanelOpen) {
-      wasThemePanelOpenRef.current = true;
-      if (activeControlTab === CONTROL_TABS.THEME) {
-        themeSelectRef.current?.focus();
-      }
+    if (!isUtilityDrawerOpen || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyOverscrollBehavior = document.body.style.overscrollBehavior;
+    const previousDocumentOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscrollBehavior;
+      document.documentElement.style.overflow = previousDocumentOverflow;
+    };
+  }, [isUtilityDrawerOpen]);
+
+  useEffect(() => {
+    if (isUtilityDrawerOpen) {
+      wasUtilityDrawerOpenRef.current = true;
+      utilityCloseButtonRef.current?.focus();
       return;
     }
 
-    if (wasThemePanelOpenRef.current) {
-      themeButtonRef.current?.focus();
-      wasThemePanelOpenRef.current = false;
+    if (wasUtilityDrawerOpenRef.current) {
+      utilityButtonRef.current?.focus();
+      wasUtilityDrawerOpenRef.current = false;
     }
-  }, [activeControlTab, isThemePanelOpen]);
-
-  useEffect(() => {
-    if (!isThemePanelOpen) {
-      setActiveControlTab(CONTROL_TABS.THEME);
-    }
-  }, [isThemePanelOpen]);
+  }, [isUtilityDrawerOpen]);
 
   const activeTheme = useMemo(() => getThemeByKey(themeKey), [themeKey]);
   const trainerShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.TRAINER);
@@ -206,9 +257,10 @@ export default function SiteLayout({ children }) {
 
     const { error } = await signOut();
     if (!error) {
+      closeUtilityDrawer();
       await router.push('/login');
     }
-  }, [router, signOut, terminateActiveSession]);
+  }, [closeUtilityDrawer, router, signOut, terminateActiveSession]);
 
   const handleThemeChange = (event) => {
     void upsertPreferences({ themeKey: event.target.value });
@@ -220,13 +272,12 @@ export default function SiteLayout({ children }) {
     }
 
     void upsertPreferences({
-      themeKey: getNextThemeKey(themeKey, THEME_OPTIONS)
+      themeKey: getNextThemeKey(activeTheme.key, THEME_OPTIONS)
     });
-  }, [isLoadingPreferences, themeKey, upsertPreferences, user]);
+  }, [activeTheme.key, isLoadingPreferences, upsertPreferences, user]);
 
-  const handleThemeFabToggle = useCallback(() => {
-    setIsThemePanelOpen((isOpen) => !isOpen);
-    setActiveControlTab(CONTROL_TABS.THEME);
+  const handleUtilityDrawerToggle = useCallback(() => {
+    setIsUtilityDrawerOpen((currentState) => !currentState);
   }, []);
 
   useEffect(() => {
@@ -281,12 +332,13 @@ export default function SiteLayout({ children }) {
       }
 
       event.preventDefault();
+      closeUtilityDrawer();
       void router.push(nextRoute);
     };
 
     window.addEventListener('keydown', handleGlobalShortcut);
     return () => window.removeEventListener('keydown', handleGlobalShortcut);
-  }, [cycleTheme, handleSignOut, router, user]);
+  }, [closeUtilityDrawer, cycleTheme, handleSignOut, router, user]);
 
   return (
     <div className='app-shell' data-theme-key={activeTheme.key} style={themeStyle}>
@@ -296,14 +348,16 @@ export default function SiteLayout({ children }) {
             <span className='brand-chip'>Studio</span>
             <span className='brand-title'>Mental Math</span>
           </Link>
-          <nav className='site-nav' aria-label='Main'>
+
+          <nav className='site-nav' aria-label='Primary'>
             {navLinks.map((link) => {
               const isActive = router.pathname === link.href;
+
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`site-nav-link ${isActive ? 'is-active' : ''}`}
+                  className={`site-nav-link ${isActive ? 'is-active' : ''}`.trim()}
                   aria-keyshortcuts={link.hotkey}
                 >
                   <IconLabel icon={link.icon} className='icon-label-nav'>
@@ -313,8 +367,9 @@ export default function SiteLayout({ children }) {
               );
             })}
           </nav>
+
           <div className={`site-actions${user ? ' has-user-session' : ''}`}>
-            {!isConfigured && <span className='status-badge'>Account sync unavailable</span>}
+            {!isConfigured && <span className='status-badge'>Sync offline</span>}
             {user ? (
               <div className='site-session'>
                 <span className='user-pill'>{user.email}</span>
@@ -345,158 +400,213 @@ export default function SiteLayout({ children }) {
                 </Link>
               </div>
             )}
+
+            <div className='site-utility-shell'>
+              <button
+                ref={utilityButtonRef}
+                type='button'
+                className='site-utility-toggle'
+                onClick={handleUtilityDrawerToggle}
+                aria-label={
+                  isUtilityDrawerOpen ? 'Close utility drawer' : 'Open utility drawer'
+                }
+                aria-expanded={isUtilityDrawerOpen}
+                aria-controls='utility-drawer'
+                aria-haspopup='dialog'
+              >
+                <IconLabel icon={CommandIcon} className='icon-label-button'>
+                  Utility
+                </IconLabel>
+              </button>
+            </div>
           </div>
         </div>
       </header>
+
+      {isUtilityDrawerOpen && (
+        <>
+          <button
+            type='button'
+            className='utility-backdrop'
+            aria-hidden='true'
+            tabIndex={-1}
+            onClick={closeUtilityDrawer}
+          />
+          <section
+            ref={utilityDrawerRef}
+            id='utility-drawer'
+            className='theme-drawer utility-drawer appear-up'
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='utility-drawer-title'
+            aria-label='Utility drawer'
+          >
+            <div className='theme-settings utility-panel'>
+              <div className='control-drawer-header utility-header'>
+                <div>
+                  <p className='theme-kicker'>Command Desk</p>
+                  <h2 id='utility-drawer-title' className='utility-title'>
+                    Navigation, appearance, hotkeys
+                  </h2>
+                  <p className='theme-vibe'>
+                    Keep the practice surface clean while the controls stay close.
+                  </p>
+                </div>
+                <button
+                  ref={utilityCloseButtonRef}
+                  type='button'
+                  className='control-drawer-close'
+                  onClick={closeUtilityDrawer}
+                  aria-label='Close utility drawer'
+                >
+                  <XIcon className='control-drawer-close-icon' />
+                </button>
+              </div>
+
+              <section className='utility-section utility-section-nav'>
+                <div className='utility-section-head'>
+                  <p className='theme-kicker'>Navigate</p>
+                </div>
+                <div className='utility-link-list'>
+                  {navLinks.map((link) => {
+                    const isActive = router.pathname === link.href;
+
+                    return (
+                      <Link
+                        key={`utility-${link.href}`}
+                        href={link.href}
+                        className={`site-nav-link utility-nav-link ${isActive ? 'is-active' : ''}`.trim()}
+                        aria-keyshortcuts={link.hotkey}
+                        onClick={closeUtilityDrawer}
+                      >
+                        <span className='utility-link-main'>
+                          <IconLabel icon={link.icon} className='icon-label-nav'>
+                            {link.label}
+                          </IconLabel>
+                        </span>
+                        <HotkeyHint label={link.hotkey} />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className='utility-section utility-section-account'>
+                <div className='utility-section-head'>
+                  <p className='theme-kicker'>Account</p>
+                </div>
+                {user ? (
+                  <div className='utility-account-card'>
+                    <p className='user-pill utility-user-pill'>{user.email}</p>
+                    <button
+                      type='button'
+                      className='button button-quiet button-full'
+                      onClick={handleSignOut}
+                      aria-keyshortcuts={logoutShortcut}
+                    >
+                      Log out
+                    </button>
+                  </div>
+                ) : (
+                  <div className='utility-account-actions'>
+                    <Link
+                      href='/login'
+                      className='button button-quiet button-full'
+                      aria-keyshortcuts={loginShortcut}
+                      onClick={closeUtilityDrawer}
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      href='/signup'
+                      className='button button-strong button-full'
+                      aria-keyshortcuts={signupShortcut}
+                      onClick={closeUtilityDrawer}
+                    >
+                      Sign up
+                    </Link>
+                  </div>
+                )}
+              </section>
+
+              <section className='utility-section'>
+                <div className='utility-section-head'>
+                  <p className='theme-kicker'>Appearance</p>
+                  <HotkeyHint label={themeShortcut} />
+                </div>
+                <label className='theme-label' htmlFor='theme-select'>
+                  Palette
+                </label>
+                <select
+                  id='theme-select'
+                  className='theme-select'
+                  value={activeTheme.key}
+                  onChange={handleThemeChange}
+                  disabled={Boolean(user) && isLoadingPreferences}
+                >
+                  {THEME_OPTIONS.map((theme) => (
+                    <option key={theme.key} value={theme.key}>
+                      {theme.name}
+                    </option>
+                  ))}
+                </select>
+                <p className='theme-vibe'>{activeTheme.vibe}</p>
+                <div className='theme-swatches' aria-hidden='true'>
+                  {activeTheme.colors.map((color) => (
+                    <span
+                      key={`${activeTheme.key}-${color}`}
+                      className='theme-swatch'
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section className='utility-section'>
+                <div className='utility-section-head'>
+                  <p className='theme-kicker'>Hotkeys</p>
+                </div>
+                <div className='hotkey-reference'>
+                  {HOTKEY_REFERENCE_GROUPS.map((group) => (
+                    <section
+                      key={group.id}
+                      className='hotkey-group'
+                      aria-labelledby={`${group.id}-title`}
+                    >
+                      <h3 id={`${group.id}-title`} className='hotkey-group-title'>
+                        {group.label}
+                      </h3>
+                      <ul className='hotkey-group-list'>
+                        {group.items.map((item) => (
+                          <li
+                            key={`${group.id}-${item.shortcut}-${item.label}`}
+                            className='hotkey-row'
+                          >
+                            <HotkeyHint label={formatHotkeyLabel(item.shortcut)} />
+                            <div className='hotkey-row-copy'>
+                              <p className='hotkey-row-label'>{item.label}</p>
+                              <p className='hotkey-row-description'>{item.description}</p>
+                              {item.note && <p className='hotkey-row-note'>{item.note}</p>}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </section>
+        </>
+      )}
+
       <main className='site-main'>{children}</main>
+
       <footer className='site-footer'>
         <p>
           Built for focused repetition, measurable progress, and ruthless consistency.
         </p>
       </footer>
-      <div className='theme-floating-layer'>
-        <div className='theme-fab-shell'>
-          <button
-            ref={themeButtonRef}
-            type='button'
-            className='theme-fab'
-            onClick={handleThemeFabToggle}
-            aria-label='Open appearance and hotkeys'
-            aria-expanded={isThemePanelOpen}
-            aria-controls='appearance-hotkeys-panel'
-            aria-keyshortcuts={themeShortcut}
-          >
-            <CommandIcon className='theme-fab-icon' />
-          </button>
-          <HotkeyHint
-            label={themeShortcut}
-            variant='floating'
-            className='theme-fab-hotkey'
-          />
-        </div>
-        <section
-          ref={themeDrawerRef}
-          id='appearance-hotkeys-panel'
-          className={`theme-drawer ${isThemePanelOpen ? 'is-open' : ''}`}
-          aria-label='Appearance and hotkeys'
-          aria-hidden={!isThemePanelOpen}
-          hidden={!isThemePanelOpen}
-        >
-          <div className='theme-settings control-drawer' role='group' aria-label='Appearance and hotkeys'>
-            <div className='control-drawer-header'>
-              <div className='control-drawer-tabs' role='tablist' aria-label='Appearance and hotkeys sections'>
-              <button
-                id='appearance-tab'
-                type='button'
-                role='tab'
-                className={`control-drawer-tab${activeControlTab === CONTROL_TABS.THEME ? ' is-active' : ''}`}
-                aria-selected={activeControlTab === CONTROL_TABS.THEME}
-                aria-controls='appearance-panel'
-                tabIndex={activeControlTab === CONTROL_TABS.THEME ? 0 : -1}
-                onClick={() => setActiveControlTab(CONTROL_TABS.THEME)}
-              >
-                <IconLabel icon={PaletteIcon} className='icon-label-button'>
-                  Theme
-                </IconLabel>
-              </button>
-              <button
-                id='hotkeys-tab'
-                type='button'
-                role='tab'
-                className={`control-drawer-tab${activeControlTab === CONTROL_TABS.HOTKEYS ? ' is-active' : ''}`}
-                aria-selected={activeControlTab === CONTROL_TABS.HOTKEYS}
-                aria-controls='hotkeys-panel'
-                tabIndex={activeControlTab === CONTROL_TABS.HOTKEYS ? 0 : -1}
-                onClick={() => setActiveControlTab(CONTROL_TABS.HOTKEYS)}
-              >
-                <IconLabel icon={KeyboardIcon} className='icon-label-button'>
-                  Hotkeys
-                </IconLabel>
-              </button>
-              </div>
-              <button
-                type='button'
-                className='control-drawer-close'
-                onClick={() => setIsThemePanelOpen(false)}
-                aria-label='Close panel'
-              >
-                <XIcon className='control-drawer-close-icon' />
-              </button>
-            </div>
-
-            <div
-              id='appearance-panel'
-              className='control-drawer-panel'
-              role='tabpanel'
-              aria-labelledby='appearance-tab'
-              hidden={activeControlTab !== CONTROL_TABS.THEME}
-            >
-              <p className='theme-kicker'>Appearance</p>
-              <label className='theme-label' htmlFor='theme-select'>
-                Palette
-              </label>
-              <select
-                ref={themeSelectRef}
-                id='theme-select'
-                className='theme-select'
-                value={activeTheme.key}
-                onChange={handleThemeChange}
-                disabled={Boolean(user) && isLoadingPreferences}
-              >
-                {THEME_OPTIONS.map((theme) => (
-                  <option key={theme.key} value={theme.key}>
-                    {theme.name}
-                  </option>
-                ))}
-              </select>
-              <p className='theme-vibe'>{activeTheme.vibe}</p>
-              <div className='theme-swatches' aria-hidden='true'>
-                {activeTheme.colors.map((color) => (
-                  <span
-                    key={`${activeTheme.key}-${color}`}
-                    className='theme-swatch'
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div
-              id='hotkeys-panel'
-              className='control-drawer-panel'
-              role='tabpanel'
-              aria-labelledby='hotkeys-tab'
-              hidden={activeControlTab !== CONTROL_TABS.HOTKEYS}
-            >
-              <p className='theme-kicker'>Hotkeys</p>
-              <div className='hotkey-reference'>
-                {HOTKEY_REFERENCE_GROUPS.map((group) => (
-                  <section key={group.id} className='hotkey-group' aria-labelledby={`${group.id}-title`}>
-                    <h3 id={`${group.id}-title`} className='hotkey-group-title'>
-                      {group.label}
-                    </h3>
-                    <ul className='hotkey-group-list'>
-                      {group.items.map((item) => (
-                        <li key={`${group.id}-${item.shortcut}-${item.label}`} className='hotkey-row'>
-                          <HotkeyHint
-                            label={formatHotkeyLabel(item.shortcut)}
-                            variant='reference'
-                          />
-                          <div className='hotkey-row-copy'>
-                            <p className='hotkey-row-label'>{item.label}</p>
-                            <p className='hotkey-row-description'>{item.description}</p>
-                            {item.note && <p className='hotkey-row-note'>{item.note}</p>}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
     </div>
   );
 }

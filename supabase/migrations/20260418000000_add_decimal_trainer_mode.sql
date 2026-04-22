@@ -30,6 +30,10 @@ alter table public.progress_logs
   add column if not exists right_decimal_digits smallint not null default 0;
 
 alter table public.progress_logs
+  drop constraint if exists progress_logs_left_operand_check,
+  drop constraint if exists progress_logs_right_operand_check;
+
+alter table public.progress_logs
   alter column left_operand type text using left_operand::text,
   alter column right_operand type text using right_operand::text;
 
@@ -55,14 +59,8 @@ alter table public.progress_logs
   check (right_decimal_digits between 0 and 8);
 
 alter table public.progress_logs
-  drop constraint if exists progress_logs_left_operand_check;
-
-alter table public.progress_logs
   add constraint progress_logs_left_operand_check
   check (left_operand ~ '^[0-9]+(?:\.[0-9]+)?$');
-
-alter table public.progress_logs
-  drop constraint if exists progress_logs_right_operand_check;
 
 alter table public.progress_logs
   add constraint progress_logs_right_operand_check

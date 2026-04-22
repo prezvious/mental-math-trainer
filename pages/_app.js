@@ -4,6 +4,7 @@ import { AccountPreferencesProvider } from 'utils/accountPreferencesContext.js';
 import { ActiveSessionProvider } from 'utils/activeSessionContext.js';
 import { SupabaseAuthProvider } from 'utils/supabaseAuthContext.js';
 import 'styles/globals.css';
+import 'styles/redesign.css';
 
 export default function App({ Component, pageProps }) {
   return (

@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import IconLabel from 'components/IconLabel.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
@@ -67,6 +67,22 @@ export default function StatsPage() {
 
   const { overview, operationBreakdown, recentSessions, recentAttempts } = dashboardData;
 
+  const heroChecklist = useMemo(() => {
+    if (!user || isLoading || errorMessage || overview.totalAttempts === 0) {
+      return [
+        'Review accuracy and response speed together.',
+        `See sessions from the last ${RECENT_PROGRESS_WINDOW_DAYS} days.`,
+        'Spot which operation needs tighter reps next.'
+      ];
+    }
+
+    return [
+      `${overview.totalAttempts} total attempts recorded.`,
+      `${overview.accuracy.toFixed(1)}% overall accuracy.`,
+      `${formatDuration(overview.averageResponseMs)} average response time.`
+    ];
+  }, [errorMessage, isLoading, overview.accuracy, overview.averageResponseMs, overview.totalAttempts, user]);
+
   const handleReset = async () => {
     if (!client || !userId || isResetting) {
       return;
@@ -110,18 +126,31 @@ export default function StatsPage() {
         />
       </Head>
 
-      <section className='hero-panel appear-up'>
-        <p className='hero-tag'>Progress Dashboard</p>
-        <h1>Session Analytics</h1>
-        <p>
-          Review every submission, including speed, correctness, and operation-level
-          consistency.
-        </p>
+      <section className='hero-panel hero-panel-compact stats-hero appear-up'>
+        <div className='hero-layout'>
+          <div className='hero-copy'>
+            <p className='hero-tag'>Progress Dashboard</p>
+            <h1>Session Analytics</h1>
+            <p>
+              Read your pace, consistency, and operation-level control without leaving
+              the practice desk.
+            </p>
+          </div>
+          <div className='hero-sidebar'>
+            <p className='hero-sidebar-label'>What this view tracks</p>
+            <ul className='hero-checklist'>
+              {heroChecklist.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </section>
 
       {!isConfigured && (
-        <section className='panel warning-panel appear-up'>
-          <h2>Account Setup Missing</h2>
+        <section className='panel warning-panel appear-up empty-state-panel'>
+          <p className='panel-kicker'>Sync status</p>
+          <h2>Account setup is offline</h2>
           <p>
             Progress data is unavailable until account features are configured.
           </p>
@@ -129,9 +158,12 @@ export default function StatsPage() {
       )}
 
       {!user && (
-        <section className='panel paper-panel appear-up'>
-          <h2>Log In Required</h2>
-          <p>Sign in to view your personal progress and session analytics.</p>
+        <section className='panel paper-panel appear-up empty-state-panel'>
+          <p className='panel-kicker'>Private analytics</p>
+          <h2>Log in to open your dashboard</h2>
+          <p>
+            Session history, averages, and recent attempts only appear after you sign in.
+          </p>
           <div className='inline-actions'>
             <Link href='/login' className='button button-strong'>
               Log in
@@ -167,67 +199,87 @@ export default function StatsPage() {
           </section>
 
           {errorMessage && (
-            <section className='panel warning-panel appear-up'>
-              <h2>Request Failed</h2>
+            <section className='panel warning-panel appear-up empty-state-panel'>
+              <p className='panel-kicker'>Request failed</p>
+              <h2>Dashboard data could not load</h2>
               <p>{errorMessage}</p>
             </section>
           )}
 
           {isLoading && (
-            <section className='panel paper-panel appear-up'>
-              <h2>Loading progress data...</h2>
+            <section className='panel paper-panel appear-up empty-state-panel'>
+              <p className='panel-kicker'>Loading</p>
+              <h2>Building your latest dashboard snapshot</h2>
             </section>
           )}
 
           {!isLoading && !errorMessage && overview.totalAttempts === 0 && (
-            <section className='panel paper-panel appear-up'>
-              <h2>No Records Yet</h2>
+            <section className='panel paper-panel appear-up empty-state-panel'>
+              <p className='panel-kicker'>No history yet</p>
+              <h2>Finish a round to start the record</h2>
               <p>
-                Complete a training round from the trainer page. Manual attempts and
-                AI MODE activity will appear here.
+                Manual attempts and AI MODE activity will appear here as soon as you
+                complete a training run.
               </p>
-              <Link href='/' className='button button-strong'>
-                <IconLabel icon={HouseIcon} className='icon-label-button'>
-                  Open trainer
-                </IconLabel>
-              </Link>
+              <div className='inline-actions'>
+                <Link href='/' className='button button-strong'>
+                  <IconLabel icon={HouseIcon} className='icon-label-button'>
+                    Open trainer
+                  </IconLabel>
+                </Link>
+                <Link href='/mixed' className='button button-quiet'>
+                  Train mixed mode
+                </Link>
+              </div>
             </section>
           )}
 
           {!isLoading && !errorMessage && overview.totalAttempts > 0 && (
             <>
-              <section className='summary-panel appear-up'>
-                <h2>
-                  <IconLabel icon={ChartLineUpIcon} className='icon-label-heading'>
-                    Overall Performance
-                  </IconLabel>
-                </h2>
+              <section className='summary-panel appear-up summary-panel-dashboard'>
+                <div className='panel-title-row'>
+                  <h2>
+                    <IconLabel icon={ChartLineUpIcon} className='icon-label-heading'>
+                      Overall Performance
+                    </IconLabel>
+                  </h2>
+                </div>
+                <p className='section-intro'>
+                  A quick read on volume, accuracy, and response speed.
+                </p>
                 <div className='summary-grid'>
                   <article>
                     <h3>Total Attempts</h3>
-                    <p>{overview.totalAttempts}</p>
+                    <p className='summary-metric-value'>{overview.totalAttempts}</p>
                   </article>
                   <article>
                     <h3>Accuracy</h3>
-                    <p>{overview.accuracy.toFixed(1)}%</p>
+                    <p className='summary-metric-value'>{overview.accuracy.toFixed(1)}%</p>
                   </article>
                   <article>
                     <h3>Avg Response</h3>
-                    <p>{formatDuration(overview.averageResponseMs)}</p>
+                    <p className='summary-metric-value'>
+                      {formatDuration(overview.averageResponseMs)}
+                    </p>
                   </article>
                   <article>
                     <h3>Fastest Answer</h3>
-                    <p>{formatDuration(overview.fastest)}</p>
+                    <p className='summary-metric-value'>{formatDuration(overview.fastest)}</p>
                   </article>
                 </div>
               </section>
 
-              <section className='panel paper-panel appear-up'>
-                <h2>
-                  <IconLabel icon={FunctionIcon} className='icon-label-heading'>
-                    Operation Breakdown
-                  </IconLabel>
-                </h2>
+              <section className='panel paper-panel appear-up dashboard-section'>
+                <div className='panel-title-row'>
+                  <h2>
+                    <IconLabel icon={FunctionIcon} className='icon-label-heading'>
+                      Operation Breakdown
+                    </IconLabel>
+                  </h2>
+                </div>
+                <p className='section-intro'>
+                  Compare how each operation behaves before you choose the next repetition block.
+                </p>
                 <div className='operation-grid'>
                   {operationBreakdown.map((row) => (
                     <article key={row.operation} className='operation-card'>
@@ -240,13 +292,17 @@ export default function StatsPage() {
                 </div>
               </section>
 
-              <section className='panel chalk-panel appear-up'>
-                <h2>
-                  <IconLabel icon={TimerIcon} className='icon-label-heading'>
-                    Recent Sessions
-                  </IconLabel>
-                </h2>
-                <p>Showing sessions from the last {RECENT_PROGRESS_WINDOW_DAYS} days.</p>
+              <section className='panel chalk-panel appear-up dashboard-section'>
+                <div className='panel-title-row'>
+                  <h2>
+                    <IconLabel icon={TimerIcon} className='icon-label-heading'>
+                      Recent Sessions
+                    </IconLabel>
+                  </h2>
+                </div>
+                <p className='section-intro'>
+                  Showing sessions from the last {RECENT_PROGRESS_WINDOW_DAYS} days.
+                </p>
                 <div className='table-wrap'>
                   <table>
                     <thead>
@@ -281,13 +337,17 @@ export default function StatsPage() {
                 </div>
               </section>
 
-              <section className='panel paper-panel appear-up'>
-                <h2>
-                  <IconLabel icon={ListChecksIcon} className='icon-label-heading'>
-                    Recent Attempts
-                  </IconLabel>
-                </h2>
-                <p>Showing attempts from the last {RECENT_PROGRESS_WINDOW_DAYS} days.</p>
+              <section className='panel paper-panel appear-up dashboard-section'>
+                <div className='panel-title-row'>
+                  <h2>
+                    <IconLabel icon={ListChecksIcon} className='icon-label-heading'>
+                      Recent Attempts
+                    </IconLabel>
+                  </h2>
+                </div>
+                <p className='section-intro'>
+                  Showing attempts from the last {RECENT_PROGRESS_WINDOW_DAYS} days.
+                </p>
                 <ul className='attempt-list'>
                   {recentAttempts.map((entry) => (
                     <li key={entry.id}>

@@ -83,7 +83,7 @@ export const HOTKEY_REFERENCE_GROUPS = Object.freeze([
         shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.THEME],
         label: 'Cycle theme',
         description: 'Rotate through the available palettes instantly.',
-        note: 'Cycles the palette directly; use the floating button to open this drawer.'
+        note: 'Cycles the palette directly; use the utility drawer for manual theme switching.'
       })
     ])
   }),

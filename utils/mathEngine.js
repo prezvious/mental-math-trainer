@@ -381,6 +381,11 @@ function createDecimalDivisionProblem(settings) {
     );
     const leftNumerator = rightOperand.numerator * quotient;
 
+    // Keep Decimal mode visually decimal instead of generating ".000" operands.
+    if (leftNumerator % pow10BigInt(settings.leftDecimalDigits) === 0n) {
+      continue;
+    }
+
     return {
       practiceMode: PRACTICE_MODES.DECIMAL,
       operation: settings.operation,

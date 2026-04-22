@@ -50,7 +50,7 @@ export default function SignupPage() {
     if (user) {
       router.replace('/');
     }
-  }, [user, router]);
+  }, [router, user]);
 
   const passwordValidation = useMemo(() => validatePassword(password), [password]);
   const strength = useMemo(
@@ -128,142 +128,172 @@ export default function SignupPage() {
           content='Create your account for Mental Math Studio and keep your training history.'
         />
       </Head>
-      <section className='hero-panel appear-up'>
-        <p className='hero-tag'>Create Account</p>
-        <h1>Sign Up</h1>
-        <p>Save your rounds, build consistency, and keep your long-term progress history.</p>
-      </section>
 
-      <section className='panel paper-panel auth-panel appear-up'>
-        {!isConfigured && (
-          <p className='inline-warning'>
-            Account features are not configured yet, so sign-up is unavailable right
-            now.
+      <div className='auth-shell'>
+        <section className='hero-panel hero-panel-compact auth-hero appear-up'>
+          <div className='hero-layout'>
+            <div className='hero-copy'>
+              <p className='hero-tag'>Create Account</p>
+              <h1>Sign Up</h1>
+              <p>
+                Save your round history, keep your settings, and build a long-term record of speed.
+              </p>
+            </div>
+            <div className='hero-sidebar'>
+              <p className='hero-sidebar-label'>What you unlock</p>
+              <ul className='hero-checklist'>
+                <li>Saved progress across trainer and mixed sessions.</li>
+                <li>Theme and setup preferences that travel with you.</li>
+                <li>A cleaner handoff from training to analytics.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className='panel paper-panel auth-panel appear-up'>
+          <p className='panel-kicker'>New account</p>
+          <h2>Build your practice desk</h2>
+          <p className='panel-copy'>
+            Start with a strong password, then confirm your email to unlock synced progress.
           </p>
-        )}
-        <form className='auth-form' onSubmit={handleSubmit}>
-          <label htmlFor='signup-email'>Email</label>
-          <input
-            id='signup-email'
-            type='email'
-            autoComplete='email'
-            required
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value);
-              setDuplicateEmail('');
-              setErrorMessage('');
-              setSuccessMessage('');
-            }}
-          />
 
-          <label htmlFor='signup-password'>Password</label>
-          <div className='password-field'>
+          {!isConfigured && (
+            <p className='inline-warning'>
+              Account features are not configured yet, so sign-up is unavailable right now.
+            </p>
+          )}
+
+          <form className='auth-form' onSubmit={handleSubmit}>
+            <label htmlFor='signup-email'>Email</label>
             <input
-              id='signup-password'
-              type={showPassword ? 'text' : 'password'}
-              autoComplete='new-password'
+              id='signup-email'
+              type='email'
+              autoComplete='email'
               required
-              value={password}
+              value={email}
               onChange={(event) => {
-                setPassword(event.target.value);
+                setEmail(event.target.value);
+                setDuplicateEmail('');
                 setErrorMessage('');
                 setSuccessMessage('');
               }}
-              aria-describedby='password-guidance'
             />
-            <button
-              type='button'
-              className='password-toggle'
-              onClick={() => setShowPassword((current) => !current)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
-          </div>
 
-          <div id='password-guidance' className='password-guidance' aria-live='polite'>
-            <div className='strength-row'>
-              <span>Password strength: {strength.label}</span>
-              <span>
-                {strength.score}/{strength.maxScore}
-              </span>
+            <label htmlFor='signup-password'>Password</label>
+            <div className='password-field'>
+              <input
+                id='signup-password'
+                type={showPassword ? 'text' : 'password'}
+                autoComplete='new-password'
+                required
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setErrorMessage('');
+                  setSuccessMessage('');
+                }}
+                aria-describedby='password-guidance'
+              />
+              <button
+                type='button'
+                className='password-toggle'
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
             </div>
-            <div className='strength-track' aria-hidden='true'>
-              {Array.from({ length: strength.maxScore }, (_unused, index) => {
-                const isPassed = index < strength.score;
-                return (
-                  <span key={index} className={isPassed ? 'is-pass' : ''} />
-                );
-              })}
+
+            <div id='password-guidance' className='password-guidance' aria-live='polite'>
+              <div className='strength-row'>
+                <span>Password strength: {strength.label}</span>
+                <span>
+                  {strength.score}/{strength.maxScore}
+                </span>
+              </div>
+              <div className='strength-track' aria-hidden='true'>
+                {Array.from({ length: strength.maxScore }, (_unused, index) => {
+                  const isPassed = index < strength.score;
+                  return <span key={index} className={isPassed ? 'is-pass' : ''} />;
+                })}
+              </div>
+              <ul className='password-rules'>
+                {PASSWORD_RULES.map((rule) => {
+                  const isPassed = passwordValidation[rule.key];
+                  return (
+                    <li key={rule.key} className={isPassed ? 'is-pass' : ''}>
+                      <span aria-hidden='true'>{getPasswordRuleIndicator(isPassed)}</span>
+                      <span>{rule.label}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-            <ul className='password-rules'>
-              {PASSWORD_RULES.map((rule) => {
-                const isPassed = passwordValidation[rule.key];
-                return (
-                  <li key={rule.key} className={isPassed ? 'is-pass' : ''}>
-                    <span aria-hidden='true'>{getPasswordRuleIndicator(isPassed)}</span>
-                    <span>{rule.label}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
 
-          <label htmlFor='signup-confirm-password'>Confirm password</label>
-          <div className='password-field'>
-            <input
-              id='signup-confirm-password'
-              type={showConfirmPassword ? 'text' : 'password'}
-              autoComplete='new-password'
-              required
-              value={confirmPassword}
-              onChange={(event) => {
-                setConfirmPassword(event.target.value);
-                setErrorMessage('');
-                setSuccessMessage('');
-              }}
-              aria-describedby='confirm-password-note'
-            />
-            <button
-              type='button'
-              className='password-toggle'
-              onClick={() => setShowConfirmPassword((current) => !current)}
-              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+            <label htmlFor='signup-confirm-password'>Confirm password</label>
+            <div className='password-field'>
+              <input
+                id='signup-confirm-password'
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete='new-password'
+                required
+                value={confirmPassword}
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value);
+                  setErrorMessage('');
+                  setSuccessMessage('');
+                }}
+                aria-describedby='confirm-password-note'
+              />
+              <button
+                type='button'
+                className='password-toggle'
+                onClick={() => setShowConfirmPassword((current) => !current)}
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
+
+            <p
+              id='confirm-password-note'
+              className={`confirm-note ${passwordsMatch ? 'is-pass' : ''}`.trim()}
             >
-              {showConfirmPassword ? 'Hide' : 'Show'}
+              {confirmPassword.length === 0
+                ? 'Confirm your password.'
+                : passwordsMatch
+                ? 'Passwords match.'
+                : 'Passwords do not match yet.'}
+            </p>
+
+            <button
+              type='submit'
+              className='button button-strong button-full'
+              disabled={!canSubmit}
+            >
+              {isSubmitting ? 'Creating account...' : 'Create account'}
             </button>
-          </div>
-          <p id='confirm-password-note' className={`confirm-note ${passwordsMatch ? 'is-pass' : ''}`}>
-            {confirmPassword.length === 0
-              ? 'Confirm your password.'
-              : passwordsMatch
-              ? 'Passwords match.'
-              : 'Passwords do not match yet.'}
-          </p>
+          </form>
 
-          <button type='submit' className='button button-strong button-full' disabled={!canSubmit}>
-            {isSubmitting ? 'Creating account...' : 'Create account'}
-          </button>
-        </form>
-        {errorMessage && <p className='feedback warning'>{errorMessage}</p>}
-        {successMessage && <p className='feedback success'>{successMessage}</p>}
+          {errorMessage && <p className='feedback warning'>{errorMessage}</p>}
+          {successMessage && <p className='feedback success'>{successMessage}</p>}
 
-        {duplicateEmail && (
-          <div className='inline-actions'>
-            <Link href={loginHref} className='button button-quiet'>
-              Log in with this email
+          {duplicateEmail && (
+            <div className='inline-actions'>
+              <Link href={loginHref} className='button button-quiet'>
+                Log in with this email
+              </Link>
+            </div>
+          )}
+
+          <p className='auth-helper'>
+            Already have an account?{' '}
+            <Link href='/login' className='text-link'>
+              Log in
             </Link>
-          </div>
-        )}
-
-        <p className='auth-helper'>
-          Already have an account?{' '}
-          <Link href='/login' className='text-link'>
-            Log in
-          </Link>
-        </p>
-      </section>
+          </p>
+        </section>
+      </div>
     </>
   );
 }
