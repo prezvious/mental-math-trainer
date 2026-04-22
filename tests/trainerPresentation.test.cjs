@@ -6,6 +6,7 @@ const { pathToFileURL } = require('node:url');
 let TRAINER_COMPLETION_STATES;
 let TRAINER_FINISH_VIEWS;
 let TRAINER_INPUT_MODES;
+let getTrainerChromeState;
 let getTrainerFinishView;
 
 test.before(async () => {
@@ -20,8 +21,43 @@ test.before(async () => {
   ({
     TRAINER_COMPLETION_STATES,
     TRAINER_FINISH_VIEWS,
+    getTrainerChromeState,
     getTrainerFinishView
   } = trainerPresentation);
+});
+
+test('idle trainer chrome shows hero, admin controls, and the blueprint panel', () => {
+  const chromeState = getTrainerChromeState({
+    activeRound: null,
+    lastRound: null,
+    aiTransitionState: null,
+    hasAdminControl: true
+  });
+
+  assert.deepEqual(chromeState, {
+    shouldHideTrainerPanels: false,
+    shouldShowHeroPanel: true,
+    shouldShowAdminControl: true,
+    shouldShowBlueprintPanel: true,
+    isFocusedArena: false
+  });
+});
+
+test('active rounds hide trainer chrome and enable the focused arena layout', () => {
+  const chromeState = getTrainerChromeState({
+    activeRound: { sourceMode: TRAINER_INPUT_MODES.MANUAL },
+    lastRound: null,
+    aiTransitionState: null,
+    hasAdminControl: true
+  });
+
+  assert.deepEqual(chromeState, {
+    shouldHideTrainerPanels: true,
+    shouldShowHeroPanel: false,
+    shouldShowAdminControl: false,
+    shouldShowBlueprintPanel: false,
+    isFocusedArena: true
+  });
 });
 
 test('manual completion stays on the summary view', () => {
@@ -36,6 +72,24 @@ test('manual completion stays on the summary view', () => {
   });
 
   assert.equal(finishView, TRAINER_FINISH_VIEWS.MANUAL_SUMMARY);
+  assert.deepEqual(
+    getTrainerChromeState({
+      activeRound: null,
+      lastRound: {
+        sourceMode: TRAINER_INPUT_MODES.MANUAL,
+        completionState: TRAINER_COMPLETION_STATES.COMPLETED
+      },
+      aiTransitionState: null,
+      hasAdminControl: true
+    }),
+    {
+      shouldHideTrainerPanels: true,
+      shouldShowHeroPanel: false,
+      shouldShowAdminControl: false,
+      shouldShowBlueprintPanel: false,
+      isFocusedArena: false
+    }
+  );
 });
 
 test('successful AI completion uses the action panel instead of the summary', () => {
@@ -64,6 +118,24 @@ test('auto cycle transition keeps the dedicated transition view', () => {
   });
 
   assert.equal(finishView, TRAINER_FINISH_VIEWS.AI_TRANSITION);
+  assert.deepEqual(
+    getTrainerChromeState({
+      activeRound: null,
+      lastRound: {
+        sourceMode: TRAINER_INPUT_MODES.AI,
+        completionState: TRAINER_COMPLETION_STATES.COMPLETED
+      },
+      aiTransitionState: { durationMs: 2000 },
+      hasAdminControl: true
+    }),
+    {
+      shouldHideTrainerPanels: true,
+      shouldShowHeroPanel: false,
+      shouldShowAdminControl: false,
+      shouldShowBlueprintPanel: false,
+      isFocusedArena: false
+    }
+  );
 });
 
 test('AI solve errors stay on the summary-based error path', () => {

@@ -55,6 +55,7 @@ import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   TRAINER_COMPLETION_STATES,
   TRAINER_FINISH_VIEWS,
+  getTrainerChromeState,
   getTrainerFinishView
 } from 'utils/trainerPresentation.js';
 import {
@@ -1058,14 +1059,17 @@ export default function TrainerPage() {
     trainerFinishView === TRAINER_FINISH_VIEWS.AI_ERROR_SUMMARY;
   const isAiTrainerFinishState =
     trainerFinishView === TRAINER_FINISH_VIEWS.AI_ACTIONS;
-  const shouldHideTrainerPanels = Boolean(
-    !activeRound &&
-    (lastRound || aiTransitionState)
-  );
-  const shouldShowHeroPanel = !shouldHideTrainerPanels;
-  const shouldShowAdminControl = user && isAdmin && !shouldHideTrainerPanels;
-  const shouldShowBlueprintPanel =
-    !activeRound && !lastRound && !aiTransitionState;
+  const {
+    shouldShowHeroPanel,
+    shouldShowAdminControl,
+    shouldShowBlueprintPanel,
+    isFocusedArena
+  } = getTrainerChromeState({
+    activeRound,
+    lastRound,
+    aiTransitionState,
+    hasAdminControl: Boolean(user && isAdmin)
+  });
   const activeAiQuestionLabel = activeRound
     ? `Questions ${activeRound.attempts.length + 1} / ${activeRound.settings.roundSize}`
     : '';
@@ -1225,80 +1229,82 @@ export default function TrainerPage() {
           content='A redesigned mental math trainer with account login, timed rounds, and progress tracking.'
         />
       </Head>
-      {shouldShowHeroPanel && (
-        <section className='hero-panel hero-panel-command appear-up'>
-          <div className='hero-layout'>
-            <div className='hero-copy'>
-              <p className='hero-tag'>Discipline Through Numbers</p>
-              <h1>Mental Math Studio</h1>
-              <p>
-                Train one operation at a time, keep every attempt, and make the next
-                action obvious.
+      <div className={`trainer-page-shell${isFocusedArena ? ' is-round-active' : ''}`}>
+        {shouldShowHeroPanel && (
+          <section className='hero-panel hero-panel-command appear-up'>
+            <div className='hero-layout'>
+              <div className='hero-copy'>
+                <p className='hero-tag'>Discipline Through Numbers</p>
+                <h1>Mental Math Studio</h1>
+                <p>
+                  Train one operation at a time, keep every attempt, and make the next
+                  action obvious.
+                </p>
+              </div>
+              <div className='hero-sidebar'>
+                <p className='hero-sidebar-label'>Built for fast reps</p>
+                <ul className='hero-checklist'>
+                  <li>Dial in the round without hunting through the page.</li>
+                  <li>Launch instantly with Enter.</li>
+                  <li>Review pace and accuracy after every run.</li>
+                </ul>
+              </div>
+            </div>
+            {!isConfigured && (
+              <p className='inline-warning'>
+                Account features are not configured yet, so saved progress is currently
+                unavailable.
               </p>
+            )}
+          </section>
+        )}
+
+        {shouldShowAdminControl && (
+          <section className='panel paper-panel mode-panel appear-up'>
+            <div className='mode-panel-head'>
+              <div>
+                <p className='hero-tag'>Admin Control</p>
+                <h2>
+                  <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
+                    Input Mode
+                  </IconLabel>
+                </h2>
+              </div>
+              <div className='mode-toggle' role='tablist' aria-label='Trainer mode'>
+                <button
+                  type='button'
+                  role='tab'
+                  aria-selected={trainerInputMode === TRAINER_INPUT_MODES.MANUAL}
+                  className={`mode-toggle-button${trainerInputMode === TRAINER_INPUT_MODES.MANUAL ? ' is-active' : ''}`}
+                  onClick={() => handleModeChange(TRAINER_INPUT_MODES.MANUAL)}
+                  disabled={Boolean(activeRound)}
+                >
+                  Manual
+                </button>
+                <button
+                  type='button'
+                  role='tab'
+                  aria-selected={trainerInputMode === TRAINER_INPUT_MODES.AI}
+                  className={`mode-toggle-button${trainerInputMode === TRAINER_INPUT_MODES.AI ? ' is-active' : ''}`}
+                  onClick={() => handleModeChange(TRAINER_INPUT_MODES.AI)}
+                  disabled={Boolean(activeRound)}
+                >
+                  AI MODE
+                </button>
+              </div>
             </div>
-            <div className='hero-sidebar'>
-              <p className='hero-sidebar-label'>Built for fast reps</p>
-              <ul className='hero-checklist'>
-                <li>Dial in the round without hunting through the page.</li>
-                <li>Launch instantly with Enter.</li>
-                <li>Review pace and accuracy after every run.</li>
-              </ul>
-            </div>
-          </div>
-          {!isConfigured && (
-            <p className='inline-warning'>
-              Account features are not configured yet, so saved progress is currently
-              unavailable.
+            <p className='mode-panel-copy'>
+              {isAiMode
+                ? 'AI MODE solves trainer questions with the local math engine and stores every custom solve in the admin history.'
+                : 'Manual mode preserves the existing human-input flow with the same round setup and progress tracking.'}
             </p>
-          )}
-        </section>
-      )}
+          </section>
+        )}
 
-      {shouldShowAdminControl && (
-        <section className='panel paper-panel mode-panel appear-up'>
-          <div className='mode-panel-head'>
-            <div>
-              <p className='hero-tag'>Admin Control</p>
-              <h2>
-                <IconLabel icon={SlidersHorizontalIcon} className='icon-label-heading'>
-                  Input Mode
-                </IconLabel>
-              </h2>
-            </div>
-            <div className='mode-toggle' role='tablist' aria-label='Trainer mode'>
-              <button
-                type='button'
-                role='tab'
-                aria-selected={trainerInputMode === TRAINER_INPUT_MODES.MANUAL}
-                className={`mode-toggle-button${trainerInputMode === TRAINER_INPUT_MODES.MANUAL ? ' is-active' : ''}`}
-                onClick={() => handleModeChange(TRAINER_INPUT_MODES.MANUAL)}
-                disabled={Boolean(activeRound)}
-              >
-                Manual
-              </button>
-              <button
-                type='button'
-                role='tab'
-                aria-selected={trainerInputMode === TRAINER_INPUT_MODES.AI}
-                className={`mode-toggle-button${trainerInputMode === TRAINER_INPUT_MODES.AI ? ' is-active' : ''}`}
-                onClick={() => handleModeChange(TRAINER_INPUT_MODES.AI)}
-                disabled={Boolean(activeRound)}
-              >
-                AI MODE
-              </button>
-            </div>
-          </div>
-          <p className='mode-panel-copy'>
-            {isAiMode
-              ? 'AI MODE solves trainer questions with the local math engine and stores every custom solve in the admin history.'
-              : 'Manual mode preserves the existing human-input flow with the same round setup and progress tracking.'}
-          </p>
-        </section>
-      )}
-
-      <>
           {(shouldShowBlueprintPanel || activeRound) && (
-            <section className={`trainer-layout appear-up${activeRound ? ' arena-active' : ''}`}>
+            <section
+              className={`trainer-layout appear-up${isFocusedArena ? ' arena-active' : ''}`}
+            >
               {shouldShowBlueprintPanel && (
                 <article className='panel paper-panel trainer-blueprint'>
                   <div className='panel-title-row'>
@@ -1810,7 +1816,7 @@ export default function TrainerPage() {
               })}
             </section>
           )}
-      </>
+      </div>
     </>
   );
 }

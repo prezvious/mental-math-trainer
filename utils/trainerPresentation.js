@@ -13,6 +13,25 @@ export const TRAINER_FINISH_VIEWS = Object.freeze({
   AI_TRANSITION: 'ai-transition'
 });
 
+export function getTrainerChromeState({
+  activeRound,
+  lastRound,
+  aiTransitionState,
+  hasAdminControl = false
+}) {
+  const shouldHideTrainerPanels = Boolean(
+    activeRound || lastRound || aiTransitionState
+  );
+
+  return {
+    shouldHideTrainerPanels,
+    shouldShowHeroPanel: !shouldHideTrainerPanels,
+    shouldShowAdminControl: Boolean(hasAdminControl && !shouldHideTrainerPanels),
+    shouldShowBlueprintPanel: !activeRound && !lastRound && !aiTransitionState,
+    isFocusedArena: Boolean(activeRound)
+  };
+}
+
 export function getTrainerFinishView({
   user,
   activeRound,

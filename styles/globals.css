@@ -795,18 +795,6 @@ code {
   gap: 1rem;
 }
 
-.trainer-layout.arena-active {
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
-  min-height: 50vh;
-}
-
-.trainer-layout.arena-active .chalk-panel {
-  width: 100%;
-  max-width: 600px;
-}
-
 .settings-form,
 .answer-form,
 .auth-form {
