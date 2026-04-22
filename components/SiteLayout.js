@@ -1,3 +1,4 @@
+import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -20,7 +21,7 @@ import {
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
-import { getThemeByKey, THEME_OPTIONS } from 'utils/themes.js';
+import { getThemeByKey, getThemeOptionLabel, THEME_OPTIONS } from 'utils/themes.js';
 
 export default function SiteLayout({ children }) {
   const router = useRouter();
@@ -163,6 +164,7 @@ export default function SiteLayout({ children }) {
   }, [isUtilityDrawerOpen]);
 
   const activeTheme = useMemo(() => getThemeByKey(themeKey), [themeKey]);
+  const themeChromeColor = activeTheme.tokens.ink900;
   const trainerShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.TRAINER);
   const mixedShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.MIXED);
   const progressShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.PROGRESS);
@@ -340,8 +342,29 @@ export default function SiteLayout({ children }) {
     return () => window.removeEventListener('keydown', handleGlobalShortcut);
   }, [closeUtilityDrawer, cycleTheme, handleSignOut, router, user]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document
+      .querySelector("meta[name='theme-color']")
+      ?.setAttribute('content', themeChromeColor);
+    document
+      .querySelector("meta[name='msapplication-TileColor']")
+      ?.setAttribute('content', themeChromeColor);
+  }, [themeChromeColor]);
+
   return (
     <div className='app-shell' data-theme-key={activeTheme.key} style={themeStyle}>
+      <Head>
+        <meta name='theme-color' content={themeChromeColor} key='theme-color' />
+        <meta
+          name='msapplication-TileColor'
+          content={themeChromeColor}
+          key='msapplication-TileColor'
+        />
+      </Head>
       <header className='site-header'>
         <div className='site-header-inner'>
           <Link href='/' className='brand' aria-label='Mental Math home'>
@@ -435,14 +458,14 @@ export default function SiteLayout({ children }) {
           <section
             ref={utilityDrawerRef}
             id='utility-drawer'
-            className='theme-drawer utility-drawer appear-up'
+            className='utility-drawer-shell utility-drawer appear-up'
             role='dialog'
             aria-modal='true'
             aria-labelledby='utility-drawer-title'
             aria-label='Utility drawer'
           >
-            <div className='theme-settings utility-panel'>
-              <div className='control-drawer-header utility-header'>
+            <div className='utility-panel'>
+              <div className='utility-header'>
                 <div>
                   <p className='theme-kicker'>Command Desk</p>
                   <h2 id='utility-drawer-title' className='utility-title'>
@@ -546,7 +569,7 @@ export default function SiteLayout({ children }) {
                 >
                   {THEME_OPTIONS.map((theme) => (
                     <option key={theme.key} value={theme.key}>
-                      {theme.name}
+                      {getThemeOptionLabel(theme)}
                     </option>
                   ))}
                 </select>

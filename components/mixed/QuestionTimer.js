@@ -13,29 +13,36 @@ function formatElapsed(ms) {
 
 export default function QuestionTimer({ startedAt, hidden, frozen }) {
   const [elapsed, setElapsed] = useState(0);
-  const rafRef = useRef(null);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     setElapsed(0);
+  }, [startedAt]);
 
-    if (hidden || frozen) {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      return;
+  useEffect(() => {
+    if (hidden) {
+      return undefined;
     }
 
-    const tick = () => {
+    if (frozen) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return undefined;
+    }
+
+    const updateElapsed = () => {
       setElapsed(Date.now() - startedAt);
-      rafRef.current = requestAnimationFrame(tick);
     };
 
-    rafRef.current = requestAnimationFrame(tick);
+    updateElapsed();
+    intervalRef.current = window.setInterval(updateElapsed, 100);
 
     return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [startedAt, hidden, frozen]);

@@ -5,9 +5,14 @@ const { pathToFileURL } = require('node:url');
 
 let buildUserPreferencesRow;
 let createDefaultAccountPreferences;
+let GUEST_THEME_ROLLOUT_STORAGE_KEY;
+let GUEST_THEME_ROLLOUT_VERSION;
+let getThemeOptionLabel;
 let readGuestAccountPreferences;
+let readGuestAccountPreferencesWithThemeRollout;
 let mergeAccountPreferences;
 let sanitizeAccountPreferences;
+let THEME_OPTIONS;
 let writeGuestAccountPreferences;
 let DEFAULT_THEME_KEY;
 
@@ -35,18 +40,27 @@ test.before(async () => {
   ({
     buildUserPreferencesRow,
     createDefaultAccountPreferences,
+    GUEST_THEME_ROLLOUT_STORAGE_KEY,
+    GUEST_THEME_ROLLOUT_VERSION,
     readGuestAccountPreferences,
+    readGuestAccountPreferencesWithThemeRollout,
     mergeAccountPreferences,
     sanitizeAccountPreferences,
     writeGuestAccountPreferences
   } = accountPreferences);
-  ({ DEFAULT_THEME_KEY } = themes);
+  ({ DEFAULT_THEME_KEY, getThemeOptionLabel, THEME_OPTIONS } = themes);
 });
 
 test('sanitizeAccountPreferences falls back to defaults when the row is missing', () => {
   const preferences = sanitizeAccountPreferences();
 
   assert.deepEqual(preferences, createDefaultAccountPreferences());
+  assert.equal(preferences.themeKey, 'carbon-paper');
+});
+
+test('theme catalog exposes carbon-paper as the first option with the default label', () => {
+  assert.equal(THEME_OPTIONS[0].key, 'carbon-paper');
+  assert.equal(getThemeOptionLabel(THEME_OPTIONS[0]), 'Carbon Paper (Default)');
 });
 
 test('sanitizeAccountPreferences clamps invalid trainer data and falls back to the default theme', () => {
@@ -182,4 +196,48 @@ test('guest account preferences persist through local storage helpers', () => {
       roundSize: 10000
     }
   });
+});
+
+test('first-time guests land on the carbon-paper default theme and store the rollout marker', () => {
+  const storage = createStorageMock();
+
+  const preferences = readGuestAccountPreferencesWithThemeRollout(storage);
+
+  assert.equal(preferences.themeKey, DEFAULT_THEME_KEY);
+  assert.equal(storage.getItem(GUEST_THEME_ROLLOUT_STORAGE_KEY), JSON.stringify(GUEST_THEME_ROLLOUT_VERSION));
+});
+
+test('guest theme rollout resets an old saved theme once, then preserves manual changes', () => {
+  const storage = createStorageMock();
+
+  writeGuestAccountPreferences(
+    {
+      themeKey: 'paper-lantern',
+      trainerSettings: {
+        practiceMode: 'POSITIVE',
+        operation: 'ADDITION',
+        leftDigits: 2,
+        rightDigits: 2,
+        leftDecimalDigits: 2,
+        rightDecimalDigits: 2,
+        maxBase: 10,
+        roundSize: 10
+      }
+    },
+    storage
+  );
+
+  const rolledOutPreferences = readGuestAccountPreferencesWithThemeRollout(storage);
+  assert.equal(rolledOutPreferences.themeKey, DEFAULT_THEME_KEY);
+
+  writeGuestAccountPreferences(
+    {
+      ...rolledOutPreferences,
+      themeKey: 'paper-lantern'
+    },
+    storage
+  );
+
+  const preservedPreferences = readGuestAccountPreferencesWithThemeRollout(storage);
+  assert.equal(preservedPreferences.themeKey, 'paper-lantern');
 });

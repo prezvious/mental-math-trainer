@@ -1,5 +1,11 @@
 const RAW_THEMES = [
   {
+    key: 'carbon-paper',
+    name: 'Carbon Paper',
+    vibe: 'Monochrome discipline with editorial calm and stark focus.',
+    colors: ['#111111', '#5F5F5F', '#D8D8D8', '#F7F7F7']
+  },
+  {
     key: 'velvet-circuit',
     name: 'Velvet Circuit',
     vibe: 'Nocturnal command-center contrast with premium focus.',
@@ -257,6 +263,17 @@ export const THEME_OPTIONS = RAW_THEMES.map((theme) => {
 
 const THEME_OPTIONS_BY_KEY = new Map(THEME_OPTIONS.map((theme) => [theme.key, theme]));
 export const DEFAULT_THEME_KEY = THEME_OPTIONS[0].key;
+
+export function getThemeOptionLabel(theme) {
+  if (!theme || typeof theme !== 'object') {
+    return '';
+  }
+
+  const resolvedTheme = THEME_OPTIONS_BY_KEY.get(theme.key) || theme;
+  return resolvedTheme.key === DEFAULT_THEME_KEY
+    ? `${resolvedTheme.name} (Default)`
+    : resolvedTheme.name;
+}
 
 export function resolveThemeKey(themeKey) {
   if (typeof themeKey !== 'string') {

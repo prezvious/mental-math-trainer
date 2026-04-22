@@ -11,7 +11,7 @@ import {
   buildUserPreferencesRow,
   createDefaultAccountPreferences,
   mergeAccountPreferences,
-  readGuestAccountPreferences,
+  readGuestAccountPreferencesWithThemeRollout,
   sanitizeAccountPreferences,
   USER_PREFERENCES_COLUMNS,
   USER_PREFERENCES_TABLE,
@@ -57,7 +57,7 @@ export function AccountPreferencesProvider({ children }) {
     }
 
     if (!client || !userId) {
-      const guestPreferences = readGuestAccountPreferences();
+      const guestPreferences = readGuestAccountPreferencesWithThemeRollout();
       latestPreferencesRef.current = guestPreferences;
       setPreferences(guestPreferences);
       setIsLoadingPreferences(false);

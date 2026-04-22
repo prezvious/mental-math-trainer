@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const suggestedEmail =
     typeof router.query.email === 'string' ? router.query.email : '';
+  const isLoginUnavailable = !isConfigured;
 
   useEffect(() => {
     if (user) {
@@ -106,6 +107,7 @@ export default function LoginPage() {
               type='email'
               autoComplete='email'
               required
+              disabled={isSubmitting || isLoginUnavailable}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -116,6 +118,7 @@ export default function LoginPage() {
               type='password'
               autoComplete='current-password'
               required
+              disabled={isSubmitting || isLoginUnavailable}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -123,9 +126,13 @@ export default function LoginPage() {
             <button
               type='submit'
               className='button button-strong button-full'
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoginUnavailable}
             >
-              {isSubmitting ? 'Logging in...' : 'Log in'}
+              {isLoginUnavailable
+                ? 'Log in unavailable'
+                : isSubmitting
+                ? 'Logging in...'
+                : 'Log in'}
             </button>
           </form>
 

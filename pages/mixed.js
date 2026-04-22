@@ -576,6 +576,10 @@ function MixedTrainerContent() {
     processInput('');
   }, [isCorrectFlash, processInput]);
 
+  const restoreHiddenInputFocus = useCallback(() => {
+    hiddenInputRef.current?.focus();
+  }, []);
+
   const handleKeyDown = useCallback(
     (event) => {
       if (isCorrectFlash) {
@@ -826,6 +830,7 @@ function MixedTrainerContent() {
               onClear={handleClear}
               onDelete={handleDelete}
               onSubmit={submitCurrentInput}
+              onPointerAction={restoreHiddenInputFocus}
               disabled={isCorrectFlash}
             />
           </article>

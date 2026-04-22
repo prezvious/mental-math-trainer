@@ -5,6 +5,8 @@ import { readStorageJson, writeStorageJson } from './browserStorage.js';
 export const USER_PREFERENCES_TABLE = 'user_preferences';
 export const GUEST_ACCOUNT_PREFERENCES_STORAGE_KEY =
   'mathtrainer:guest-account-preferences';
+export const GUEST_THEME_ROLLOUT_STORAGE_KEY = 'mathtrainer:theme-rollout-version';
+export const GUEST_THEME_ROLLOUT_VERSION = 'carbon-paper-default-v1';
 export const USER_PREFERENCES_COLUMNS = [
   'user_id',
   'theme_key',
@@ -138,4 +140,36 @@ export function writeGuestAccountPreferences(preferences, storage = null) {
     sanitizeAccountPreferences(preferences),
     storage
   );
+}
+
+export function hasCompletedGuestThemeRollout(storage = null) {
+  return (
+    readStorageJson(GUEST_THEME_ROLLOUT_STORAGE_KEY, storage) ===
+    GUEST_THEME_ROLLOUT_VERSION
+  );
+}
+
+export function markGuestThemeRolloutComplete(storage = null) {
+  return writeStorageJson(
+    GUEST_THEME_ROLLOUT_STORAGE_KEY,
+    GUEST_THEME_ROLLOUT_VERSION,
+    storage
+  );
+}
+
+export function readGuestAccountPreferencesWithThemeRollout(storage = null) {
+  const guestPreferences = readGuestAccountPreferences(storage);
+  if (hasCompletedGuestThemeRollout(storage)) {
+    return guestPreferences;
+  }
+
+  const rolledOutPreferences = sanitizeAccountPreferences({
+    ...guestPreferences,
+    themeKey: DEFAULT_THEME_KEY
+  });
+
+  writeGuestAccountPreferences(rolledOutPreferences, storage);
+  markGuestThemeRolloutComplete(storage);
+
+  return rolledOutPreferences;
 }

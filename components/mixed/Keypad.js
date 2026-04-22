@@ -6,10 +6,15 @@ const KEYS = [
   ['SUBMIT']
 ];
 
-export default function Keypad({ onDigit, onClear, onDelete, onSubmit, disabled }) {
-  const handlePointerDown = (event, key) => {
-    event.preventDefault();
-
+export default function Keypad({
+  onDigit,
+  onClear,
+  onDelete,
+  onSubmit,
+  onPointerAction,
+  disabled
+}) {
+  const handleClick = (event, key) => {
     if (disabled) {
       return;
     }
@@ -23,6 +28,11 @@ export default function Keypad({ onDigit, onClear, onDelete, onSubmit, disabled 
     } else {
       onDigit(key);
     }
+
+    // Restore the hidden input after pointer taps without stealing focus from keyboard activation.
+    if (event.detail !== 0 && typeof onPointerAction === 'function') {
+      onPointerAction();
+    }
   };
 
   return (
@@ -34,7 +44,7 @@ export default function Keypad({ onDigit, onClear, onDelete, onSubmit, disabled 
             key={key}
             type='button'
             className={`keypad-button${isAction ? ' action' : ''}${key === 'SUBMIT' ? ' submit' : ''}`}
-            onPointerDown={(event) => handlePointerDown(event, key)}
+            onClick={(event) => handleClick(event, key)}
             disabled={disabled}
             aria-label={
               key === 'AC'
@@ -45,7 +55,6 @@ export default function Keypad({ onDigit, onClear, onDelete, onSubmit, disabled 
                     ? 'Submit answer'
                     : key
             }
-            tabIndex={-1}
           >
             {key === 'SUBMIT' ? 'Submit' : key}
           </button>

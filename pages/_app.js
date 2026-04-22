@@ -15,8 +15,6 @@ export default function App({ Component, pageProps }) {
         <link rel='shortcut icon' href='/icon.svg' />
         <link rel='manifest' href='/manifest.webmanifest' />
         <link rel='mask-icon' href='/safari-pinned-tab.svg' color='#f0622f' />
-        <meta name='msapplication-TileColor' content='#12141c' />
-        <meta name='theme-color' content='#12141c' />
       </Head>
       <SupabaseAuthProvider>
         <ActiveSessionProvider>
