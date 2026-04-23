@@ -681,7 +681,7 @@ function MixedTrainerContent() {
   };
 
   const isMixedFinishState = Boolean(!activeRound && lastRound);
-  const shouldShowHeroPanel = !isMixedFinishState;
+  const shouldShowHeroPanel = !activeRound && !lastRound;
   const shouldShowMixedConfig = !activeRound && !lastRound;
 
   return (
@@ -694,37 +694,37 @@ function MixedTrainerContent() {
         />
       </Head>
 
-      {shouldShowHeroPanel && (
-        <section className='hero-panel hero-panel-command appear-up'>
-          <div className='hero-layout'>
-            <div className='hero-copy'>
-              <p className='hero-tag'>Discipline Through Numbers</p>
-              <h1>Mixed Trainer</h1>
-              <p>
-                Drill across multiple operations in a single run. Configure difficulty
-                per operation, set your target count, and go.
+      <div className={`trainer-page-shell mixed-page-shell${activeRound ? ' is-round-active' : ''}`}>
+        {shouldShowHeroPanel && (
+          <section className='hero-panel hero-panel-command appear-up'>
+            <div className='hero-layout'>
+              <div className='hero-copy'>
+                <p className='hero-tag'>Discipline Through Numbers</p>
+                <h1>Mixed Trainer</h1>
+                <p>
+                  Drill across multiple operations in a single run. Configure difficulty
+                  per operation, set your target count, and go.
+                </p>
+              </div>
+              <div className='hero-sidebar'>
+                <p className='hero-sidebar-label'>How this stays sharp</p>
+                <ul className='hero-checklist'>
+                  <li>Pick only the operations you want to rehearse.</li>
+                  <li>Keep each difficulty level deliberate.</li>
+                  <li>Keep the solve surface clean and responsive on every screen.</li>
+                </ul>
+              </div>
+            </div>
+            {!isConfigured && (
+              <p className='inline-warning'>
+                Account features are not configured yet, so saved progress is currently
+                unavailable.
               </p>
-            </div>
-            <div className='hero-sidebar'>
-              <p className='hero-sidebar-label'>How this stays sharp</p>
-              <ul className='hero-checklist'>
-                <li>Pick only the operations you want to rehearse.</li>
-                <li>Keep each difficulty level deliberate.</li>
-                <li>Keep the solve surface clean and responsive on every screen.</li>
-              </ul>
-            </div>
-          </div>
-          {!isConfigured && (
-            <p className='inline-warning'>
-              Account features are not configured yet, so saved progress is currently
-              unavailable.
-            </p>
-          )}
-        </section>
-      )}
+            )}
+          </section>
+        )}
 
-      {shouldShowMixedConfig && (
-        <>
+        {shouldShowMixedConfig && (
           <section className='mixed-config-layout appear-up'>
             <article className='panel paper-panel mixed-setup-panel'>
               <div className='panel-title-row'>
@@ -832,107 +832,107 @@ function MixedTrainerContent() {
               </form>
             </article>
           </section>
-        </>
-      )}
+        )}
 
-      {activeRound && (
-        <section className='mixed-solving-layout appear-up'>
-          <article className='panel chalk-panel mixed-solving-panel mixed-solving-stage'>
-            <div className='mixed-solving-head'>
-              <div>
-                <p className='panel-kicker'>Focused Run</p>
-                <h2>
-                  <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
-                    Live Stack
-                  </IconLabel>
-                </h2>
+        {activeRound && (
+          <section className='mixed-solving-layout appear-up'>
+            <article className='panel chalk-panel mixed-solving-panel mixed-solving-stage'>
+              <div className='mixed-solving-head'>
+                <div>
+                  <p className='panel-kicker'>Focused Run</p>
+                  <h2>
+                    <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
+                      Live Stack
+                    </IconLabel>
+                  </h2>
+                </div>
+                <QuestionTimer
+                  startedAt={activeRound.questionStartedAt}
+                  hidden={activeRound.settings.hideTimer}
+                  frozen={isCorrectFlash}
+                />
               </div>
-              <QuestionTimer
-                startedAt={activeRound.questionStartedAt}
-                hidden={activeRound.settings.hideTimer}
-                frozen={isCorrectFlash}
+              <ProgressBar
+                current={activeRound.attempts.length}
+                total={activeRound.settings.roundSize}
               />
-            </div>
-            <ProgressBar
-              current={activeRound.attempts.length}
-              total={activeRound.settings.roundSize}
-            />
-            <StackedProblem
-              problem={activeRound.currentProblem}
-              answerDisplay={answerInput}
-              isCorrect={isCorrectFlash}
-              showAnswerDisplay={!isDesktopMixedInput}
-            />
-            {isDesktopMixedInput ? (
-              <form className='answer-form answer-form-inline mixed-answer-form' onSubmit={handleAnswerSubmit}>
-                <label htmlFor='mixedAnswerInput'>Your answer</label>
-                <input
-                  ref={answerInputRef}
-                  id='mixedAnswerInput'
-                  className='mixed-answer-input'
-                  type='text'
-                  inputMode='numeric'
-                  autoComplete='off'
-                  value={answerInput}
-                  onKeyDown={handleKeyDown}
-                  onPaste={handleDesktopAnswerPaste}
-                  placeholder='Type answer'
-                  aria-label='Answer input'
-                  readOnly
-                />
-                <button
-                  type='submit'
-                  className='button button-strong button-full'
-                  disabled={isCorrectFlash}
-                >
-                  Submit answer
-                </button>
-              </form>
-            ) : (
-              <>
-                <input
-                  ref={hiddenInputRef}
-                  className='mixed-hidden-input'
-                  type='text'
-                  inputMode='none'
-                  autoComplete='off'
-                  value=''
-                  onChange={() => {}}
-                  onKeyDown={handleKeyDown}
-                  aria-label='Answer input'
-                  tabIndex={0}
-                />
-                <Keypad
-                  onDigit={handleDigit}
-                  onClear={handleClear}
-                  onDelete={handleDelete}
-                  onSubmit={submitCurrentInput}
-                  onPointerAction={restoreHiddenInputFocus}
-                  disabled={isCorrectFlash}
-                />
-              </>
-            )}
-          </article>
-        </section>
-      )}
+              <StackedProblem
+                problem={activeRound.currentProblem}
+                answerDisplay={answerInput}
+                isCorrect={isCorrectFlash}
+                showAnswerDisplay={!isDesktopMixedInput}
+              />
+              {isDesktopMixedInput ? (
+                <form className='answer-form answer-form-inline mixed-answer-form' onSubmit={handleAnswerSubmit}>
+                  <label htmlFor='mixedAnswerInput'>Your answer</label>
+                  <input
+                    ref={answerInputRef}
+                    id='mixedAnswerInput'
+                    className='mixed-answer-input'
+                    type='text'
+                    inputMode='numeric'
+                    autoComplete='off'
+                    value={answerInput}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handleDesktopAnswerPaste}
+                    placeholder='Type answer'
+                    aria-label='Answer input'
+                    readOnly
+                  />
+                  <button
+                    type='submit'
+                    className='button button-strong button-full'
+                    disabled={isCorrectFlash}
+                  >
+                    Submit answer
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <input
+                    ref={hiddenInputRef}
+                    className='mixed-hidden-input'
+                    type='text'
+                    inputMode='none'
+                    autoComplete='off'
+                    value=''
+                    onChange={() => {}}
+                    onKeyDown={handleKeyDown}
+                    aria-label='Answer input'
+                    tabIndex={0}
+                  />
+                  <Keypad
+                    onDigit={handleDigit}
+                    onClear={handleClear}
+                    onDelete={handleDelete}
+                    onSubmit={submitCurrentInput}
+                    onPointerAction={restoreHiddenInputFocus}
+                    disabled={isCorrectFlash}
+                  />
+                </>
+              )}
+            </article>
+          </section>
+        )}
 
-      {isMixedFinishState && (
-        <section className='finish-state-shell finish-state-shell-centered'>
-          <RoundSummaryPanel
-            title='Round Summary'
-            badgeLabel='Mixed'
-            badgeClassName='mode-pill-manual'
-            round={lastRound}
-            saveStatus={getSaveStatusMessage(lastRound)}
-            primaryAction={{ label: 'Start Again', onClick: handleStartAgain }}
-            secondaryAction={{
-              label: 'Change round setup',
-              onClick: handleCustomizeBlueprint
-            }}
-            className='summary-panel-centered'
-          />
-        </section>
-      )}
+        {isMixedFinishState && (
+          <section className='finish-state-shell finish-state-shell-centered'>
+            <RoundSummaryPanel
+              title='Round Summary'
+              badgeLabel='Mixed'
+              badgeClassName='mode-pill-manual'
+              round={lastRound}
+              saveStatus={getSaveStatusMessage(lastRound)}
+              primaryAction={{ label: 'Start Again', onClick: handleStartAgain }}
+              secondaryAction={{
+                label: 'Change round setup',
+                onClick: handleCustomizeBlueprint
+              }}
+              className='summary-panel-centered'
+            />
+          </section>
+        )}
+      </div>
     </>
   );
 }

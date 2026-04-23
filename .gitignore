@@ -38,6 +38,10 @@ coverage/
 .playwright-mcp/
 output/
 
+# Local planning and audit notes
+STORAGE_AUDIT.md
+bugs-list.md
+
 # Private backend tooling
 supabase/*
 !supabase/migrations/

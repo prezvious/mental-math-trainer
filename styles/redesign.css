@@ -684,6 +684,21 @@ th {
   margin-inline: auto;
 }
 
+.mixed-page-shell.is-round-active .mixed-solving-layout {
+  width: 100%;
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: center;
+  justify-items: center;
+  align-content: center;
+}
+
+.mixed-page-shell.is-round-active .mixed-solving-panel {
+  width: min(100%, 46rem);
+  margin-inline: auto;
+}
+
 .trainer-blueprint,
 .arena-panel,
 .mode-panel,
@@ -1595,6 +1610,19 @@ th {
 .theme-select {
   color: #f7f7fb;
   background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  color-scheme: light;
+}
+
+.utility-drawer-shell .theme-select option,
+.utility-drawer-shell .theme-select optgroup {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--paper) 96%, white);
+}
+
+.utility-drawer-shell .theme-select option:checked {
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--accent-soft) 48%, white);
 }
 
 .theme-vibe {
@@ -1812,6 +1840,10 @@ th {
   }
 
   .mixed-solving-layout {
+    width: min(100%, 48rem);
+  }
+
+  .mixed-page-shell.is-round-active .mixed-solving-panel {
     width: min(100%, 48rem);
   }
 }
