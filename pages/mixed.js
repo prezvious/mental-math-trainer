@@ -45,6 +45,8 @@ import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel(ROUND_CONTROL_HOTKEY);
+const DESKTOP_MIXED_INPUT_QUERY =
+  '(min-width: 1080px) and (hover: hover) and (pointer: fine)';
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -138,7 +140,9 @@ function MixedTrainerContent() {
   const [answerInput, setAnswerInput] = useState('');
   const [isCorrectFlash, setIsCorrectFlash] = useState(false);
   const [lastRound, setLastRound] = useState(null);
+  const [isDesktopMixedInput, setIsDesktopMixedInput] = useState(false);
   const handledQuestionIdRef = useRef(null);
+  const answerInputRef = useRef(null);
   const hiddenInputRef = useRef(null);
   const flashTimeoutRef = useRef(null);
   const pendingAdvanceRef = useRef(null);
@@ -184,6 +188,27 @@ function MixedTrainerContent() {
   }, [activeRound]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(DESKTOP_MIXED_INPUT_QUERY);
+    const syncDesktopMixedInput = () => {
+      setIsDesktopMixedInput(mediaQuery.matches);
+    };
+
+    syncDesktopMixedInput();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncDesktopMixedInput);
+      return () => mediaQuery.removeEventListener('change', syncDesktopMixedInput);
+    }
+
+    mediaQuery.addListener(syncDesktopMixedInput);
+    return () => mediaQuery.removeListener(syncDesktopMixedInput);
+  }, []);
+
+  useEffect(() => {
     const previousUserId = previousUserIdRef.current;
     previousUserIdRef.current = userId;
 
@@ -201,11 +226,13 @@ function MixedTrainerContent() {
   }, [progressBuffer, userId]);
 
   useEffect(() => {
-    if (!activeRound || !hiddenInputRef.current) {
+    if (!activeRound) {
       return;
     }
-    hiddenInputRef.current.focus();
-  }, [activeRound, activeRound?.questionId]);
+
+    const targetInput = isDesktopMixedInput ? answerInputRef.current : hiddenInputRef.current;
+    targetInput?.focus();
+  }, [activeRound, activeRound?.questionId, isDesktopMixedInput]);
 
   const enabledOperations = useMemo(
     () => getEnabledOperations(settings),
@@ -536,6 +563,14 @@ function MixedTrainerContent() {
     submitAnswer(parsedAnswer, Date.now());
   }, [answerInput, submitAnswer]);
 
+  const handleAnswerSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+      submitCurrentInput();
+    },
+    [submitCurrentInput]
+  );
+
   const processInput = useCallback(
     (nextValue) => {
       const roundSnapshot = activeRoundRef.current;
@@ -579,6 +614,23 @@ function MixedTrainerContent() {
   const restoreHiddenInputFocus = useCallback(() => {
     hiddenInputRef.current?.focus();
   }, []);
+
+  const handleDesktopAnswerPaste = useCallback(
+    (event) => {
+      if (!isDesktopMixedInput || isCorrectFlash) {
+        return;
+      }
+
+      const pastedDigits = event.clipboardData?.getData('text')?.replace(/\D+/g, '') ?? '';
+      if (!pastedDigits) {
+        return;
+      }
+
+      event.preventDefault();
+      processInput(pastedDigits);
+    },
+    [isCorrectFlash, isDesktopMixedInput, processInput]
+  );
 
   const handleKeyDown = useCallback(
     (event) => {
@@ -658,7 +710,7 @@ function MixedTrainerContent() {
               <ul className='hero-checklist'>
                 <li>Pick only the operations you want to rehearse.</li>
                 <li>Keep each difficulty level deliberate.</li>
-                <li>Run the keypad like a focused speed station.</li>
+                <li>Keep the solve surface clean and responsive on every screen.</li>
               </ul>
             </div>
           </div>
@@ -809,30 +861,57 @@ function MixedTrainerContent() {
               problem={activeRound.currentProblem}
               answerDisplay={answerInput}
               isCorrect={isCorrectFlash}
+              showAnswerDisplay={!isDesktopMixedInput}
             />
-            <p className='mixed-solving-hint'>
-              Type from the keyboard or drive the on-screen keypad.
-            </p>
-            <input
-              ref={hiddenInputRef}
-              className='mixed-hidden-input'
-              type='text'
-              inputMode='none'
-              autoComplete='off'
-              value=''
-              onChange={() => {}}
-              onKeyDown={handleKeyDown}
-              aria-label='Answer input'
-              tabIndex={0}
-            />
-            <Keypad
-              onDigit={handleDigit}
-              onClear={handleClear}
-              onDelete={handleDelete}
-              onSubmit={submitCurrentInput}
-              onPointerAction={restoreHiddenInputFocus}
-              disabled={isCorrectFlash}
-            />
+            {isDesktopMixedInput ? (
+              <form className='answer-form answer-form-inline mixed-answer-form' onSubmit={handleAnswerSubmit}>
+                <label htmlFor='mixedAnswerInput'>Your answer</label>
+                <input
+                  ref={answerInputRef}
+                  id='mixedAnswerInput'
+                  className='mixed-answer-input'
+                  type='text'
+                  inputMode='numeric'
+                  autoComplete='off'
+                  value={answerInput}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handleDesktopAnswerPaste}
+                  placeholder='Type answer'
+                  aria-label='Answer input'
+                  readOnly
+                />
+                <button
+                  type='submit'
+                  className='button button-strong button-full'
+                  disabled={isCorrectFlash}
+                >
+                  Submit answer
+                </button>
+              </form>
+            ) : (
+              <>
+                <input
+                  ref={hiddenInputRef}
+                  className='mixed-hidden-input'
+                  type='text'
+                  inputMode='none'
+                  autoComplete='off'
+                  value=''
+                  onChange={() => {}}
+                  onKeyDown={handleKeyDown}
+                  aria-label='Answer input'
+                  tabIndex={0}
+                />
+                <Keypad
+                  onDigit={handleDigit}
+                  onClear={handleClear}
+                  onDelete={handleDelete}
+                  onSubmit={submitCurrentInput}
+                  onPointerAction={restoreHiddenInputFocus}
+                  disabled={isCorrectFlash}
+                />
+              </>
+            )}
           </article>
         </section>
       )}
