@@ -4,6 +4,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 let createProblem;
+let buildDirectExponentiationOperandPool;
 let sanitizeSettings;
 let resolveRoundSizeDraft;
 let MAX_DIGITS;
@@ -41,6 +42,7 @@ test.before(async () => {
 
   ({
     createProblem,
+    buildDirectExponentiationOperandPool,
     sanitizeSettings,
     resolveRoundSizeDraft,
     MAX_DIGITS,
@@ -163,6 +165,49 @@ test('createProblem supports the requested positive edge digit combinations', ()
       assert.equal(problem.practiceMode, PRACTICE_MODES.POSITIVE);
       assert.equal(typeof problem.correctAnswer, 'bigint');
     }
+  }
+});
+
+test('buildDirectExponentiationOperandPool caps direct exponentiation at 20^5', () => {
+  const pool = buildDirectExponentiationOperandPool(20);
+
+  assert.equal(pool.every(([base]) => base >= 2 && base <= 20), true);
+  assert.equal(pool.every(([, exponent]) => exponent >= 2 && exponent <= 5), true);
+  assert.equal(
+    pool.some(([base, exponent]) => base === 20 && exponent === 5),
+    true
+  );
+  assert.equal(
+    pool.some(([base, exponent]) => base === 2 && exponent === 20),
+    false
+  );
+  assert.equal(
+    pool.some(([base, exponent]) => base === 5 && exponent === 20),
+    false
+  );
+  assert.equal(
+    pool.some(([base, exponent]) => base === 20 && exponent === 20),
+    false
+  );
+});
+
+test('createProblem can generate 20^5 in direct exponentiation mode', () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0.999999;
+
+  try {
+    const problem = createProblem({
+      practiceMode: PRACTICE_MODES.POSITIVE,
+      operation: 'EXPONENTIATION',
+      maxBase: 20,
+      roundSize: 10
+    });
+
+    assert.equal(problem.leftOperand, 20);
+    assert.equal(problem.rightOperand, 5);
+    assert.equal(problem.correctAnswer, 3200000n);
+  } finally {
+    Math.random = originalRandom;
   }
 });
 

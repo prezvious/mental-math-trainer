@@ -2,6 +2,8 @@ export const MAX_DIGITS = 8;
 export const MAX_ROUND_SIZE = 10000;
 export const MIN_ROUND_SIZE = 3;
 export const MAX_BASE = 20;
+const MIN_DIRECT_EXPONENT = 2;
+const MAX_DIRECT_EXPONENT = 5;
 
 export const PRACTICE_MODES = Object.freeze({
   POSITIVE: 'POSITIVE',
@@ -54,6 +56,10 @@ function parseNumberOrFallback(value, fallback) {
 
 function randomInteger(minInclusive, maxExclusive) {
   return Math.floor(Math.random() * (maxExclusive - minInclusive) + minInclusive);
+}
+
+function pickRandomItem(items) {
+  return items[randomInteger(0, items.length)];
 }
 
 function randomIntegerByDigits(digits) {
@@ -232,9 +238,21 @@ function getPositiveOperands(operation, leftDigits, rightDigits) {
 }
 
 function getExponentiationOperands(maxBase) {
-  const base = randomInteger(2, Math.max(3, maxBase + 1));
-  const exponent = Math.random() < 0.5 ? 2 : 3;
-  return [base, exponent];
+  const candidates = buildDirectExponentiationOperandPool(maxBase);
+  return candidates.length ? pickRandomItem(candidates) : [2, 2];
+}
+
+export function buildDirectExponentiationOperandPool(maxBase = MAX_BASE) {
+  const candidates = [];
+  const maximumBase = Math.max(2, Math.floor(maxBase));
+
+  for (let base = 2; base <= maximumBase; base += 1) {
+    for (let exponent = MIN_DIRECT_EXPONENT; exponent <= MAX_DIRECT_EXPONENT; exponent += 1) {
+      candidates.push([base, exponent]);
+    }
+  }
+
+  return candidates;
 }
 
 function getPositiveCorrectAnswer(operation, leftOperand, rightOperand) {

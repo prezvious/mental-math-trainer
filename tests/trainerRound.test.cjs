@@ -128,6 +128,109 @@ test('processRoundSubmission records a correct submit and advances', () => {
   assert.equal(submission.nextActiveRound.sessionId, 'session-correct');
 });
 
+test('processRoundSubmission avoids repeating exponentiation prompts while unused ones remain', () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+
+  try {
+    const activeRound = createActiveRound(
+      {
+        practiceMode: 'POSITIVE',
+        operation: 'EXPONENTIATION',
+        leftDigits: 2,
+        rightDigits: 2,
+        leftDecimalDigits: 2,
+        rightDecimalDigits: 2,
+        maxBase: 10,
+        roundSize: 4
+      },
+      {
+        practiceMode: 'POSITIVE',
+        operation: 'EXPONENTIATION',
+        leftOperand: 2,
+        rightOperand: 2,
+        correctAnswer: 4n
+      },
+      500,
+      'session-exponent-unique'
+    );
+
+    const submission = processRoundSubmission(activeRound, 4n, 900, null);
+
+    assert.equal(submission.ignored, false);
+    assert.notDeepEqual(submission.nextActiveRound.currentProblem, activeRound.currentProblem);
+    assert.equal(submission.nextActiveRound.currentProblem.leftOperand, 2);
+    assert.equal(submission.nextActiveRound.currentProblem.rightOperand, 3);
+    assert.equal(submission.nextActiveRound.currentProblem.correctAnswer, 8n);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('processRoundSubmission reuses direct exponentiation prompts after the pool is exhausted', () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+
+  try {
+    const attempts = [];
+
+    for (let base = 2; base <= 20; base += 1) {
+      for (let exponent = 2; exponent <= 5; exponent += 1) {
+        if (base === 20 && exponent === 5) {
+          continue;
+        }
+
+        const correctAnswer = BigInt(base) ** BigInt(exponent);
+        attempts.push({
+          practiceMode: 'POSITIVE',
+          operation: 'EXPONENTIATION',
+          leftOperand: base,
+          rightOperand: exponent,
+          correctAnswer,
+          submittedAnswer: correctAnswer,
+          isCorrect: true,
+          responseMs: 100,
+          createdAt: '2026-04-23T00:00:00.000Z'
+        });
+      }
+    }
+
+    const activeRound = {
+      settings: {
+        practiceMode: 'POSITIVE',
+        operation: 'EXPONENTIATION',
+        leftDigits: 2,
+        rightDigits: 2,
+        leftDecimalDigits: 2,
+        rightDecimalDigits: 2,
+        maxBase: 20,
+        roundSize: attempts.length + 2
+      },
+      attempts,
+      currentProblem: {
+        practiceMode: 'POSITIVE',
+        operation: 'EXPONENTIATION',
+        leftOperand: 20,
+        rightOperand: 5,
+        correctAnswer: 3200000n
+      },
+      questionStartedAt: 500,
+      questionId: attempts.length + 1,
+      sessionId: 'session-exponent-fallback'
+    };
+
+    const submission = processRoundSubmission(activeRound, 3200000n, 900, null);
+
+    assert.equal(submission.ignored, false);
+    assert.equal(submission.isComplete, false);
+    assert.equal(submission.nextActiveRound.currentProblem.leftOperand, 2);
+    assert.equal(submission.nextActiveRound.currentProblem.rightOperand, 2);
+    assert.equal(submission.nextActiveRound.currentProblem.correctAnswer, 4n);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
 test('final question completion returns no nextActiveRound', () => {
   const activeRound = {
       settings: {

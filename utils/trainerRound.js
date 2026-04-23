@@ -1,4 +1,9 @@
-import { createProblem, parseTrainerAnswer } from './mathEngine.js';
+import {
+  buildDirectExponentiationOperandPool,
+  createProblem,
+  parseTrainerAnswer,
+  PRACTICE_MODES
+} from './mathEngine.js';
 
 export function createActiveRound(
   settings,
@@ -43,6 +48,7 @@ export function createAttempt(
   createdAt = new Date().toISOString()
 ) {
   return {
+    practiceMode: currentProblem.practiceMode,
     operation: currentProblem.operation,
     leftOperand: currentProblem.leftOperand,
     rightOperand: currentProblem.rightOperand,
@@ -52,6 +58,59 @@ export function createAttempt(
     responseMs,
     createdAt
   };
+}
+
+function getProblemKey(problem) {
+  return `${problem.practiceMode || PRACTICE_MODES.POSITIVE}:${problem.operation}:${problem.leftOperand}:${problem.rightOperand}`;
+}
+
+function getExponentiationProblemKey(base, exponent) {
+  return `${PRACTICE_MODES.POSITIVE}:EXPONENTIATION:${base}:${exponent}`;
+}
+
+function buildUsedProblemKeys(activeRound, attempts = activeRound.attempts) {
+  const problemKeys = new Set(attempts.map(getProblemKey));
+  if (activeRound.currentProblem) {
+    problemKeys.add(getProblemKey(activeRound.currentProblem));
+  }
+
+  return problemKeys;
+}
+
+function buildExponentiationProblem(base, exponent) {
+  return {
+    practiceMode: PRACTICE_MODES.POSITIVE,
+    operation: 'EXPONENTIATION',
+    leftOperand: base,
+    rightOperand: exponent,
+    correctAnswer: BigInt(base) ** BigInt(exponent)
+  };
+}
+
+function createNextExponentiationProblem(settings, excludedProblemKeys) {
+  const allOperands = buildDirectExponentiationOperandPool(settings.maxBase);
+  const availableOperands = allOperands.filter(
+    ([base, exponent]) => !excludedProblemKeys.has(getExponentiationProblemKey(base, exponent))
+  );
+  const candidates = availableOperands.length ? availableOperands : allOperands;
+  const [base, exponent] = candidates[Math.floor(Math.random() * candidates.length)] || [2, 2];
+
+  return buildExponentiationProblem(base, exponent);
+}
+
+function createNextProblem(activeRound, attempts, createProblemImpl = createProblem) {
+  const excludedProblemKeys = buildUsedProblemKeys(activeRound, attempts);
+  const { settings } = activeRound;
+
+  if (
+    settings.practiceMode === PRACTICE_MODES.POSITIVE &&
+    settings.operation === 'EXPONENTIATION' &&
+    createProblemImpl === createProblem
+  ) {
+    return createNextExponentiationProblem(settings, excludedProblemKeys);
+  }
+
+  return createProblemImpl(settings);
 }
 
 export function resolveRoundSubmission(
@@ -80,18 +139,18 @@ export function resolveRoundSubmission(
     };
   }
 
-  const nextProblem = createProblemImpl(activeRound.settings);
+  const nextProblem = createNextProblem(activeRound, attempts, createProblemImpl);
 
-    return {
-      attempt,
+  return {
+    attempt,
+    attempts,
+    isComplete,
+    nextActiveRound: {
+      ...activeRound,
+      sessionId: activeRound.sessionId,
       attempts,
-      isComplete,
-      nextActiveRound: {
-        ...activeRound,
-        sessionId: activeRound.sessionId,
-        attempts,
-        currentProblem: nextProblem,
-        questionStartedAt: nextQuestionStartedAt,
+      currentProblem: nextProblem,
+      questionStartedAt: nextQuestionStartedAt,
       questionId: activeRound.questionId + 1
     }
   };

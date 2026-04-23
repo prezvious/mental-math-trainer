@@ -5,6 +5,7 @@ const { pathToFileURL } = require('node:url');
 
 let createMixedProblem;
 let DEFAULT_MIXED_SETTINGS;
+let buildMixedExponentiationOperandPool;
 let getEnabledOperations;
 let sanitizeMixedSettings;
 
@@ -14,6 +15,7 @@ test.before(async () => {
   );
 
   ({
+    buildMixedExponentiationOperandPool,
     createMixedProblem,
     DEFAULT_MIXED_SETTINGS,
     getEnabledOperations,
@@ -57,19 +59,60 @@ test('getEnabledOperations only returns operations that are not off', () => {
   assert.deepEqual(enabledOperations, ['MULTIPLICATION', 'SUBTRACTION']);
 });
 
-test('createMixedProblem generates exponentiation with the configured range and metadata', () => {
+test('createMixedProblem keeps exponentiation within each mixed difficulty band', () => {
   const originalRandom = Math.random;
-  Math.random = () => 0;
 
   try {
-    const problem = createMixedProblem('EXPONENTIATION', 'easy');
+    const cases = [
+      { difficulty: 'warmup', min: 2, max: 30 },
+      { difficulty: 'easy', min: 2, max: 80 },
+      { difficulty: 'medium', min: 10, max: 140 },
+      { difficulty: 'hard', min: 20, max: 200 }
+    ];
 
-    assert.equal(problem.operation, 'EXPONENTIATION');
-    assert.equal(problem.leftOperand, 2);
-    assert.equal(problem.rightOperand, 2);
-    assert.equal(problem.correctAnswer, 4n);
-    assert.equal(problem.digitsLeft, 1);
-    assert.equal(problem.digitsRight, 1);
+    for (const { difficulty, min, max } of cases) {
+      Math.random = () => 0;
+      const minimumProblem = createMixedProblem('EXPONENTIATION', difficulty);
+
+      assert.equal(minimumProblem.operation, 'EXPONENTIATION');
+      assert.equal(minimumProblem.leftOperand, min);
+      assert.equal(minimumProblem.rightOperand, 2);
+      assert.equal(minimumProblem.correctAnswer, BigInt(min) ** 2n);
+      assert.equal(minimumProblem.digitsLeft, String(min).length);
+      assert.equal(minimumProblem.digitsRight, 1);
+
+      Math.random = () => 0.999999;
+      const maximumProblem = createMixedProblem('EXPONENTIATION', difficulty);
+
+      assert.equal(maximumProblem.leftOperand, max);
+      assert.equal(maximumProblem.rightOperand, 5);
+      assert.equal(maximumProblem.correctAnswer, BigInt(max) ** 5n);
+      assert.equal(maximumProblem.digitsLeft, String(max).length);
+      assert.equal(maximumProblem.digitsRight, 1);
+    }
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('buildMixedExponentiationOperandPool gives warmup enough prompts for a 111-question round', () => {
+  const pool = buildMixedExponentiationOperandPool('warmup');
+
+  assert.equal(pool.length >= 111, true);
+  assert.equal(pool.every(([base]) => base >= 2 && base <= 30), true);
+  assert.equal(pool.every(([, exponent]) => exponent >= 2 && exponent <= 5), true);
+});
+
+test('createMixedProblem can reach 200^5 without exceeding the hard cap', () => {
+  const originalRandom = Math.random;
+  Math.random = () => 0.999999;
+
+  try {
+    const problem = createMixedProblem('EXPONENTIATION', 'hard');
+
+    assert.equal(problem.leftOperand, 200);
+    assert.equal(problem.rightOperand, 5);
+    assert.equal(problem.correctAnswer, 320000000000n);
   } finally {
     Math.random = originalRandom;
   }

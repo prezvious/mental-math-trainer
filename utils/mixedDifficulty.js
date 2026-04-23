@@ -10,10 +10,10 @@ export const DIFFICULTY_LEVELS = {
 
 export const DIFFICULTY_CONFIG = {
   EXPONENTIATION: {
-    warmup: { min: 2, max: 15 },
-    easy: { min: 2, max: 30 },
-    medium: { min: 10, max: 60 },
-    hard: { min: 20, max: 100 }
+    warmup: { min: 2, max: 30 },
+    easy: { min: 2, max: 80 },
+    medium: { min: 10, max: 140 },
+    hard: { min: 20, max: 200 }
   },
   MULTIPLICATION: {
     warmup: { leftDigits: 1, rightDigits: 1 },
@@ -83,6 +83,8 @@ const OPERATION_TO_SETTING_KEY = {
   DIVISION: 'divisionDifficulty'
 };
 
+const MIXED_EXPONENTS = [2, 3, 4, 5];
+
 export function getDifficultyForOperation(settings, operation) {
   return settings[OPERATION_TO_SETTING_KEY[operation]] || 'off';
 }
@@ -99,6 +101,24 @@ export function pickRandomOperation(enabledOperations) {
 
 function randomIntegerInRange(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+export function buildMixedExponentiationOperandPool(difficulty) {
+  const config = DIFFICULTY_CONFIG.EXPONENTIATION[difficulty];
+  const effectiveConfig = config || DIFFICULTY_CONFIG.EXPONENTIATION.warmup;
+  if (!effectiveConfig) {
+    throw new Error('EXPONENTIATION warmup difficulty config is missing.');
+  }
+
+  const candidates = [];
+
+  for (let base = effectiveConfig.min; base <= effectiveConfig.max; base += 1) {
+    for (const exponent of MIXED_EXPONENTS) {
+      candidates.push([base, exponent]);
+    }
+  }
+
+  return candidates;
 }
 
 function parseBooleanOrFallback(value, fallback) {
@@ -136,7 +156,7 @@ function createExponentiationProblem(difficulty) {
   }
 
   const base = randomIntegerInRange(effectiveConfig.min, effectiveConfig.max);
-  const exponent = Math.random() < 0.5 ? 2 : 3;
+  const exponent = MIXED_EXPONENTS[Math.floor(Math.random() * MIXED_EXPONENTS.length)];
   const digitsLeft = String(base).length;
 
   return {
