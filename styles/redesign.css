@@ -1400,6 +1400,11 @@ th {
   border-color: color-mix(in srgb, var(--accent-main) 36%, white);
 }
 
+.stacked-problem.is-incorrect-flash {
+  background: color-mix(in srgb, var(--accent-warm) 18%, white);
+  border-color: color-mix(in srgb, var(--accent-warm) 34%, white);
+}
+
 .stacked-problem-stack {
   display: grid;
   justify-items: end;
@@ -1443,6 +1448,12 @@ th {
 
 .stacked-problem-answer.correct-flash {
   background: color-mix(in srgb, var(--accent-soft) 58%, white);
+  transform: translateY(-1px);
+}
+
+.stacked-problem-answer.incorrect-flash {
+  background: color-mix(in srgb, var(--accent-warm) 22%, white);
+  color: color-mix(in srgb, var(--accent-warm) 74%, var(--text-main));
   transform: translateY(-1px);
 }
 

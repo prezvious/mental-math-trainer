@@ -1,7 +1,8 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { storeAuthLoginHandoff } from 'utils/authLoginHandoff.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   calculateStrength,
@@ -62,8 +63,6 @@ export default function SignupPage() {
   const canSubmit =
     Boolean(email.trim()) && passwordIsValid && passwordsMatch && !isSubmitting && isConfigured;
 
-  const loginHref = `/login?email=${encodeURIComponent(duplicateEmail || email.trim())}`;
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!client) {
@@ -118,6 +117,11 @@ export default function SignupPage() {
       'Account created. Check your inbox to confirm your email. The link will bring you back to the verification page and sign you in automatically.'
     );
   };
+
+  const handleDuplicateLoginClick = useCallback(async () => {
+    storeAuthLoginHandoff(duplicateEmail || email);
+    await router.push('/login');
+  }, [duplicateEmail, email, router]);
 
   return (
     <>
@@ -280,9 +284,13 @@ export default function SignupPage() {
 
           {duplicateEmail && (
             <div className='inline-actions'>
-              <Link href={loginHref} className='button button-quiet'>
+              <button
+                type='button'
+                className='button button-quiet'
+                onClick={() => void handleDuplicateLoginClick()}
+              >
                 Log in with this email
-              </Link>
+              </button>
             </div>
           )}
 

@@ -29,6 +29,7 @@ import {
   processMixedRoundSubmission,
   shouldAutoSubmitAnswer
 } from 'utils/mixedTrainerRound.js';
+import { MIXED_SUBMISSION_FEEDBACK_STATES } from 'utils/mixedTrainerPresentation.js';
 import {
   computeRoundStats,
   parseIntegerInput
@@ -127,7 +128,7 @@ const OPERATION_SETTING_KEYS = {
   DIVISION: 'divisionDifficulty'
 };
 
-const CORRECT_FLASH_MS = 400;
+const SUBMISSION_FEEDBACK_MS = 400;
 
 function MixedTrainerContent() {
   const router = useRouter();
@@ -138,7 +139,9 @@ function MixedTrainerContent() {
 
   const [activeRound, setActiveRound] = useState(null);
   const [answerInput, setAnswerInput] = useState('');
-  const [isCorrectFlash, setIsCorrectFlash] = useState(false);
+  const [submissionFeedbackState, setSubmissionFeedbackState] = useState(
+    MIXED_SUBMISSION_FEEDBACK_STATES.IDLE
+  );
   const [lastRound, setLastRound] = useState(null);
   const [isDesktopMixedInput, setIsDesktopMixedInput] = useState(false);
   const handledQuestionIdRef = useRef(null);
@@ -220,7 +223,7 @@ function MixedTrainerContent() {
     pendingAdvanceRef.current = null;
     setActiveRound(null);
     setAnswerInput('');
-    setIsCorrectFlash(false);
+    setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
     setLastRound(null);
     handledQuestionIdRef.current = null;
   }, [progressBuffer, userId]);
@@ -239,6 +242,8 @@ function MixedTrainerContent() {
     [settings]
   );
   const canStart = enabledOperations.length > 0;
+  const isSubmissionFeedbackActive =
+    submissionFeedbackState !== MIXED_SUBMISSION_FEEDBACK_STATES.IDLE;
 
   const markSummarySaved = useCallback(() => {
     if (!isMountedRef.current) {
@@ -283,7 +288,7 @@ function MixedTrainerContent() {
       pendingAdvanceRef.current = null;
       setActiveRound(null);
       setAnswerInput('');
-      setIsCorrectFlash(false);
+      setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
 
       const summary = createRoundSummary(attempts, userId, wasTerminated);
       if (isMountedRef.current) {
@@ -349,7 +354,7 @@ function MixedTrainerContent() {
           if (isMountedRef.current) {
             setActiveRound(null);
             setAnswerInput('');
-            setIsCorrectFlash(false);
+            setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
           }
           return { handled: true, saved: false };
         }
@@ -404,7 +409,7 @@ function MixedTrainerContent() {
     void upsertMixedSettings(sanitized);
     setLastRound(null);
     setAnswerInput('');
-    setIsCorrectFlash(false);
+    setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
     handledQuestionIdRef.current = null;
     setActiveRound(
       createMixedActiveRound(sanitized, firstProblem, questionStartedAt, sessionId)
@@ -487,7 +492,7 @@ function MixedTrainerContent() {
     };
   }, [activeRound, router.events, router.pathname, terminateActiveRound]);
 
-  const advanceAfterCorrect = useCallback(
+  const advanceAfterSubmissionFeedback = useCallback(
     async (submission) => {
       pendingAdvanceRef.current = null;
 
@@ -499,7 +504,7 @@ function MixedTrainerContent() {
       }
 
       setAnswerInput('');
-      setIsCorrectFlash(false);
+      setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
       setActiveRound({
         ...nextActiveRound,
         questionStartedAt: Date.now()
@@ -511,7 +516,7 @@ function MixedTrainerContent() {
   const submitAnswer = useCallback(
     (submittedAnswer, submittedAt = Date.now()) => {
       const roundSnapshot = activeRoundRef.current;
-      if (!roundSnapshot || isCorrectFlash) {
+      if (!roundSnapshot || isSubmissionFeedbackActive) {
         return;
       }
 
@@ -540,7 +545,11 @@ function MixedTrainerContent() {
       }
 
       pendingAdvanceRef.current = submission;
-      setIsCorrectFlash(true);
+      setSubmissionFeedbackState(
+        submission.attempt.isCorrect
+          ? MIXED_SUBMISSION_FEEDBACK_STATES.CORRECT
+          : MIXED_SUBMISSION_FEEDBACK_STATES.INCORRECT
+      );
 
       if (flashTimeoutRef.current) {
         clearTimeout(flashTimeoutRef.current);
@@ -548,10 +557,10 @@ function MixedTrainerContent() {
 
       flashTimeoutRef.current = setTimeout(() => {
         flashTimeoutRef.current = null;
-        void advanceAfterCorrect(submission);
-      }, CORRECT_FLASH_MS);
+        void advanceAfterSubmissionFeedback(submission);
+      }, SUBMISSION_FEEDBACK_MS);
     },
-    [advanceAfterCorrect, isCorrectFlash, progressBuffer, userId]
+    [advanceAfterSubmissionFeedback, isSubmissionFeedbackActive, progressBuffer, userId]
   );
 
   const submitCurrentInput = useCallback(() => {
@@ -574,7 +583,7 @@ function MixedTrainerContent() {
   const processInput = useCallback(
     (nextValue) => {
       const roundSnapshot = activeRoundRef.current;
-      if (!roundSnapshot || isCorrectFlash) {
+      if (!roundSnapshot || isSubmissionFeedbackActive) {
         return;
       }
 
@@ -588,28 +597,28 @@ function MixedTrainerContent() {
         submitAnswer(autoSubmitted, Date.now());
       }
     },
-    [isCorrectFlash, submitAnswer]
+    [isSubmissionFeedbackActive, submitAnswer]
   );
 
   const handleDigit = useCallback(
     (digit) => {
-      if (isCorrectFlash) return;
+      if (isSubmissionFeedbackActive) return;
       const next = settings.rtlInput ? digit + answerInput : answerInput + digit;
       processInput(next);
     },
-    [answerInput, isCorrectFlash, processInput, settings.rtlInput]
+    [answerInput, isSubmissionFeedbackActive, processInput, settings.rtlInput]
   );
 
   const handleDelete = useCallback(() => {
-    if (isCorrectFlash || !answerInput) return;
+    if (isSubmissionFeedbackActive || !answerInput) return;
     const next = settings.rtlInput ? answerInput.slice(1) : answerInput.slice(0, -1);
     processInput(next);
-  }, [answerInput, isCorrectFlash, processInput, settings.rtlInput]);
+  }, [answerInput, isSubmissionFeedbackActive, processInput, settings.rtlInput]);
 
   const handleClear = useCallback(() => {
-    if (isCorrectFlash) return;
+    if (isSubmissionFeedbackActive) return;
     processInput('');
-  }, [isCorrectFlash, processInput]);
+  }, [isSubmissionFeedbackActive, processInput]);
 
   const restoreHiddenInputFocus = useCallback(() => {
     hiddenInputRef.current?.focus();
@@ -617,7 +626,7 @@ function MixedTrainerContent() {
 
   const handleDesktopAnswerPaste = useCallback(
     (event) => {
-      if (!isDesktopMixedInput || isCorrectFlash) {
+      if (!isDesktopMixedInput || isSubmissionFeedbackActive) {
         return;
       }
 
@@ -629,12 +638,12 @@ function MixedTrainerContent() {
       event.preventDefault();
       processInput(pastedDigits);
     },
-    [isCorrectFlash, isDesktopMixedInput, processInput]
+    [isDesktopMixedInput, isSubmissionFeedbackActive, processInput]
   );
 
   const handleKeyDown = useCallback(
     (event) => {
-      if (isCorrectFlash) {
+      if (isSubmissionFeedbackActive) {
         event.preventDefault();
         return;
       }
@@ -662,7 +671,7 @@ function MixedTrainerContent() {
         submitCurrentInput();
       }
     },
-    [handleClear, handleDelete, handleDigit, isCorrectFlash, submitCurrentInput]
+    [handleClear, handleDelete, handleDigit, isSubmissionFeedbackActive, submitCurrentInput]
   );
 
   const updateSetting = (key, value) => {
@@ -849,7 +858,7 @@ function MixedTrainerContent() {
                 <QuestionTimer
                   startedAt={activeRound.questionStartedAt}
                   hidden={activeRound.settings.hideTimer}
-                  frozen={isCorrectFlash}
+                  frozen={isSubmissionFeedbackActive}
                 />
               </div>
               <ProgressBar
@@ -859,7 +868,7 @@ function MixedTrainerContent() {
               <StackedProblem
                 problem={activeRound.currentProblem}
                 answerDisplay={answerInput}
-                isCorrect={isCorrectFlash}
+                feedbackState={submissionFeedbackState}
                 showAnswerDisplay={!isDesktopMixedInput}
               />
               {isDesktopMixedInput ? (
@@ -882,7 +891,7 @@ function MixedTrainerContent() {
                   <button
                     type='submit'
                     className='button button-strong button-full'
-                    disabled={isCorrectFlash}
+                    disabled={isSubmissionFeedbackActive}
                   >
                     Submit answer
                   </button>
@@ -907,7 +916,7 @@ function MixedTrainerContent() {
                     onDelete={handleDelete}
                     onSubmit={submitCurrentInput}
                     onPointerAction={restoreHiddenInputFocus}
-                    disabled={isCorrectFlash}
+                    disabled={isSubmissionFeedbackActive}
                   />
                 </>
               )}

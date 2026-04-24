@@ -1,13 +1,18 @@
 import { MIXED_OPERATION_META } from 'utils/mixedDifficulty.js';
+import { getStackedProblemClassNames } from 'utils/mixedTrainerPresentation.js';
 
 export default function StackedProblem({
   problem,
   answerDisplay,
-  isCorrect,
+  feedbackState,
   showAnswerDisplay = true
 }) {
-  const problemClassName = `stacked-problem${!showAnswerDisplay && isCorrect ? ' is-correct-flash' : ''}`;
-  const answerClassName = `stacked-problem-answer${isCorrect ? ' correct-flash' : ''}`;
+  const { problemClassName, answerClassName } = getStackedProblemClassNames(
+    feedbackState,
+    {
+      showAnswerDisplay
+    }
+  );
 
   if (problem.operation === 'EXPONENTIATION') {
     return (

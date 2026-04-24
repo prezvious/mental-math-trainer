@@ -2,6 +2,10 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import {
+  AUTH_LOGIN_HANDOFF_REASONS,
+  consumeAuthLoginHandoff
+} from 'utils/authLoginHandoff.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 export default function LoginPage() {
@@ -11,8 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const suggestedEmail =
-    typeof router.query.email === 'string' ? router.query.email : '';
+  const [loginHandoffReason, setLoginHandoffReason] = useState('');
   const isLoginUnavailable = !isConfigured;
 
   useEffect(() => {
@@ -22,12 +25,14 @@ export default function LoginPage() {
   }, [router, user]);
 
   useEffect(() => {
-    if (!suggestedEmail) {
+    const loginHandoff = consumeAuthLoginHandoff();
+    if (!loginHandoff) {
       return;
     }
 
-    setEmail((currentEmail) => currentEmail || suggestedEmail);
-  }, [suggestedEmail]);
+    setLoginHandoffReason(loginHandoff.reason);
+    setEmail((currentEmail) => currentEmail || loginHandoff.email);
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -88,7 +93,7 @@ export default function LoginPage() {
             Use the same email you used for sign-up. The next round is waiting on the main trainer.
           </p>
 
-          {suggestedEmail && (
+          {loginHandoffReason === AUTH_LOGIN_HANDOFF_REASONS.DUPLICATE_SIGNUP && (
             <p className='inline-warning'>
               This email is already registered. Enter your password to log in.
             </p>
