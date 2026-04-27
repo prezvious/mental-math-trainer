@@ -62,14 +62,14 @@ function pickRandomItem(items) {
   return items[randomInteger(0, items.length)];
 }
 
+function randomDigitString(length) {
+  return Array.from({ length }, () => String(randomInteger(0, 10))).join('');
+}
+
 function randomIntegerByDigits(digits) {
   const min = Math.pow(10, digits - 1);
   const max = Math.pow(10, digits);
   return randomInteger(min, max);
-}
-
-function randomDigitString(length) {
-  return Array.from({ length }, () => String(randomInteger(0, 10))).join('');
 }
 
 function pow10BigInt(exponent) {
@@ -181,6 +181,59 @@ function buildDecimalOperand(wholeDigits, decimalDigits) {
     scale: decimalDigits,
     text: `${wholePart}.${fractionPart}`
   };
+}
+
+function getDecimalNumeratorRange(wholeDigits, decimalDigits) {
+  return {
+    minimum:
+      wholeDigits === 1 ? 1n : pow10BigInt(wholeDigits - 1 + decimalDigits),
+    maximum: pow10BigInt(wholeDigits + decimalDigits) - 1n
+  };
+}
+
+function pickNonRoundBase(minimum, maximum) {
+  if (maximum < minimum) {
+    return null;
+  }
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const candidate = randomBigIntInclusive(minimum, maximum);
+    if (candidate % 10n !== 0n) {
+      return candidate;
+    }
+  }
+
+  const forwardCandidate = minimum % 10n === 0n ? minimum + 1n : minimum;
+  if (forwardCandidate <= maximum) {
+    return forwardCandidate;
+  }
+
+  const backwardCandidate = maximum % 10n === 0n ? maximum - 1n : maximum;
+  return backwardCandidate >= minimum ? backwardCandidate : null;
+}
+
+function pickDecimalDivisionQuotient(minimum, maximum, base, leftScale) {
+  if (maximum < minimum) {
+    return null;
+  }
+
+  const leftScaleFactor = pow10BigInt(leftScale);
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const quotient = randomBigIntInclusive(minimum, maximum);
+    if ((base * quotient) % leftScaleFactor !== 0n) {
+      return quotient;
+    }
+  }
+
+  for (let offset = 0n; offset < 100n && minimum + offset <= maximum; offset += 1n) {
+    const quotient = minimum + offset;
+    if ((base * quotient) % leftScaleFactor !== 0n) {
+      return quotient;
+    }
+  }
+
+  return null;
 }
 
 function getPositiveOperands(operation, leftDigits, rightDigits) {
@@ -360,61 +413,70 @@ function createDecimalMultiplicationProblem(settings) {
   };
 }
 
-function formatDecimalDivisionAnswer(quotient, leftScale, rightScale) {
-  if (leftScale >= rightScale) {
-    return formatCanonicalDecimal(quotient, leftScale - rightScale);
+function formatDecimalDivisionAnswer(quotient, answerShift) {
+  if (answerShift >= 0) {
+    return formatCanonicalDecimal(quotient * pow10BigInt(answerShift), 0);
   }
 
-  return formatCanonicalDecimal(
-    quotient * pow10BigInt(rightScale - leftScale),
-    0
-  );
+  return formatCanonicalDecimal(quotient, -answerShift);
 }
 
 function createDecimalDivisionProblem(settings) {
-  const minimumWholeDigitsNumerator =
-    settings.leftDigits === 1 ? 1n : pow10BigInt(settings.leftDigits - 1 + settings.leftDecimalDigits);
-  const maximumWholeDigitsNumerator = pow10BigInt(
-    settings.leftDigits + settings.leftDecimalDigits
-  ) - 1n;
+  const leftRange = getDecimalNumeratorRange(
+    settings.leftDigits,
+    settings.leftDecimalDigits
+  );
+  const rightRange = getDecimalNumeratorRange(
+    settings.rightDigits,
+    settings.rightDecimalDigits
+  );
 
-  for (let attempt = 0; attempt < 300; attempt += 1) {
-    const rightOperand = buildDecimalOperand(
-      settings.rightDigits,
-      settings.rightDecimalDigits
-    );
-    const minimumQuotient = divideCeil(
-      minimumWholeDigitsNumerator,
-      rightOperand.numerator
-    );
-    const maximumQuotient = maximumWholeDigitsNumerator / rightOperand.numerator;
+  for (
+    let divisorDecimalShift = 0;
+    divisorDecimalShift < settings.rightDecimalDigits;
+    divisorDecimalShift += 1
+  ) {
+    const divisorScale = pow10BigInt(divisorDecimalShift);
+    const minimumBase = divideCeil(rightRange.minimum, divisorScale);
+    const maximumBase = rightRange.maximum / divisorScale < leftRange.maximum
+      ? rightRange.maximum / divisorScale
+      : leftRange.maximum;
 
-    if (maximumQuotient < minimumQuotient || maximumQuotient <= 0n) {
-      continue;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const base = pickNonRoundBase(minimumBase, maximumBase);
+      if (base === null) {
+        continue;
+      }
+
+      const minimumQuotient = divideCeil(leftRange.minimum, base);
+      const maximumQuotient = leftRange.maximum / base;
+      const quotient = pickDecimalDivisionQuotient(
+        minimumQuotient < 1n ? 1n : minimumQuotient,
+        maximumQuotient,
+        base,
+        settings.leftDecimalDigits
+      );
+
+      if (quotient === null) {
+        continue;
+      }
+
+      const leftNumerator = base * quotient;
+      const rightNumerator = base * divisorScale;
+
+      return {
+        practiceMode: PRACTICE_MODES.DECIMAL,
+        operation: settings.operation,
+        leftOperand: formatFixedDecimal(leftNumerator, settings.leftDecimalDigits),
+        rightOperand: formatFixedDecimal(rightNumerator, settings.rightDecimalDigits),
+        correctAnswer: formatDecimalDivisionAnswer(
+          quotient,
+          settings.rightDecimalDigits -
+            settings.leftDecimalDigits -
+            divisorDecimalShift
+        )
+      };
     }
-
-    const quotient = randomBigIntInclusive(
-      minimumQuotient < 1n ? 1n : minimumQuotient,
-      maximumQuotient
-    );
-    const leftNumerator = rightOperand.numerator * quotient;
-
-    // Keep Decimal mode visually decimal instead of generating ".000" operands.
-    if (leftNumerator % pow10BigInt(settings.leftDecimalDigits) === 0n) {
-      continue;
-    }
-
-    return {
-      practiceMode: PRACTICE_MODES.DECIMAL,
-      operation: settings.operation,
-      leftOperand: formatFixedDecimal(leftNumerator, settings.leftDecimalDigits),
-      rightOperand: rightOperand.text,
-      correctAnswer: formatDecimalDivisionAnswer(
-        quotient,
-        settings.leftDecimalDigits,
-        settings.rightDecimalDigits
-      )
-    };
   }
 
   throw new Error('Unable to generate a terminating decimal division problem.');

@@ -35,6 +35,18 @@ function expectDecimalOperandFormat(text, wholeDigits, decimalDigits) {
   assert.notEqual(Number(fractionPart), 0);
 }
 
+function assertExactDecimalDivision(problem) {
+  const left = toScaledValue(problem.leftOperand);
+  const right = toScaledValue(problem.rightOperand);
+  const answer = toScaledValue(problem.correctAnswer);
+
+  assert.match(problem.correctAnswer, /^\d+(?:\.\d+)?$/);
+  assert.equal(
+    left.numerator * pow10(right.scale + answer.scale),
+    right.numerator * answer.numerator * pow10(left.scale)
+  );
+}
+
 test.before(async () => {
   const mathEngine = await import(
     pathToFileURL(path.resolve(__dirname, '../utils/mathEngine.js')).href
@@ -311,14 +323,87 @@ test('decimal division always resolves to an exact terminating decimal answer', 
       rightDecimalDigits: 2,
       roundSize: 10
     });
-    const left = toScaledValue(problem.leftOperand);
-    const right = toScaledValue(problem.rightOperand);
-    const answer = toScaledValue(problem.correctAnswer);
 
-    assert.match(problem.correctAnswer, /^\d+(?:\.\d+)?$/);
-    assert.equal(
-      left.numerator * pow10(right.scale + answer.scale),
-      right.numerator * answer.numerator * pow10(left.scale)
-    );
+    assertExactDecimalDivision(problem);
+  }
+});
+
+test('decimal division generates for previously failing precision combinations', () => {
+  const regressionSettings = [
+    {
+      leftDigits: 2,
+      rightDigits: 2,
+      leftDecimalDigits: 1,
+      rightDecimalDigits: 2
+    },
+    {
+      leftDigits: 1,
+      rightDigits: 1,
+      leftDecimalDigits: 1,
+      rightDecimalDigits: 8
+    }
+  ];
+
+  for (const settings of regressionSettings) {
+    for (let sample = 0; sample < 10; sample += 1) {
+      const problem = createProblem({
+        practiceMode: PRACTICE_MODES.DECIMAL,
+        operation: 'DIVISION',
+        roundSize: 10,
+        ...settings
+      });
+
+      expectDecimalOperandFormat(
+        problem.leftOperand,
+        settings.leftDigits,
+        settings.leftDecimalDigits
+      );
+      expectDecimalOperandFormat(
+        problem.rightOperand,
+        settings.rightDigits,
+        settings.rightDecimalDigits
+      );
+      assertExactDecimalDivision(problem);
+    }
+  }
+});
+
+test('decimal division generates exact answers across all supported digit combinations', () => {
+  for (let leftDigits = 1; leftDigits <= MAX_DIGITS; leftDigits += 1) {
+    for (let rightDigits = 1; rightDigits <= leftDigits; rightDigits += 1) {
+      for (
+        let leftDecimalDigits = 1;
+        leftDecimalDigits <= MAX_DIGITS;
+        leftDecimalDigits += 1
+      ) {
+        for (
+          let rightDecimalDigits = 1;
+          rightDecimalDigits <= MAX_DIGITS;
+          rightDecimalDigits += 1
+        ) {
+          const problem = createProblem({
+            practiceMode: PRACTICE_MODES.DECIMAL,
+            operation: 'DIVISION',
+            leftDigits,
+            rightDigits,
+            leftDecimalDigits,
+            rightDecimalDigits,
+            roundSize: 10
+          });
+
+          expectDecimalOperandFormat(
+            problem.leftOperand,
+            leftDigits,
+            leftDecimalDigits
+          );
+          expectDecimalOperandFormat(
+            problem.rightOperand,
+            rightDigits,
+            rightDecimalDigits
+          );
+          assertExactDecimalDivision(problem);
+        }
+      }
+    }
   }
 });

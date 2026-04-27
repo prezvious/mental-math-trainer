@@ -1,114 +1,82 @@
 # Mental Math Trainer
 
-A fast, no-nonsense arithmetic trainer for building real mental math speed. Two drill formats, five operations, 25 themes, and zero friction — just open it and go.
+Mental Math Trainer is a focused arithmetic trainer for fast, repeated practice.
+It runs in the browser, works in guest mode by default, and can sync progress
+through Supabase when account features are configured.
 
-Works completely offline. No account required.
+## Features
 
----
+- Standard trainer (`/`) for one operation and practice mode at a time.
+- Mixed trainer (`/mixed`) for rotating across selected operations in one round.
+- Positive-number drills for addition, subtraction, multiplication, division, and
+  exponentiation.
+- Decimal drills for addition, subtraction, multiplication, and division.
+- Automatic answer checking, keyboard input, and an on-screen keypad.
+- Configurable round length, timer visibility, digit direction, and theme.
+- Round summaries with time, accuracy, fastest response, and per-operation stats.
+- Optional stats dashboard (`/stats`) for signed-in users.
 
-## What it does
+## Training Options
 
-You get a problem. You type the answer. The moment your digits are correct it jumps to the next one — no submit button, no delay, just continuous reps. Every response time is tracked behind the scenes so your end-of-session stats are always accurate, even if you hide the clock.
+The standard trainer lets you choose a practice mode, operation, digit counts,
+and question count. Exponentiation uses a maximum base instead of left/right
+digit settings.
 
----
+The mixed trainer uses difficulty levels per operation:
 
-## Two training modes
+| Operation | Levels |
+| --- | --- |
+| Exponentiation | Off, Warmup, Easy, Medium, Hard |
+| Addition | Off, Warmup, Easy, Medium, Hard, Expert |
+| Subtraction | Off, Warmup, Easy, Medium, Hard, Expert |
+| Multiplication | Off, Warmup, Easy, Medium, Hard, Expert |
+| Division | Off, Warmup, Easy, Medium, Hard |
 
-**Standard trainer** (`/`) — one operation per session. Good for isolating a weak spot or warming up on something specific.
+## Offline Use
 
-**Mixed trainer** (`/mixed`) — rotates across multiple operations in a single session. Keeps you on your toes when you don't know what's coming next.
+The app works without an account. Guest settings are stored in the browser, so
+practice mode, operation choices, round length, theme, timer visibility, and
+digit direction carry across sessions on the same device.
 
----
-
-## Operations and difficulty
-
-Each operation has its own difficulty setting, and you can toggle any of them off entirely. Mix and match however you like.
-
-| Operation | Levels available |
-|-----------|-----------------|
-| Squares n² | Off · Warmup · Easy · Medium · Hard |
-| Addition + | Off · Warmup · Easy · Medium · Hard · Expert |
-| Subtraction − | Off · Warmup · Easy · Medium · Hard · Expert |
-| Multiplication × | Off · Warmup · Easy · Medium · Hard · Expert |
-| Division ÷ | Off · Warmup · Easy · Medium · Hard |
-
----
-
-## Session options
-
-- **Run length** — choose 3, 7, 21, 55, or 111 questions per session
-- **Timer display** — hide the clock if it stresses you out (timing still runs in the background, so stats stay honest)
-- **Right-to-left input** — flips the digit entry direction, useful if you naturally think in columns
-
----
-
-## How input works
-
-Problems are displayed in vertical stacked form, the way you'd write them by hand. Squares are shown as `n²`. You enter digits on the on-screen keypad or your keyboard — no Enter key needed. The answer locks in automatically once the right number of correct digits are typed.
-
----
-
-## Stats after each session
-
-When a round ends you get a full breakdown:
-
-- Total session time and average response time per question
-- Overall accuracy for the session
-- Fastest single response
-- Per-operation accuracy and speed (so you can see exactly which operations are slowing you down)
-
-The stats page (`/stats`) shows your history over time with charts if you're signed in.
-
----
-
-## Themes
-
-Hit the button in the bottom-right corner to open the theme switcher. There are 25 named themes, each with its own color palette and layout character — some are dark and moody, some bright and airy, some somewhere in between.
-
-Current themes: Velvet Circuit · Paper Lantern · Acid Lemon Lobby · Apothecary Glass · Vinyl After Rain · Chrome Blossom · Taxi Noir · Porcelain Rebel · Signal Peach · Cobalt Typewriter · Rosewater Asphalt · Carbon Taffy · Cherry Receipt · Lilac Concrete · Mercury Carnival · Ink and Apricot · Studio Vermouth · Pixel Bazaar · Marble Disco · Saffron Static · Cotton Candy Dawn · Honey Milk · Sage Whisk · Lavender Mist · Aqua Whisper
-
----
-
-## Running it offline
-
-No internet, no account, no problem. Guest mode is the default. Your settings (difficulty per operation, run length, theme, timer visibility, input direction) are saved in your browser automatically and restored the next time you visit.
-
-### Run locally
+## Local Development
 
 ```bash
-# Clone the repo
 git clone https://github.com/prezvious/mental-math-trainer.git
 cd mental-math-trainer
-
-# Install dependencies
 npm install
-
-# Start the dev server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). That's it — no extra configuration needed to start training.
+Open [http://localhost:3000](http://localhost:3000).
+
+Useful commands:
 
 ```bash
-npm run build   # production build
-npm run start   # serve the production build
-npm run test    # run the test suite
-npm run lint    # lint check
+npm run build
+npm run start
+npm run test
+npm run lint
 ```
 
----
+## Optional Account Sync
 
-## Optional: account sync
+Account sync requires Supabase. Copy `.env.example` to `.env.local` and fill in
+these public client values:
 
-If you want settings and progress to carry across devices, copy `.env.example` to `.env.local` and fill in the values. Without that, everything stays local and guest mode works fully.
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
 
----
+Without those values, the app still works in guest mode.
 
-## Tech
+## Tech Stack
 
-Next.js 14 · React 18 · Tailwind CSS · Chart.js
-
----
+- Next.js 14
+- React 18
+- Tailwind CSS
+- Chart.js
+- Supabase
 
 ## License
 

@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HotkeyHint from 'components/HotkeyHint.js';
@@ -7,6 +8,7 @@ import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
 import LightningIcon from 'images/phosphor/lightning.svg';
+import ListChecksIcon from 'images/phosphor/list-checks.svg';
 import PlayCircleIcon from 'images/phosphor/play-circle-bold.svg';
 import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
@@ -486,6 +488,47 @@ export default function TrainerPage() {
     return nextSettings;
   }, [roundSizeDraft, settings, upsertPreferences]);
 
+  const showRoundGenerationError = useCallback(
+    (
+      roundSettings,
+      sourceMode,
+      error,
+      {
+        attempts = [],
+        aiAutoCycle = false,
+        blueprintLabel = '',
+        fallbackMessage = 'Unable to generate the next question.'
+      } = {}
+    ) => {
+      handledQuestionIdRef.current = null;
+      setActiveRound(null);
+      setAiTransitionState(null);
+      setAnswerInput('');
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      setLastRound({
+        ...createRoundSummary(
+          attempts,
+          roundSettings,
+          userId,
+          false,
+          sourceMode,
+          {
+            completionState: TRAINER_COMPLETION_STATES.ERROR,
+            aiAutoCycle,
+            blueprintLabel
+          }
+        ),
+        saveState: 'error',
+        saveError: error?.message || fallbackMessage
+      });
+    },
+    [userId]
+  );
+
   const startRoundWithSettings = useCallback(
     async (
       roundSettings,
@@ -505,7 +548,20 @@ export default function TrainerPage() {
       }
 
       const sanitizedSettings = sanitizeSettings(roundSettings);
-      const firstProblem = createProblem(sanitizedSettings);
+      let firstProblem;
+      try {
+        firstProblem = createProblem(sanitizedSettings);
+      } catch (error) {
+        showRoundGenerationError(sanitizedSettings, sourceMode, error, {
+          aiAutoCycle: Boolean(aiAutoCycleRound),
+          blueprintLabel:
+            sourceMode === TRAINER_INPUT_MODES.AI
+              ? formatAiCycleBlueprintLabel(sanitizedSettings)
+              : '',
+          fallbackMessage: 'Unable to start this round.'
+        });
+        return;
+      }
       const questionStartedAt = Date.now();
       const sessionId = createSessionId();
 
@@ -530,7 +586,12 @@ export default function TrainerPage() {
         aiCycleCursor: nextCycleCursor
       });
     },
-    [isLoadingPreferences, terminateActiveRound, upsertPreferences]
+    [
+      isLoadingPreferences,
+      showRoundGenerationError,
+      terminateActiveRound,
+      upsertPreferences
+    ]
   );
 
   const beginRound = useCallback(async () => {
@@ -701,12 +762,25 @@ export default function TrainerPage() {
         return;
       }
 
-      const submission = processRoundSubmission(
-        roundSnapshot,
-        submittedAnswer,
-        submittedAt,
-        handledQuestionIdRef.current
-      );
+      let submission;
+      try {
+        submission = processRoundSubmission(
+          roundSnapshot,
+          submittedAnswer,
+          submittedAt,
+          handledQuestionIdRef.current
+        );
+      } catch (error) {
+        showRoundGenerationError(
+          roundSnapshot.settings,
+          TRAINER_INPUT_MODES.MANUAL,
+          error,
+          {
+            attempts: roundSnapshot.attempts
+          }
+        );
+        return;
+      }
 
       if (submission.ignored) {
         return;
@@ -742,7 +816,7 @@ export default function TrainerPage() {
         sourceMode: TRAINER_INPUT_MODES.MANUAL
       });
     },
-    [finalizeRound, progressBuffer, userId]
+    [finalizeRound, progressBuffer, showRoundGenerationError, userId]
   );
 
   useEffect(() => {
@@ -1240,6 +1314,13 @@ export default function TrainerPage() {
                   Train one operation at a time, keep every attempt, and make the next
                   action obvious.
                 </p>
+                <div className='inline-actions'>
+                  <Link href='/curriculum' className='button button-quiet'>
+                    <IconLabel icon={ListChecksIcon} className='icon-label-button'>
+                      Curriculum practice
+                    </IconLabel>
+                  </Link>
+                </div>
               </div>
               <div className='hero-sidebar'>
                 <p className='hero-sidebar-label'>Built for fast reps</p>
