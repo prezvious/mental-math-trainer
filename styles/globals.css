@@ -183,25 +183,6 @@ code {
   border-color: var(--sand);
 }
 
-.hotkey-action-content {
-  width: 100%;
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.72rem;
-}
-
-.hotkey-action-content .icon-label,
-.hotkey-action-text {
-  min-width: 0;
-}
-
-.hotkey-action-text {
-  display: inline-flex;
-  align-items: center;
-}
-
 .hotkey-hint {
   display: inline-flex;
   align-items: center;

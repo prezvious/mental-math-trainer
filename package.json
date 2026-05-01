@@ -9,22 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.17",
-    "@heroicons/react": "^1.0.6",
-    "@primer/octicons-react": "^19.8.0",
     "@supabase/supabase-js": "^2.99.1",
-    "chart.js": "^3.9.1",
-    "chartjs-adapter-date-fns": "^3.0.0",
-    "chartjs-plugin-zoom": "^2.0.1",
-    "cuid": "^3.0.0",
-    "date-fns": "^3.1.0",
     "mathjs": "^15.2.0",
     "next": "^14.0.4",
     "react": "^18.2.0",
-    "react-chartjs-2": "^4.3.1",
-    "react-dom": "^18.2.0",
-    "react-hook-form": "^7.49.2",
-    "swr": "^2.2.4"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",
