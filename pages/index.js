@@ -1,5 +1,4 @@
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HotkeyHint from 'components/HotkeyHint.js';
@@ -8,7 +7,6 @@ import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
 import LightningIcon from 'images/phosphor/lightning.svg';
-import ListChecksIcon from 'images/phosphor/list-checks.svg';
 import PlayCircleIcon from 'images/phosphor/play-circle-bold.svg';
 import SlidersHorizontalIcon from 'images/phosphor/sliders-horizontal.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
@@ -1314,13 +1312,6 @@ export default function TrainerPage() {
                   Train one operation at a time, keep every attempt, and make the next
                   action obvious.
                 </p>
-                <div className='inline-actions'>
-                  <Link href='/curriculum' className='button button-quiet'>
-                    <IconLabel icon={ListChecksIcon} className='icon-label-button'>
-                      Curriculum practice
-                    </IconLabel>
-                  </Link>
-                </div>
               </div>
               <div className='hero-sidebar'>
                 <p className='hero-sidebar-label'>Built for fast reps</p>

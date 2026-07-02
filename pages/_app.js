@@ -7,6 +7,9 @@ import 'styles/globals.css';
 import 'styles/redesign.css';
 
 export default function App({ Component, pageProps }) {
+  const page = <Component {...pageProps} />;
+  const useSiteLayout = Component.useSiteLayout !== false;
+
   return (
     <>
       <Head>
@@ -19,9 +22,7 @@ export default function App({ Component, pageProps }) {
       <SupabaseAuthProvider>
         <ActiveSessionProvider>
           <AccountPreferencesProvider>
-            <SiteLayout>
-              <Component {...pageProps} />
-            </SiteLayout>
+            {useSiteLayout ? <SiteLayout>{page}</SiteLayout> : page}
           </AccountPreferencesProvider>
         </ActiveSessionProvider>
       </SupabaseAuthProvider>

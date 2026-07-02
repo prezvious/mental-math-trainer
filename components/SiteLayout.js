@@ -190,6 +190,8 @@ export default function SiteLayout({ children }) {
       '--line': activeTheme.tokens.line,
       '--button-strong-text': activeTheme.tokens.buttonStrongText,
       '--button-quiet-text': activeTheme.tokens.buttonQuietText,
+      '--hero-decor-stroke': activeTheme.tokens.heroDecorStroke,
+      '--hero-decor-fill': activeTheme.tokens.heroDecorFill,
       '--glow-main': activeTheme.tokens.glowMain,
       '--glow-warm': activeTheme.tokens.glowWarm,
       '--glow-soft': activeTheme.tokens.glowSoft,

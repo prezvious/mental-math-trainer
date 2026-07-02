@@ -6,16 +6,22 @@ const RAW_THEMES = [
     colors: ['#111111', '#5F5F5F', '#D8D8D8', '#F7F7F7']
   },
   {
-    key: 'velvet-circuit',
-    name: 'Velvet Circuit',
-    vibe: 'Nocturnal command-center contrast with premium focus.',
-    colors: ['#5B2E6D', '#B96A4B', '#D7F1E3', '#17131E']
+    key: 'powder-blue-notebook',
+    name: 'Powder Blue Notebook',
+    vibe: 'Soft study calm with tidy sky-blue clarity.',
+    colors: ['#B4D7EB', '#F2CDBF', '#E3F1F8', '#2B394D']
   },
   {
-    key: 'paper-lantern',
-    name: 'Paper Lantern',
-    vibe: 'Editorial warmth with crafted literary calm.',
-    colors: ['#E86A33', '#F4E9D8', '#24212C', '#8A2E4F']
+    key: 'sea-glass-ledger',
+    name: 'Sea Glass Ledger',
+    vibe: 'Coastal arithmetic calm with polished glass softness.',
+    colors: ['#A7DAD8', '#F4CDB5', '#E8F3E9', '#263C3C']
+  },
+  {
+    key: 'honeydew-harbor',
+    name: 'Honeydew Harbor',
+    vibe: 'Fresh harbor light with mellow green precision.',
+    colors: ['#DDF1BC', '#B8E3DE', '#F3DDA9', '#294247']
   },
   {
     key: 'apothecary-glass',
@@ -24,16 +30,52 @@ const RAW_THEMES = [
     colors: ['#7FAE9B', '#A86B39', '#EFE7DA', '#34373C']
   },
   {
-    key: 'taxi-noir',
-    name: 'Taxi Noir',
-    vibe: 'Urban urgency with direct, high-contrast discipline.',
-    colors: ['#F2C230', '#1C1B20', '#F9F7F2', '#D94841']
+    key: 'sage-whisk',
+    name: 'Sage Whisk',
+    vibe: 'Fresh garden clarity with herbal poise.',
+    colors: ['#84C370', '#BFE1B2', '#E4F4DE', '#1C271B']
   },
   {
-    key: 'signal-peach',
-    name: 'Signal Peach',
-    vibe: 'Optimistic warmth with a precise digital pulse.',
-    colors: ['#FFAF87', '#355CDE', '#F2EFEA', '#A5553A']
+    key: 'pistachio-tile',
+    name: 'Pistachio Tile',
+    vibe: 'Glazed green calm with soft geometric order.',
+    colors: ['#D0E7B4', '#B7E1DC', '#F2C8B7', '#344036']
+  },
+  {
+    key: 'matcha-sunrise',
+    name: 'Matcha Sunrise',
+    vibe: 'Gentle morning focus with creamy matcha warmth.',
+    colors: ['#C9E3A2', '#F5D3A3', '#F3EABF', '#33402E']
+  },
+  {
+    key: 'rainwashed-clay',
+    name: 'Rainwashed Clay',
+    vibe: 'Quiet after-rain balance with softened earthen color.',
+    colors: ['#BED2DC', '#D2DEC4', '#ECC2AF', '#323B45']
+  },
+  {
+    key: 'blush-blueprint',
+    name: 'Blush Blueprint',
+    vibe: 'Drafting-table poise with gentle blush contrast.',
+    colors: ['#F3C4D0', '#C3DDEC', '#EAE3C2', '#343D49']
+  },
+  {
+    key: 'peach-graphite',
+    name: 'Peach Graphite',
+    vibe: 'Warm pastel focus grounded by graphite structure.',
+    colors: ['#F6C2B5', '#F4D7A8', '#D9EAD8', '#3A3632']
+  },
+  {
+    key: 'cloudberry-mint',
+    name: 'Cloudberry Mint',
+    vibe: 'Bright orchard softness with cool mint balance.',
+    colors: ['#F4C0B4', '#C7EBD7', '#F6E6BC', '#2E3D38']
+  },
+  {
+    key: 'citrus-draft',
+    name: 'Citrus Draft',
+    vibe: 'Light citrus energy with measured studio restraint.',
+    colors: ['#F4E6A6', '#C4E2C5', '#F4C0AE', '#3B3A30']
   },
   {
     key: 'ink-and-apricot',
@@ -42,10 +84,28 @@ const RAW_THEMES = [
     colors: ['#1E2533', '#F4B183', '#E7D5C5', '#6B4D45']
   },
   {
-    key: 'sage-whisk',
-    name: 'Sage Whisk',
-    vibe: 'Fresh garden clarity with herbal poise.',
-    colors: ['#84C370', '#BFE1B2', '#E4F4DE', '#1C271B']
+    key: 'paper-lantern',
+    name: 'Paper Lantern',
+    vibe: 'Editorial warmth with crafted literary calm.',
+    colors: ['#E86A33', '#F4E9D8', '#24212C', '#8A2E4F']
+  },
+  {
+    key: 'signal-peach',
+    name: 'Signal Peach',
+    vibe: 'Optimistic warmth with a precise digital pulse.',
+    colors: ['#FFAF87', '#355CDE', '#F2EFEA', '#A5553A']
+  },
+  {
+    key: 'taxi-noir',
+    name: 'Taxi Noir',
+    vibe: 'Urban urgency with direct, high-contrast discipline.',
+    colors: ['#F2C230', '#1C1B20', '#F9F7F2', '#D94841']
+  },
+  {
+    key: 'velvet-circuit',
+    name: 'Velvet Circuit',
+    vibe: 'Nocturnal command-center contrast with premium focus.',
+    colors: ['#5B2E6D', '#B96A4B', '#D7F1E3', '#17131E']
   },
   {
     key: 'lavender-mist',
@@ -169,6 +229,18 @@ function toRgba(hex, alpha) {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${clampedAlpha.toFixed(3)})`;
 }
 
+function findAlphaForContrast(foregroundHex, backgroundHex, targetContrast) {
+  for (let alpha = 0.24; alpha <= 0.86; alpha += 0.01) {
+    const compositeHex = mix(backgroundHex, foregroundHex, alpha);
+
+    if (contrastRatio(compositeHex, backgroundHex) >= targetContrast) {
+      return alpha;
+    }
+  }
+
+  return 0.86;
+}
+
 function srgbChannelToLinear(channel) {
   const srgb = channel / 255;
   if (srgb <= 0.04045) {
@@ -211,6 +283,12 @@ function sortByLuminance(hexColors) {
   );
 }
 
+function estimateHeroDecorSurface(paperStrong) {
+  const panelSurface = mix(paperStrong, '#FFFFFF', 0.14);
+  const panelHighlight = mix(panelSurface, '#FFFFFF', 0.5);
+  return mix(panelHighlight, '#FFFFFF', 0.34);
+}
+
 function buildTokenSet(hexColors) {
   const [accentMain, accentWarm, accentSoft] = hexColors;
   const [darkest, secondDark, secondLight, lightest] = sortByLuminance(hexColors);
@@ -226,6 +304,9 @@ function buildTokenSet(hexColors) {
   const textSubtle = mix(textMain, paper, 0.45);
   const buttonStrongText = pickTextColor(accentMain, darken(darkest, 0.2), '#F8FAFC');
   const buttonQuietText = pickTextColor(paperStrong, darken(darkest, 0.18), '#F8FAFC');
+  const heroDecorBase = mix(line, ink900, 0.58);
+  const heroDecorSurface = estimateHeroDecorSurface(paperStrong);
+  const heroDecorStrokeAlpha = findAlphaForContrast(heroDecorBase, heroDecorSurface, 3.1);
 
   return {
     ink900,
@@ -243,6 +324,8 @@ function buildTokenSet(hexColors) {
     line,
     buttonStrongText,
     buttonQuietText,
+    heroDecorStroke: toRgba(heroDecorBase, heroDecorStrokeAlpha),
+    heroDecorFill: toRgba(accentMain, 0.1),
     glowMain: toRgba(accentMain, 0.18),
     glowWarm: toRgba(accentWarm, 0.18),
     glowSoft: toRgba(accentSoft, 0.18),
