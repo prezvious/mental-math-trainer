@@ -17,6 +17,11 @@ import {
   USER_PREFERENCES_TABLE,
   writeGuestAccountPreferences
 } from './accountPreferences.js';
+import {
+  getAccountPreferencesRevision,
+  shouldApplyAccountPreferencesRow,
+  subscribeToAccountPreferenceChanges
+} from './accountPreferenceSync.js';
 import { useSupabaseAuth } from './supabaseAuthContext.js';
 
 const defaultPreferences = createDefaultAccountPreferences();
@@ -37,6 +42,7 @@ export function AccountPreferencesProvider({ children }) {
   );
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
   const latestPreferencesRef = useRef(preferences);
+  const latestPreferencesRevisionRef = useRef(0);
   const pendingPreferencesRef = useRef(null);
   const flushPromiseRef = useRef(null);
 
@@ -44,11 +50,29 @@ export function AccountPreferencesProvider({ children }) {
     latestPreferencesRef.current = preferences;
   }, [preferences]);
 
+  const applySyncedPreferences = useCallback((row) => {
+    if (
+      !shouldApplyAccountPreferencesRow(
+        row,
+        latestPreferencesRevisionRef.current
+      )
+    ) {
+      return false;
+    }
+
+    const nextPreferences = sanitizeAccountPreferences(row || {});
+    latestPreferencesRevisionRef.current = getAccountPreferencesRevision(row);
+    latestPreferencesRef.current = nextPreferences;
+    setPreferences(nextPreferences);
+    return true;
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
     pendingPreferencesRef.current = null;
     flushPromiseRef.current = null;
+    latestPreferencesRevisionRef.current = 0;
 
     if (isAuthLoading) {
       setIsLoadingPreferences(true);
@@ -69,35 +93,76 @@ export function AccountPreferencesProvider({ children }) {
 
     setIsLoadingPreferences(true);
 
-    client
-      .from(USER_PREFERENCES_TABLE)
-      .select(USER_PREFERENCES_COLUMNS)
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    const unsubscribeFromPreferenceChanges =
+      subscribeToAccountPreferenceChanges(client, userId, (incomingRow) => {
         if (!isMounted) {
           return;
         }
 
-        if (error) {
-          console.error('Failed to load account preferences.', error);
+        applySyncedPreferences(incomingRow);
+      });
+
+    const loadPreferences = async () => {
+      const { data, error } = await client
+        .from(USER_PREFERENCES_TABLE)
+        .select(USER_PREFERENCES_COLUMNS)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (error) {
+        console.error('Failed to load account preferences.', error);
+        if (latestPreferencesRevisionRef.current === 0) {
           const defaultPreferences = createDefaultAccountPreferences();
           latestPreferencesRef.current = defaultPreferences;
           setPreferences(defaultPreferences);
-          setIsLoadingPreferences(false);
-          return;
         }
-
-        const nextPreferences = sanitizeAccountPreferences(data || {});
-        latestPreferencesRef.current = nextPreferences;
-        setPreferences(nextPreferences);
         setIsLoadingPreferences(false);
-      });
+        return;
+      }
+
+      if (data) {
+        applySyncedPreferences(data);
+        setIsLoadingPreferences(false);
+        return;
+      }
+
+      const guestPreferences = readGuestAccountPreferencesWithThemeRollout();
+      const guestRow = buildUserPreferencesRow(userId, guestPreferences);
+      const { data: createdRow, error: createError } = await client
+        .from(USER_PREFERENCES_TABLE)
+        .upsert(guestRow, { onConflict: 'user_id' })
+        .select(USER_PREFERENCES_COLUMNS)
+        .single();
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (createError) {
+        console.error('Failed to create account preferences.', createError);
+        latestPreferencesRevisionRef.current =
+          getAccountPreferencesRevision(guestRow);
+        latestPreferencesRef.current = guestPreferences;
+        setPreferences(guestPreferences);
+        setIsLoadingPreferences(false);
+        return;
+      }
+
+      applySyncedPreferences(createdRow || guestRow);
+      setIsLoadingPreferences(false);
+    };
+
+    void loadPreferences();
 
     return () => {
       isMounted = false;
+      unsubscribeFromPreferenceChanges();
     };
-  }, [client, isAuthLoading, userId]);
+  }, [applySyncedPreferences, client, isAuthLoading, userId]);
 
   const flushPendingPreferences = useCallback(async () => {
     if (!client || !userId) {
@@ -115,7 +180,7 @@ export function AccountPreferencesProvider({ children }) {
 
         const { error } = await client
           .from(USER_PREFERENCES_TABLE)
-          .upsert(buildUserPreferencesRow(userId, snapshot), {
+          .upsert(snapshot, {
             onConflict: 'user_id'
           });
 
@@ -146,7 +211,12 @@ export function AccountPreferencesProvider({ children }) {
         return { error: null };
       }
 
-      pendingPreferencesRef.current = nextPreferences;
+      const nextRow = buildUserPreferencesRow(userId, nextPreferences);
+      latestPreferencesRevisionRef.current = Math.max(
+        latestPreferencesRevisionRef.current,
+        getAccountPreferencesRevision(nextRow)
+      );
+      pendingPreferencesRef.current = nextRow;
 
       try {
         await flushPendingPreferences();

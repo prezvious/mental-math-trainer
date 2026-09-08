@@ -273,3 +273,21 @@ test('guest theme rollout resets an old saved theme once, then preserves manual 
 test('signed-in preference selection includes the display mode column', () => {
   assert.match(USER_PREFERENCES_COLUMNS, /(?:^|, )display_mode(?:,|$)/);
 });
+
+test('every theme and display mode serializes for Supabase sync', () => {
+  for (const theme of THEME_OPTIONS) {
+    for (const displayMode of ['light', 'dark', 'adaptive']) {
+      const row = buildUserPreferencesRow(
+        'user-123',
+        { themeKey: theme.key, displayMode },
+        '2026-09-09T00:00:00.000Z'
+      );
+      const restored = sanitizeAccountPreferences(row);
+
+      assert.equal(row.theme_key, theme.key);
+      assert.equal(row.display_mode, displayMode);
+      assert.equal(restored.themeKey, theme.key);
+      assert.equal(restored.displayMode, displayMode);
+    }
+  }
+});
