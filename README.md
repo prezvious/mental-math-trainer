@@ -12,7 +12,8 @@ through Supabase when account features are configured.
   exponentiation.
 - Decimal drills for addition, subtraction, multiplication, and division.
 - Automatic answer checking, keyboard input, and an on-screen keypad.
-- Configurable round length, timer visibility, digit direction, and theme.
+- Configurable round length, timer visibility, digit direction, and 59 aesthetic themes.
+- Light, Dark, and system-adaptive display modes with contrast-aware text colors.
 - Round summaries with time, accuracy, fastest response, and per-operation stats.
 - Optional stats dashboard (`/stats`) for signed-in users.
 
@@ -24,19 +25,19 @@ digit settings.
 
 The mixed trainer uses difficulty levels per operation:
 
-| Operation | Levels |
-| --- | --- |
-| Exponentiation | Off, Warmup, Easy, Medium, Hard |
-| Addition | Off, Warmup, Easy, Medium, Hard, Expert |
-| Subtraction | Off, Warmup, Easy, Medium, Hard, Expert |
+| Operation      | Levels                                  |
+| -------------- | --------------------------------------- |
+| Exponentiation | Off, Warmup, Easy, Medium, Hard         |
+| Addition       | Off, Warmup, Easy, Medium, Hard, Expert |
+| Subtraction    | Off, Warmup, Easy, Medium, Hard, Expert |
 | Multiplication | Off, Warmup, Easy, Medium, Hard, Expert |
-| Division | Off, Warmup, Easy, Medium, Hard |
+| Division       | Off, Warmup, Easy, Medium, Hard         |
 
 ## Offline Use
 
 The app works without an account. Guest settings are stored in the browser, so
-practice mode, operation choices, round length, theme, timer visibility, and
-digit direction carry across sessions on the same device.
+practice mode, operation choices, round length, theme, display mode, timer
+visibility, and digit direction carry across sessions on the same device.
 
 ## Local Development
 

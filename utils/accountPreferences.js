@@ -1,15 +1,18 @@
 import { PRACTICE_MODES, sanitizeSettings } from './mathEngine.js';
 import { DEFAULT_THEME_KEY, resolveThemeKey } from './themes.js';
 import { readStorageJson, writeStorageJson } from './browserStorage.js';
+import { DEFAULT_DISPLAY_MODE, sanitizeDisplayMode } from './displayMode.js';
 
 export const USER_PREFERENCES_TABLE = 'user_preferences';
 export const GUEST_ACCOUNT_PREFERENCES_STORAGE_KEY =
   'mathtrainer:guest-account-preferences';
-export const GUEST_THEME_ROLLOUT_STORAGE_KEY = 'mathtrainer:theme-rollout-version';
+export const GUEST_THEME_ROLLOUT_STORAGE_KEY =
+  'mathtrainer:theme-rollout-version';
 export const GUEST_THEME_ROLLOUT_VERSION = 'carbon-paper-default-v1';
 export const USER_PREFERENCES_COLUMNS = [
   'user_id',
   'theme_key',
+  'display_mode',
   'trainer_practice_mode',
   'trainer_operation',
   'trainer_left_digits',
@@ -39,6 +42,7 @@ export function createDefaultTrainerSettings() {
 export function createDefaultAccountPreferences() {
   return {
     themeKey: DEFAULT_THEME_KEY,
+    displayMode: DEFAULT_DISPLAY_MODE,
     trainerSettings: createDefaultTrainerSettings()
   };
 }
@@ -87,6 +91,7 @@ export function sanitizeTrainerSettings(settings = {}) {
 export function sanitizeAccountPreferences(input = {}) {
   return {
     themeKey: sanitizeThemeKey(input.themeKey ?? input.theme_key),
+    displayMode: sanitizeDisplayMode(input.displayMode ?? input.display_mode),
     trainerSettings: sanitizeTrainerSettings(input.trainerSettings ?? input)
   };
 }
@@ -102,6 +107,7 @@ export function mergeAccountPreferences(currentPreferences, patch = {}) {
 
   return sanitizeAccountPreferences({
     themeKey: patch.themeKey ?? current.themeKey,
+    displayMode: patch.displayMode ?? current.displayMode,
     trainerSettings: nextTrainerSettings
   });
 }
@@ -116,6 +122,7 @@ export function buildUserPreferencesRow(
   return {
     user_id: userId,
     theme_key: sanitized.themeKey,
+    display_mode: sanitized.displayMode,
     trainer_practice_mode: sanitized.trainerSettings.practiceMode,
     trainer_operation: sanitized.trainerSettings.operation,
     trainer_left_digits: sanitized.trainerSettings.leftDigits,

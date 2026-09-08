@@ -21,13 +21,25 @@ import {
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
-import { getThemeByKey, getThemeOptionLabel, THEME_OPTIONS } from 'utils/themes.js';
+import { DISPLAY_MODE_OPTIONS } from 'utils/displayMode.js';
+import {
+  getThemeByKey,
+  getThemeOptionLabel,
+  THEME_COLLECTION_OPTIONS,
+  THEME_OPTIONS
+} from 'utils/themes.js';
+import { useResolvedDisplayMode } from 'utils/useResolvedDisplayMode.js';
+
+const THEME_OPTION_GROUPS = THEME_COLLECTION_OPTIONS.map((collection) => ({
+  ...collection,
+  themes: THEME_OPTIONS.filter((theme) => theme.collection === collection.key)
+}));
 
 export default function SiteLayout({ children }) {
   const router = useRouter();
   const { user, isConfigured, signOut } = useSupabaseAuth();
   const { terminateActiveSession } = useActiveSession();
-  const { themeKey, isLoadingPreferences, upsertPreferences } =
+  const { themeKey, displayMode, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [isUtilityDrawerOpen, setIsUtilityDrawerOpen] = useState(false);
   const utilityButtonRef = useRef(null);
@@ -64,7 +76,8 @@ export default function SiteLayout({ children }) {
         )
       ).filter(
         (element) =>
-          !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true'
+          !element.hasAttribute('hidden') &&
+          element.getAttribute('aria-hidden') !== 'true'
       );
     };
 
@@ -136,7 +149,8 @@ export default function SiteLayout({ children }) {
     }
 
     const previousBodyOverflow = document.body.style.overflow;
-    const previousBodyOverscrollBehavior = document.body.style.overscrollBehavior;
+    const previousBodyOverscrollBehavior =
+      document.body.style.overscrollBehavior;
     const previousDocumentOverflow = document.documentElement.style.overflow;
 
     document.body.style.overflow = 'hidden';
@@ -164,7 +178,9 @@ export default function SiteLayout({ children }) {
   }, [isUtilityDrawerOpen]);
 
   const activeTheme = useMemo(() => getThemeByKey(themeKey), [themeKey]);
-  const themeChromeColor = activeTheme.tokens.ink900;
+  const resolvedDisplayMode = useResolvedDisplayMode(displayMode);
+  const activeThemeTokens = activeTheme.tokensByMode[resolvedDisplayMode];
+  const themeChromeColor = activeThemeTokens.paper;
   const trainerShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.TRAINER);
   const mixedShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.MIXED);
   const progressShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.PROGRESS);
@@ -175,27 +191,52 @@ export default function SiteLayout({ children }) {
 
   const themeStyle = useMemo(
     () => ({
-      '--ink-900': activeTheme.tokens.ink900,
-      '--ink-700': activeTheme.tokens.ink700,
-      '--ink-500': activeTheme.tokens.ink500,
-      '--paper': activeTheme.tokens.paper,
-      '--paper-strong': activeTheme.tokens.paperStrong,
-      '--sand': activeTheme.tokens.sand,
-      '--accent-main': activeTheme.tokens.accentMain,
-      '--accent-warm': activeTheme.tokens.accentWarm,
-      '--accent-soft': activeTheme.tokens.accentSoft,
-      '--accent-alert': activeTheme.tokens.accentAlert,
-      '--text-main': activeTheme.tokens.textMain,
-      '--text-subtle': activeTheme.tokens.textSubtle,
-      '--line': activeTheme.tokens.line,
-      '--button-strong-text': activeTheme.tokens.buttonStrongText,
-      '--button-quiet-text': activeTheme.tokens.buttonQuietText,
-      '--hero-decor-stroke': activeTheme.tokens.heroDecorStroke,
-      '--hero-decor-fill': activeTheme.tokens.heroDecorFill,
-      '--glow-main': activeTheme.tokens.glowMain,
-      '--glow-warm': activeTheme.tokens.glowWarm,
-      '--glow-soft': activeTheme.tokens.glowSoft,
-      '--glow-line': activeTheme.tokens.glowLine,
+      colorScheme: activeThemeTokens.colorScheme,
+      '--ink-900': activeThemeTokens.ink900,
+      '--ink-700': activeThemeTokens.ink700,
+      '--ink-500': activeThemeTokens.ink500,
+      '--paper': activeThemeTokens.paper,
+      '--paper-strong': activeThemeTokens.paperStrong,
+      '--sand': activeThemeTokens.sand,
+      '--accent-main': activeThemeTokens.accentMain,
+      '--accent-warm': activeThemeTokens.accentWarm,
+      '--accent-soft': activeThemeTokens.accentSoft,
+      '--accent-alert': activeThemeTokens.accentAlert,
+      '--text-main': activeThemeTokens.textMain,
+      '--text-subtle': activeThemeTokens.textSubtle,
+      '--text-accent': activeThemeTokens.textAccent,
+      '--text-danger': activeThemeTokens.textDanger,
+      '--line': activeThemeTokens.line,
+      '--control-border': activeThemeTokens.controlBorder,
+      '--focus-ring': activeThemeTokens.focusRing,
+      '--button-strong-text': activeThemeTokens.buttonStrongText,
+      '--button-quiet-text': activeThemeTokens.buttonQuietText,
+      '--button-danger-text': activeThemeTokens.buttonDangerText,
+      '--surface-raised': activeThemeTokens.surfaceRaised,
+      '--surface-raised-strong': activeThemeTokens.surfaceRaisedStrong,
+      '--surface-input': activeThemeTokens.surfaceInput,
+      '--surface-selected': activeThemeTokens.surfaceSelected,
+      '--surface-positive': activeThemeTokens.surfacePositive,
+      '--surface-warning': activeThemeTokens.surfaceWarning,
+      '--surface-danger': activeThemeTokens.surfaceDanger,
+      '--surface-highlight': activeThemeTokens.surfaceHighlight,
+      '--surface-shadow': activeThemeTokens.surfaceShadow,
+      '--surface-scrim': activeThemeTokens.surfaceScrim,
+      '--header-surface': activeThemeTokens.headerSurface,
+      '--header-surface-alt': activeThemeTokens.headerSurfaceAlt,
+      '--header-text': activeThemeTokens.headerText,
+      '--header-text-accent': activeThemeTokens.headerTextAccent,
+      '--header-text-subtle': activeThemeTokens.headerTextSubtle,
+      '--header-control-surface': activeThemeTokens.headerControlSurface,
+      '--header-control-border': activeThemeTokens.headerControlBorder,
+      '--header-border': activeThemeTokens.headerBorder,
+      '--toggle-thumb': activeThemeTokens.toggleThumb,
+      '--hero-decor-stroke': activeThemeTokens.heroDecorStroke,
+      '--hero-decor-fill': activeThemeTokens.heroDecorFill,
+      '--glow-main': activeThemeTokens.glowMain,
+      '--glow-warm': activeThemeTokens.glowWarm,
+      '--glow-soft': activeThemeTokens.glowSoft,
+      '--glow-line': activeThemeTokens.glowLine,
       '--layout-main-max': activeTheme.layout.mainMax,
       '--layout-main-gap': activeTheme.layout.mainGap,
       '--layout-main-top': activeTheme.layout.mainTop,
@@ -228,7 +269,7 @@ export default function SiteLayout({ children }) {
       '--layout-bg-stop': activeTheme.layout.bgStop,
       '--layout-animation-duration': activeTheme.layout.animationDuration
     }),
-    [activeTheme]
+    [activeTheme, activeThemeTokens]
   );
 
   const navLinks = [
@@ -256,7 +297,10 @@ export default function SiteLayout({ children }) {
     try {
       await terminateActiveSession('sign-out');
     } catch (error) {
-      console.error('Failed to persist the active session before sign out.', error);
+      console.error(
+        'Failed to persist the active session before sign out.',
+        error
+      );
     }
 
     const { error } = await signOut();
@@ -270,15 +314,19 @@ export default function SiteLayout({ children }) {
     void upsertPreferences({ themeKey: event.target.value });
   };
 
+  const handleDisplayModeChange = (event) => {
+    void upsertPreferences({ displayMode: event.target.value });
+  };
+
   const cycleTheme = useCallback(() => {
-    if (user && isLoadingPreferences) {
+    if (isLoadingPreferences) {
       return;
     }
 
     void upsertPreferences({
       themeKey: getNextThemeKey(activeTheme.key, THEME_OPTIONS)
     });
-  }, [activeTheme.key, isLoadingPreferences, upsertPreferences, user]);
+  }, [activeTheme.key, isLoadingPreferences, upsertPreferences]);
 
   const handleUtilityDrawerToggle = useCallback(() => {
     setIsUtilityDrawerOpen((currentState) => !currentState);
@@ -308,7 +356,9 @@ export default function SiteLayout({ children }) {
       }
 
       if (
-        [GLOBAL_HOTKEY_ACTIONS.LOGIN, GLOBAL_HOTKEY_ACTIONS.SIGNUP].includes(action) &&
+        [GLOBAL_HOTKEY_ACTIONS.LOGIN, GLOBAL_HOTKEY_ACTIONS.SIGNUP].includes(
+          action
+        ) &&
         user
       ) {
         return;
@@ -357,8 +407,33 @@ export default function SiteLayout({ children }) {
       ?.setAttribute('content', themeChromeColor);
   }, [themeChromeColor]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const documentElement = document.documentElement;
+    documentElement.dataset.displayMode = displayMode;
+    documentElement.dataset.resolvedMode = resolvedDisplayMode;
+    documentElement.style.colorScheme = resolvedDisplayMode;
+    documentElement.style.backgroundColor = activeThemeTokens.paper;
+
+    return () => {
+      delete documentElement.dataset.displayMode;
+      delete documentElement.dataset.resolvedMode;
+      documentElement.style.removeProperty('color-scheme');
+      documentElement.style.removeProperty('background-color');
+    };
+  }, [activeThemeTokens.paper, displayMode, resolvedDisplayMode]);
+
   return (
-    <div className='app-shell' data-theme-key={activeTheme.key} style={themeStyle}>
+    <div
+      className='app-shell'
+      data-theme-key={activeTheme.key}
+      data-display-mode={displayMode}
+      data-resolved-mode={resolvedDisplayMode}
+      style={themeStyle}
+    >
       <Head>
         <meta name='theme-color' content={themeChromeColor} key='theme-color' />
         <meta
@@ -367,6 +442,9 @@ export default function SiteLayout({ children }) {
           key='msapplication-TileColor'
         />
       </Head>
+      <a className='skip-link' href='#main-content'>
+        Skip to content
+      </a>
       <header className='site-header'>
         <div className='site-header-inner'>
           <Link href='/' className='brand' aria-label='Mental Math home'>
@@ -382,7 +460,9 @@ export default function SiteLayout({ children }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`site-nav-link ${isActive ? 'is-active' : ''}`.trim()}
+                  className={`site-nav-link ${
+                    isActive ? 'is-active' : ''
+                  }`.trim()}
                   aria-keyshortcuts={link.hotkey}
                 >
                   <IconLabel icon={link.icon} className='icon-label-nav'>
@@ -394,7 +474,9 @@ export default function SiteLayout({ children }) {
           </nav>
 
           <div className={`site-actions${user ? ' has-user-session' : ''}`}>
-            {!isConfigured && <span className='status-badge'>Sync offline</span>}
+            {!isConfigured && (
+              <span className='status-badge'>Sync offline</span>
+            )}
             {user ? (
               <div className='site-session'>
                 <span className='user-pill'>{user.email}</span>
@@ -433,7 +515,9 @@ export default function SiteLayout({ children }) {
                 className='site-utility-toggle'
                 onClick={handleUtilityDrawerToggle}
                 aria-label={
-                  isUtilityDrawerOpen ? 'Close utility drawer' : 'Open utility drawer'
+                  isUtilityDrawerOpen
+                    ? 'Close utility drawer'
+                    : 'Open utility drawer'
                 }
                 aria-expanded={isUtilityDrawerOpen}
                 aria-controls='utility-drawer'
@@ -474,7 +558,8 @@ export default function SiteLayout({ children }) {
                     Navigation, appearance, hotkeys
                   </h2>
                   <p className='theme-vibe'>
-                    Keep the practice surface clean while the controls stay close.
+                    Keep the practice surface clean while the controls stay
+                    close.
                   </p>
                 </div>
                 <button
@@ -500,12 +585,17 @@ export default function SiteLayout({ children }) {
                       <Link
                         key={`utility-${link.href}`}
                         href={link.href}
-                        className={`site-nav-link utility-nav-link ${isActive ? 'is-active' : ''}`.trim()}
+                        className={`site-nav-link utility-nav-link ${
+                          isActive ? 'is-active' : ''
+                        }`.trim()}
                         aria-keyshortcuts={link.hotkey}
                         onClick={closeUtilityDrawer}
                       >
                         <span className='utility-link-main'>
-                          <IconLabel icon={link.icon} className='icon-label-nav'>
+                          <IconLabel
+                            icon={link.icon}
+                            className='icon-label-nav'
+                          >
                             {link.label}
                           </IconLabel>
                         </span>
@@ -559,23 +649,55 @@ export default function SiteLayout({ children }) {
                   <p className='theme-kicker'>Appearance</p>
                   <HotkeyHint label={themeShortcut} />
                 </div>
+                <fieldset
+                  className='display-mode-fieldset'
+                  disabled={isLoadingPreferences}
+                >
+                  <legend className='theme-label'>Mode</legend>
+                  <div className='display-mode-options'>
+                    {DISPLAY_MODE_OPTIONS.map((option) => (
+                      <label
+                        key={option.value}
+                        className={`display-mode-option ${
+                          displayMode === option.value ? 'is-active' : ''
+                        }`.trim()}
+                      >
+                        <input
+                          type='radio'
+                          name='display-mode'
+                          value={option.value}
+                          checked={displayMode === option.value}
+                          onChange={handleDisplayModeChange}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 <label className='theme-label' htmlFor='theme-select'>
-                  Palette
+                  Theme
                 </label>
                 <select
                   id='theme-select'
+                  name='theme'
                   className='theme-select'
                   value={activeTheme.key}
                   onChange={handleThemeChange}
-                  disabled={Boolean(user) && isLoadingPreferences}
+                  disabled={isLoadingPreferences}
                 >
-                  {THEME_OPTIONS.map((theme) => (
-                    <option key={theme.key} value={theme.key}>
-                      {getThemeOptionLabel(theme)}
-                    </option>
+                  {THEME_OPTION_GROUPS.map((group) => (
+                    <optgroup key={group.key} label={group.label}>
+                      {group.themes.map((theme) => (
+                        <option key={theme.key} value={theme.key}>
+                          {getThemeOptionLabel(theme)}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
-                <p className='theme-vibe'>{activeTheme.vibe}</p>
+                <p className='theme-vibe' aria-live='polite'>
+                  {activeTheme.vibe}
+                </p>
                 <div className='theme-swatches' aria-hidden='true'>
                   {activeTheme.colors.map((color) => (
                     <span
@@ -598,7 +720,10 @@ export default function SiteLayout({ children }) {
                       className='hotkey-group'
                       aria-labelledby={`${group.id}-title`}
                     >
-                      <h3 id={`${group.id}-title`} className='hotkey-group-title'>
+                      <h3
+                        id={`${group.id}-title`}
+                        className='hotkey-group-title'
+                      >
                         {group.label}
                       </h3>
                       <ul className='hotkey-group-list'>
@@ -607,11 +732,17 @@ export default function SiteLayout({ children }) {
                             key={`${group.id}-${item.shortcut}-${item.label}`}
                             className='hotkey-row'
                           >
-                            <HotkeyHint label={formatHotkeyLabel(item.shortcut)} />
+                            <HotkeyHint
+                              label={formatHotkeyLabel(item.shortcut)}
+                            />
                             <div className='hotkey-row-copy'>
                               <p className='hotkey-row-label'>{item.label}</p>
-                              <p className='hotkey-row-description'>{item.description}</p>
-                              {item.note && <p className='hotkey-row-note'>{item.note}</p>}
+                              <p className='hotkey-row-description'>
+                                {item.description}
+                              </p>
+                              {item.note && (
+                                <p className='hotkey-row-note'>{item.note}</p>
+                              )}
                             </div>
                           </li>
                         ))}
@@ -625,11 +756,14 @@ export default function SiteLayout({ children }) {
         </>
       )}
 
-      <main className='site-main'>{children}</main>
+      <main id='main-content' className='site-main'>
+        {children}
+      </main>
 
       <footer className='site-footer'>
         <p>
-          Built for focused repetition, measurable progress, and ruthless consistency.
+          Built for focused repetition, measurable progress, and ruthless
+          consistency.
         </p>
       </footer>
     </div>

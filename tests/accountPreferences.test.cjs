@@ -13,6 +13,7 @@ let readGuestAccountPreferencesWithThemeRollout;
 let mergeAccountPreferences;
 let sanitizeAccountPreferences;
 let THEME_OPTIONS;
+let USER_PREFERENCES_COLUMNS;
 let writeGuestAccountPreferences;
 let DEFAULT_THEME_KEY;
 
@@ -31,7 +32,8 @@ function createStorageMock(seed = {}) {
 
 test.before(async () => {
   const accountPreferences = await import(
-    pathToFileURL(path.resolve(__dirname, '../utils/accountPreferences.js')).href
+    pathToFileURL(path.resolve(__dirname, '../utils/accountPreferences.js'))
+      .href
   );
   const themes = await import(
     pathToFileURL(path.resolve(__dirname, '../utils/themes.js')).href
@@ -46,6 +48,7 @@ test.before(async () => {
     readGuestAccountPreferencesWithThemeRollout,
     mergeAccountPreferences,
     sanitizeAccountPreferences,
+    USER_PREFERENCES_COLUMNS,
     writeGuestAccountPreferences
   } = accountPreferences);
   ({ DEFAULT_THEME_KEY, getThemeOptionLabel, THEME_OPTIONS } = themes);
@@ -66,6 +69,7 @@ test('theme catalog exposes carbon-paper as the first option with the default la
 test('sanitizeAccountPreferences clamps invalid trainer data and falls back to the default theme', () => {
   const preferences = sanitizeAccountPreferences({
     theme_key: 'not-a-real-theme',
+    display_mode: 'sepia',
     trainer_practice_mode: 'DECIMAL',
     trainer_operation: 'DIVISION',
     trainer_left_digits: 2,
@@ -76,6 +80,7 @@ test('sanitizeAccountPreferences clamps invalid trainer data and falls back to t
   });
 
   assert.equal(preferences.themeKey, DEFAULT_THEME_KEY);
+  assert.equal(preferences.displayMode, 'adaptive');
   assert.deepEqual(preferences.trainerSettings, {
     practiceMode: 'DECIMAL',
     operation: 'DIVISION',
@@ -91,6 +96,7 @@ test('sanitizeAccountPreferences clamps invalid trainer data and falls back to t
 test('mergeAccountPreferences preserves unrelated fields across partial updates', () => {
   const current = sanitizeAccountPreferences({
     theme_key: 'studio-vermouth',
+    display_mode: 'dark',
     trainer_practice_mode: 'POSITIVE',
     trainer_operation: 'ADDITION',
     trainer_left_digits: 3,
@@ -104,7 +110,15 @@ test('mergeAccountPreferences preserves unrelated fields across partial updates'
     themeKey: 'paper-lantern'
   });
   assert.equal(themeUpdate.themeKey, 'paper-lantern');
+  assert.equal(themeUpdate.displayMode, 'dark');
   assert.deepEqual(themeUpdate.trainerSettings, current.trainerSettings);
+
+  const displayModeUpdate = mergeAccountPreferences(current, {
+    displayMode: 'light'
+  });
+  assert.equal(displayModeUpdate.themeKey, current.themeKey);
+  assert.equal(displayModeUpdate.displayMode, 'light');
+  assert.deepEqual(displayModeUpdate.trainerSettings, current.trainerSettings);
 
   const trainerUpdate = mergeAccountPreferences(current, {
     trainerSettings: {
@@ -117,6 +131,7 @@ test('mergeAccountPreferences preserves unrelated fields across partial updates'
     }
   });
   assert.equal(trainerUpdate.themeKey, current.themeKey);
+  assert.equal(trainerUpdate.displayMode, 'dark');
   assert.deepEqual(trainerUpdate.trainerSettings, {
     practiceMode: 'DECIMAL',
     operation: 'DIVISION',
@@ -134,6 +149,7 @@ test('buildUserPreferencesRow produces the expected database payload', () => {
     'user-123',
     {
       themeKey: 'paper-lantern',
+      displayMode: 'dark',
       trainerSettings: {
         practiceMode: 'DECIMAL',
         operation: 'SUBTRACTION',
@@ -150,6 +166,7 @@ test('buildUserPreferencesRow produces the expected database payload', () => {
   assert.deepEqual(row, {
     user_id: 'user-123',
     theme_key: 'paper-lantern',
+    display_mode: 'dark',
     trainer_practice_mode: 'DECIMAL',
     trainer_operation: 'SUBTRACTION',
     trainer_left_digits: 4,
@@ -168,6 +185,7 @@ test('guest account preferences persist through local storage helpers', () => {
   const wrote = writeGuestAccountPreferences(
     {
       themeKey: 'paper-lantern',
+      displayMode: 'light',
       trainerSettings: {
         practiceMode: 'DECIMAL',
         operation: 'DIVISION',
@@ -185,6 +203,7 @@ test('guest account preferences persist through local storage helpers', () => {
   assert.equal(wrote, true);
   assert.deepEqual(readGuestAccountPreferences(storage), {
     themeKey: 'paper-lantern',
+    displayMode: 'light',
     trainerSettings: {
       practiceMode: 'DECIMAL',
       operation: 'DIVISION',
@@ -204,7 +223,11 @@ test('first-time guests land on the carbon-paper default theme and store the rol
   const preferences = readGuestAccountPreferencesWithThemeRollout(storage);
 
   assert.equal(preferences.themeKey, DEFAULT_THEME_KEY);
-  assert.equal(storage.getItem(GUEST_THEME_ROLLOUT_STORAGE_KEY), JSON.stringify(GUEST_THEME_ROLLOUT_VERSION));
+  assert.equal(preferences.displayMode, 'adaptive');
+  assert.equal(
+    storage.getItem(GUEST_THEME_ROLLOUT_STORAGE_KEY),
+    JSON.stringify(GUEST_THEME_ROLLOUT_VERSION)
+  );
 });
 
 test('guest theme rollout resets an old saved theme once, then preserves manual changes', () => {
@@ -213,6 +236,7 @@ test('guest theme rollout resets an old saved theme once, then preserves manual 
   writeGuestAccountPreferences(
     {
       themeKey: 'paper-lantern',
+      displayMode: 'dark',
       trainerSettings: {
         practiceMode: 'POSITIVE',
         operation: 'ADDITION',
@@ -227,8 +251,10 @@ test('guest theme rollout resets an old saved theme once, then preserves manual 
     storage
   );
 
-  const rolledOutPreferences = readGuestAccountPreferencesWithThemeRollout(storage);
+  const rolledOutPreferences =
+    readGuestAccountPreferencesWithThemeRollout(storage);
   assert.equal(rolledOutPreferences.themeKey, DEFAULT_THEME_KEY);
+  assert.equal(rolledOutPreferences.displayMode, 'dark');
 
   writeGuestAccountPreferences(
     {
@@ -238,6 +264,12 @@ test('guest theme rollout resets an old saved theme once, then preserves manual 
     storage
   );
 
-  const preservedPreferences = readGuestAccountPreferencesWithThemeRollout(storage);
+  const preservedPreferences =
+    readGuestAccountPreferencesWithThemeRollout(storage);
   assert.equal(preservedPreferences.themeKey, 'paper-lantern');
+  assert.equal(preservedPreferences.displayMode, 'dark');
+});
+
+test('signed-in preference selection includes the display mode column', () => {
+  assert.match(USER_PREFERENCES_COLUMNS, /(?:^|, )display_mode(?:,|$)/);
 });

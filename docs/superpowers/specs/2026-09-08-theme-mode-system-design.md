@@ -1,7 +1,7 @@
 # Theme Catalog and Display Mode Design
 
 **Date:** 2026-09-08  
-**Status:** Approved for implementation planning
+**Status:** Implemented and verified
 
 ## Summary
 
@@ -73,53 +73,53 @@ Colors are listed as primary, secondary, surface, and anchor. These four colors 
 
 ### Light collection
 
-| Key | Name | Primary | Secondary | Surface | Anchor | Vibe |
-|---|---|---:|---:|---:|---:|---|
-| `abacus-bloom` | Abacus Bloom | `#D85D72` | `#58A88B` | `#FFF7F5` | `#38272D` | Rose-and-jade freshness with tactile classroom warmth. |
-| `soroban-peach` | Soroban Peach | `#E96F51` | `#F0B95A` | `#FFF7ED` | `#3C2A32` | Apricot energy balanced by golden, methodical focus. |
-| `graph-mint` | Graph Mint | `#2E9C76` | `#9BD6C6` | `#F3FBF7` | `#18352E` | Crisp mint geometry for calm, steady calculation. |
-| `violet-ruler` | Violet Ruler | `#7C5CE7` | `#C7B8F5` | `#F8F6FF` | `#28213D` | Measured violet clarity with drafting-desk precision. |
-| `citrus-margin` | Citrus Margin | `#D99000` | `#F2CF5B` | `#FFFBEA` | `#3D341B` | Sunny annotation color with disciplined paper contrast. |
-| `algebra-rose` | Algebra Rose | `#C94F7C` | `#EEA6BD` | `#FFF5F8` | `#422434` | Soft rose confidence with polished academic calm. |
-| `blueprint-air` | Blueprint Air | `#2674C8` | `#8EC5F2` | `#F3F9FE` | `#17324D` | Open blue structure with airy technical precision. |
-| `decimal-sage` | Decimal Sage | `#568B62` | `#ABC7A3` | `#F5FAF2` | `#26362A` | Quiet green concentration with natural notebook restraint. |
-| `coral-ledger` | Coral Ledger | `#DD6248` | `#F3A58F` | `#FFF6F2` | `#472C27` | Warm coral momentum grounded by ledger-like order. |
-| `lilac-formula` | Lilac Formula | `#8A5EC8` | `#D3BDEF` | `#FAF7FF` | `#332743` | Gentle lilac focus with elegant symbolic clarity. |
-| `teal-compass` | Teal Compass | `#168A8D` | `#7CCFD0` | `#F1FBFB` | `#17383A` | Cool directional confidence with clean geometric balance. |
-| `amber-index` | Amber Index | `#C77910` | `#F0C574` | `#FFF9EC` | `#3D2D19` | Library-card warmth with crisp reference-book structure. |
-| `berry-notebook` | Berry Notebook | `#B14872` | `#E7A8C0` | `#FFF5F9` | `#3F2330` | Rich berry accents softened for comfortable practice. |
-| `pistachio-grid` | Pistachio Grid | `#69A447` | `#B8D89B` | `#F7FBEF` | `#2C3A24` | Fresh green organization with subtle graph-paper rhythm. |
-| `cerulean-quiz` | Cerulean Quiz | `#217DA8` | `#85CBE0` | `#F2FBFE` | `#183743` | Clear sky-blue energy for quick, confident recall. |
-| `papaya-proof` | Papaya Proof | `#E2673F` | `#F1B36B` | `#FFF7F0` | `#482B21` | Warm proof-mark color with inviting problem-solving focus. |
-| `lavender-metric` | Lavender Metric | `#6F68C9` | `#BCB7EE` | `#F7F6FF` | `#292842` | Balanced lavender calm with precise measured contrast. |
-| `aqua-flashcard` | Aqua Flashcard | `#168E7B` | `#8AD9C6` | `#F0FCF8` | `#173A34` | Fast, refreshing teal built for focused repetition. |
-| `marigold-memo` | Marigold Memo | `#B8860B` | `#E8C766` | `#FFFBEE` | `#3B3217` | Golden memory cues with grounded study-room warmth. |
-| `prism-paper` | Prism Paper | `#5D6FE5` | `#E87591` | `#F8F8FF` | `#272B48` | Blue-and-rose contrast with playful analytical polish. |
+| Key               | Name            |   Primary | Secondary |   Surface |    Anchor | Vibe                                                       |
+| ----------------- | --------------- | --------: | --------: | --------: | --------: | ---------------------------------------------------------- |
+| `abacus-bloom`    | Abacus Bloom    | `#D85D72` | `#58A88B` | `#FFF7F5` | `#38272D` | Rose-and-jade freshness with tactile classroom warmth.     |
+| `soroban-peach`   | Soroban Peach   | `#E96F51` | `#F0B95A` | `#FFF7ED` | `#3C2A32` | Apricot energy balanced by golden, methodical focus.       |
+| `graph-mint`      | Graph Mint      | `#2E9C76` | `#9BD6C6` | `#F3FBF7` | `#18352E` | Crisp mint geometry for calm, steady calculation.          |
+| `violet-ruler`    | Violet Ruler    | `#7C5CE7` | `#C7B8F5` | `#F8F6FF` | `#28213D` | Measured violet clarity with drafting-desk precision.      |
+| `citrus-margin`   | Citrus Margin   | `#D99000` | `#F2CF5B` | `#FFFBEA` | `#3D341B` | Sunny annotation color with disciplined paper contrast.    |
+| `algebra-rose`    | Algebra Rose    | `#C94F7C` | `#EEA6BD` | `#FFF5F8` | `#422434` | Soft rose confidence with polished academic calm.          |
+| `blueprint-air`   | Blueprint Air   | `#2674C8` | `#8EC5F2` | `#F3F9FE` | `#17324D` | Open blue structure with airy technical precision.         |
+| `decimal-sage`    | Decimal Sage    | `#568B62` | `#ABC7A3` | `#F5FAF2` | `#26362A` | Quiet green concentration with natural notebook restraint. |
+| `coral-ledger`    | Coral Ledger    | `#DD6248` | `#F3A58F` | `#FFF6F2` | `#472C27` | Warm coral momentum grounded by ledger-like order.         |
+| `lilac-formula`   | Lilac Formula   | `#8A5EC8` | `#D3BDEF` | `#FAF7FF` | `#332743` | Gentle lilac focus with elegant symbolic clarity.          |
+| `teal-compass`    | Teal Compass    | `#168A8D` | `#7CCFD0` | `#F1FBFB` | `#17383A` | Cool directional confidence with clean geometric balance.  |
+| `amber-index`     | Amber Index     | `#C77910` | `#F0C574` | `#FFF9EC` | `#3D2D19` | Library-card warmth with crisp reference-book structure.   |
+| `berry-notebook`  | Berry Notebook  | `#B14872` | `#E7A8C0` | `#FFF5F9` | `#3F2330` | Rich berry accents softened for comfortable practice.      |
+| `pistachio-grid`  | Pistachio Grid  | `#69A447` | `#B8D89B` | `#F7FBEF` | `#2C3A24` | Fresh green organization with subtle graph-paper rhythm.   |
+| `cerulean-quiz`   | Cerulean Quiz   | `#217DA8` | `#85CBE0` | `#F2FBFE` | `#183743` | Clear sky-blue energy for quick, confident recall.         |
+| `papaya-proof`    | Papaya Proof    | `#E2673F` | `#F1B36B` | `#FFF7F0` | `#482B21` | Warm proof-mark color with inviting problem-solving focus. |
+| `lavender-metric` | Lavender Metric | `#6F68C9` | `#BCB7EE` | `#F7F6FF` | `#292842` | Balanced lavender calm with precise measured contrast.     |
+| `aqua-flashcard`  | Aqua Flashcard  | `#168E7B` | `#8AD9C6` | `#F0FCF8` | `#173A34` | Fast, refreshing teal built for focused repetition.        |
+| `marigold-memo`   | Marigold Memo   | `#B8860B` | `#E8C766` | `#FFFBEE` | `#3B3217` | Golden memory cues with grounded study-room warmth.        |
+| `prism-paper`     | Prism Paper     | `#5D6FE5` | `#E87591` | `#F8F8FF` | `#272B48` | Blue-and-rose contrast with playful analytical polish.     |
 
 ### Dark collection
 
-| Key | Name | Primary | Secondary | Surface | Anchor | Vibe |
-|---|---|---:|---:|---:|---:|---|
-| `midnight-abacus` | Midnight Abacus | `#66D9C1` | `#7AA7FF` | `#0C1519` | `#EAF8F5` | Deep teal quiet with luminous blue-green counting cues. |
-| `neon-long-division` | Neon Long Division | `#B9E85C` | `#54C7EC` | `#11160D` | `#F3FFE4` | Charged lime-and-cyan focus on a muted night field. |
-| `observatory-ink` | Observatory Ink | `#9B8CFF` | `#F0A66A` | `#111224` | `#F3F1FF` | Celestial violet and amber for late-night problem solving. |
-| `carbon-equation` | Carbon Equation | `#E1E4EA` | `#7D8796` | `#0E1014` | `#F7F8FA` | Near-monochrome restraint with cool metallic definition. |
-| `cobalt-afterhours` | Cobalt Afterhours | `#5C9DFF` | `#E182B4` | `#0B1425` | `#EDF4FF` | Electric blue focus with a restrained rose counterpoint. |
-| `ember-blackboard` | Ember Blackboard | `#F28C52` | `#E5C07B` | `#1A100D` | `#FFF2E8` | Warm chalk-and-ember contrast on a roasted blackboard. |
-| `deep-sea-calculator` | Deep Sea Calculator | `#45C4C8` | `#7CA6D8` | `#07191D` | `#EAFBFC` | Submerged cyan clarity with calm oceanic depth. |
-| `plum-algorithm` | Plum Algorithm | `#CA8BE8` | `#EBA4C9` | `#1A0E20` | `#FBEFFC` | Plum-toned concentration with soft rose highlights. |
-| `forest-binary` | Forest Binary | `#72C98A` | `#C5D66D` | `#0B1A12` | `#F0F9F2` | Organic green signals across a deep woodland terminal. |
-| `ruby-function` | Ruby Function | `#EE6A78` | `#F0A38F` | `#210D13` | `#FFF0F2` | Precise ruby emphasis with warm functional contrast. |
-| `indigo-grid` | Indigo Grid | `#899CFF` | `#66C0D0` | `#0D1026` | `#F1F3FF` | Structured indigo depth with cool coordinate-line clarity. |
-| `bronze-theorem` | Bronze Theorem | `#D6A15D` | `#8AC6A8` | `#1A130B` | `#FFF5E6` | Antique bronze reasoning with a quiet green patina. |
-| `aurora-matrix` | Aurora Matrix | `#6FE1B8` | `#B48CFF` | `#0B171B` | `#EEFFF9` | Polar green and violet signals over a deep night field. |
-| `lunar-graphite` | Lunar Graphite | `#A9B4C4` | `#6D88A9` | `#12161D` | `#F4F7FB` | Low-glare graphite with cool moonlit definition. |
-| `magenta-operator` | Magenta Operator | `#E77BC3` | `#8FA7FF` | `#1C0D1A` | `#FFF0FB` | Expressive magenta commands balanced by soft periwinkle. |
-| `arctic-variable` | Arctic Variable | `#81D4FA` | `#A8B5FF` | `#09151F` | `#EFFAFF` | Icy cyan clarity across a dense blue-black workspace. |
-| `moss-terminal` | Moss Terminal | `#9BCB7A` | `#D1A96B` | `#11190D` | `#F4FBEF` | Moss-green focus with muted brass instrument warmth. |
-| `saffron-night` | Saffron Night | `#F3BE5B` | `#E57B6F` | `#1C1509` | `#FFF8E8` | Golden saffron markers over a deep, warm night surface. |
-| `eclipse-violet` | Eclipse Violet | `#AF8CFF` | `#6ED4C3` | `#120D1E` | `#F7F1FF` | Violet shadow with mint-lit mathematical highlights. |
-| `crimson-vector` | Crimson Vector | `#FF7A82` | `#C494FF` | `#210D12` | `#FFF1F2` | Crimson direction and violet depth in a focused dark field. |
+| Key                   | Name                |   Primary | Secondary |   Surface |    Anchor | Vibe                                                        |
+| --------------------- | ------------------- | --------: | --------: | --------: | --------: | ----------------------------------------------------------- |
+| `midnight-abacus`     | Midnight Abacus     | `#66D9C1` | `#7AA7FF` | `#0C1519` | `#EAF8F5` | Deep teal quiet with luminous blue-green counting cues.     |
+| `neon-long-division`  | Neon Long Division  | `#B9E85C` | `#54C7EC` | `#11160D` | `#F3FFE4` | Charged lime-and-cyan focus on a muted night field.         |
+| `observatory-ink`     | Observatory Ink     | `#9B8CFF` | `#F0A66A` | `#111224` | `#F3F1FF` | Celestial violet and amber for late-night problem solving.  |
+| `carbon-equation`     | Carbon Equation     | `#E1E4EA` | `#7D8796` | `#0E1014` | `#F7F8FA` | Near-monochrome restraint with cool metallic definition.    |
+| `cobalt-afterhours`   | Cobalt Afterhours   | `#5C9DFF` | `#E182B4` | `#0B1425` | `#EDF4FF` | Electric blue focus with a restrained rose counterpoint.    |
+| `ember-blackboard`    | Ember Blackboard    | `#F28C52` | `#E5C07B` | `#1A100D` | `#FFF2E8` | Warm chalk-and-ember contrast on a roasted blackboard.      |
+| `deep-sea-calculator` | Deep Sea Calculator | `#45C4C8` | `#7CA6D8` | `#07191D` | `#EAFBFC` | Submerged cyan clarity with calm oceanic depth.             |
+| `plum-algorithm`      | Plum Algorithm      | `#CA8BE8` | `#EBA4C9` | `#1A0E20` | `#FBEFFC` | Plum-toned concentration with soft rose highlights.         |
+| `forest-binary`       | Forest Binary       | `#72C98A` | `#C5D66D` | `#0B1A12` | `#F0F9F2` | Organic green signals across a deep woodland terminal.      |
+| `ruby-function`       | Ruby Function       | `#EE6A78` | `#F0A38F` | `#210D13` | `#FFF0F2` | Precise ruby emphasis with warm functional contrast.        |
+| `indigo-grid`         | Indigo Grid         | `#899CFF` | `#66C0D0` | `#0D1026` | `#F1F3FF` | Structured indigo depth with cool coordinate-line clarity.  |
+| `bronze-theorem`      | Bronze Theorem      | `#D6A15D` | `#8AC6A8` | `#1A130B` | `#FFF5E6` | Antique bronze reasoning with a quiet green patina.         |
+| `aurora-matrix`       | Aurora Matrix       | `#6FE1B8` | `#B48CFF` | `#0B171B` | `#EEFFF9` | Polar green and violet signals over a deep night field.     |
+| `lunar-graphite`      | Lunar Graphite      | `#A9B4C4` | `#6D88A9` | `#12161D` | `#F4F7FB` | Low-glare graphite with cool moonlit definition.            |
+| `magenta-operator`    | Magenta Operator    | `#E77BC3` | `#8FA7FF` | `#1C0D1A` | `#FFF0FB` | Expressive magenta commands balanced by soft periwinkle.    |
+| `arctic-variable`     | Arctic Variable     | `#81D4FA` | `#A8B5FF` | `#09151F` | `#EFFAFF` | Icy cyan clarity across a dense blue-black workspace.       |
+| `moss-terminal`       | Moss Terminal       | `#9BCB7A` | `#D1A96B` | `#11190D` | `#F4FBEF` | Moss-green focus with muted brass instrument warmth.        |
+| `saffron-night`       | Saffron Night       | `#F3BE5B` | `#E57B6F` | `#1C1509` | `#FFF8E8` | Golden saffron markers over a deep, warm night surface.     |
+| `eclipse-violet`      | Eclipse Violet      | `#AF8CFF` | `#6ED4C3` | `#120D1E` | `#F7F1FF` | Violet shadow with mint-lit mathematical highlights.        |
+| `crimson-vector`      | Crimson Vector      | `#FF7A82` | `#C494FF` | `#210D12` | `#FFF1F2` | Crimson direction and violet depth in a focused dark field. |
 
 ## Token Architecture
 
@@ -285,4 +285,3 @@ Smoke-test the home page, trainer settings, active training state, results, prog
 - Native form controls and browser chrome reflect the resolved mode.
 - The Appearance controls are keyboard accessible and fit the existing utility drawer at mobile and desktop widths.
 - Automated tests, linting, and the production build pass.
-
