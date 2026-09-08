@@ -235,6 +235,12 @@ The selected option, four canonical swatches, and vibe description remain visibl
 - `styles/redesign.css` replaces literal foreground colors and light-only control surfaces with semantic variables.
 - The Supabase migration owns the signed-in storage schema change.
 
+Utility-drawer hotkey keycaps are location-aware: their foreground, surface,
+border, and inset highlight derive from the drawer's semantic header tokens.
+Content-area keycaps keep the content semantic tokens. This prevents a selected
+page palette from leaking a low-contrast foreground into the drawer while still
+allowing Light, Dark, and Adaptive modes to resolve normally.
+
 Do not create a broad design-system rewrite. The refactor is limited to making existing visual roles explicit and mode-safe.
 
 ## Error and Fallback Behavior

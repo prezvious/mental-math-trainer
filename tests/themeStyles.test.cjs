@@ -28,3 +28,28 @@ test('foreground colors use contrast-validated semantic text tokens', () => {
     }
   }
 });
+
+test('utility drawer hotkeys use adaptive header contrast tokens', () => {
+  const filePath = path.resolve(__dirname, '../styles/redesign.css');
+  const css = fs.readFileSync(filePath, 'utf8');
+  const drawerHotkeyRule = css.match(
+    /\.utility-drawer-shell\s+\.hotkey-hint\s*\{([^}]+)\}/
+  );
+
+  assert.ok(drawerHotkeyRule, 'drawer hotkeys should have a scoped style');
+  assert.match(
+    drawerHotkeyRule[1],
+    /border-color\s*:\s*var\(--header-control-border\)/,
+    'drawer hotkey borders should adapt to the drawer palette'
+  );
+  assert.match(
+    drawerHotkeyRule[1],
+    /background\s*:\s*var\(--header-control-surface\)/,
+    'drawer hotkey surfaces should adapt to the drawer palette'
+  );
+  assert.match(
+    drawerHotkeyRule[1],
+    /color\s*:\s*var\(--header-text\)/,
+    'drawer hotkey labels should remain readable in every resolved mode'
+  );
+});
