@@ -2,38 +2,30 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import HotkeyHint from 'components/HotkeyHint.js';
+import CommandDesk from 'components/CommandDesk.js';
 import IconLabel from 'components/IconLabel.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import CommandIcon from 'images/phosphor/command-bold.svg';
 import HouseIcon from 'images/phosphor/house.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
-import XIcon from 'images/phosphor/x-bold.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
 import {
   GLOBAL_HOTKEY_ACTIONS,
-  HOTKEY_REFERENCE_GROUPS,
-  formatHotkeyLabel,
   getGlobalHotkeyAction,
   getGlobalHotkeyLabel,
   getNextThemeKey,
+  isGlobalHotkeyAvailable,
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
-import { DISPLAY_MODE_OPTIONS } from 'utils/displayMode.js';
+import { DEFAULT_DISPLAY_MODE } from 'utils/displayMode.js';
 import {
+  DEFAULT_THEME_KEY,
   getThemeByKey,
-  getThemeOptionLabel,
-  THEME_COLLECTION_OPTIONS,
   THEME_OPTIONS
 } from 'utils/themes.js';
 import { useResolvedDisplayMode } from 'utils/useResolvedDisplayMode.js';
-
-const THEME_OPTION_GROUPS = THEME_COLLECTION_OPTIONS.map((collection) => ({
-  ...collection,
-  themes: THEME_OPTIONS.filter((theme) => theme.collection === collection.key)
-}));
 
 export default function SiteLayout({ children }) {
   const router = useRouter();
@@ -82,6 +74,10 @@ export default function SiteLayout({ children }) {
     };
 
     const onKeyDown = (event) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
       if (event.key === 'Escape') {
         closeUtilityDrawer();
         return;
@@ -187,7 +183,6 @@ export default function SiteLayout({ children }) {
   const loginShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.LOGIN);
   const signupShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.SIGNUP);
   const logoutShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.LOGOUT);
-  const themeShortcut = getGlobalHotkeyLabel(GLOBAL_HOTKEY_ACTIONS.THEME);
 
   const themeStyle = useMemo(
     () => ({
@@ -310,13 +305,24 @@ export default function SiteLayout({ children }) {
     }
   }, [closeUtilityDrawer, router, signOut, terminateActiveSession]);
 
-  const handleThemeChange = (event) => {
-    void upsertPreferences({ themeKey: event.target.value });
-  };
+  const handleThemeChange = useCallback(
+    (nextThemeKey) => upsertPreferences({ themeKey: nextThemeKey }),
+    [upsertPreferences]
+  );
 
-  const handleDisplayModeChange = (event) => {
-    void upsertPreferences({ displayMode: event.target.value });
-  };
+  const handleDisplayModeChange = useCallback(
+    (nextDisplayMode) => upsertPreferences({ displayMode: nextDisplayMode }),
+    [upsertPreferences]
+  );
+
+  const handleResetAppearance = useCallback(
+    () =>
+      upsertPreferences({
+        themeKey: DEFAULT_THEME_KEY,
+        displayMode: DEFAULT_DISPLAY_MODE
+      }),
+    [upsertPreferences]
+  );
 
   const cycleTheme = useCallback(() => {
     if (isLoadingPreferences) {
@@ -356,15 +362,10 @@ export default function SiteLayout({ children }) {
       }
 
       if (
-        [GLOBAL_HOTKEY_ACTIONS.LOGIN, GLOBAL_HOTKEY_ACTIONS.SIGNUP].includes(
-          action
-        ) &&
-        user
+        !isGlobalHotkeyAvailable(action, {
+          isAuthenticated: Boolean(user)
+        })
       ) {
-        return;
-      }
-
-      if (action === GLOBAL_HOTKEY_ACTIONS.LOGOUT && !user) {
         return;
       }
 
@@ -541,218 +542,17 @@ export default function SiteLayout({ children }) {
             tabIndex={-1}
             onClick={closeUtilityDrawer}
           />
-          <section
-            ref={utilityDrawerRef}
-            id='utility-drawer'
-            className='utility-drawer-shell utility-drawer appear-up'
-            role='dialog'
-            aria-modal='true'
-            aria-labelledby='utility-drawer-title'
-            aria-label='Utility drawer'
-          >
-            <div className='utility-panel'>
-              <div className='utility-header'>
-                <div>
-                  <p className='theme-kicker'>Command Desk</p>
-                  <h2 id='utility-drawer-title' className='utility-title'>
-                    Navigation, appearance, hotkeys
-                  </h2>
-                  <p className='theme-vibe'>
-                    Keep the practice surface clean while the controls stay
-                    close.
-                  </p>
-                </div>
-                <button
-                  ref={utilityCloseButtonRef}
-                  type='button'
-                  className='control-drawer-close'
-                  onClick={closeUtilityDrawer}
-                  aria-label='Close utility drawer'
-                >
-                  <XIcon className='control-drawer-close-icon' />
-                </button>
-              </div>
-
-              <section className='utility-section utility-section-nav'>
-                <div className='utility-section-head'>
-                  <p className='theme-kicker'>Navigate</p>
-                </div>
-                <div className='utility-link-list'>
-                  {navLinks.map((link) => {
-                    const isActive = router.pathname === link.href;
-
-                    return (
-                      <Link
-                        key={`utility-${link.href}`}
-                        href={link.href}
-                        className={`site-nav-link utility-nav-link ${
-                          isActive ? 'is-active' : ''
-                        }`.trim()}
-                        aria-keyshortcuts={link.hotkey}
-                        onClick={closeUtilityDrawer}
-                      >
-                        <span className='utility-link-main'>
-                          <IconLabel
-                            icon={link.icon}
-                            className='icon-label-nav'
-                          >
-                            {link.label}
-                          </IconLabel>
-                        </span>
-                        <HotkeyHint label={link.hotkey} />
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section className='utility-section utility-section-account'>
-                <div className='utility-section-head'>
-                  <p className='theme-kicker'>Account</p>
-                </div>
-                {user ? (
-                  <div className='utility-account-card'>
-                    <p className='user-pill utility-user-pill'>{user.email}</p>
-                    <button
-                      type='button'
-                      className='button button-quiet button-full'
-                      onClick={handleSignOut}
-                      aria-keyshortcuts={logoutShortcut}
-                    >
-                      Log out
-                    </button>
-                  </div>
-                ) : (
-                  <div className='utility-account-actions'>
-                    <Link
-                      href='/login'
-                      className='button button-quiet button-full'
-                      aria-keyshortcuts={loginShortcut}
-                      onClick={closeUtilityDrawer}
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href='/signup'
-                      className='button button-strong button-full'
-                      aria-keyshortcuts={signupShortcut}
-                      onClick={closeUtilityDrawer}
-                    >
-                      Sign up
-                    </Link>
-                  </div>
-                )}
-              </section>
-
-              <section className='utility-section'>
-                <div className='utility-section-head'>
-                  <p className='theme-kicker'>Appearance</p>
-                  <HotkeyHint label={themeShortcut} />
-                </div>
-                <fieldset
-                  className='display-mode-fieldset'
-                  disabled={isLoadingPreferences}
-                >
-                  <legend className='theme-label'>Mode</legend>
-                  <div className='display-mode-options'>
-                    {DISPLAY_MODE_OPTIONS.map((option) => (
-                      <label
-                        key={option.value}
-                        className={`display-mode-option ${
-                          displayMode === option.value ? 'is-active' : ''
-                        }`.trim()}
-                      >
-                        <input
-                          type='radio'
-                          name='display-mode'
-                          value={option.value}
-                          checked={displayMode === option.value}
-                          onChange={handleDisplayModeChange}
-                        />
-                        <span>{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-                <label className='theme-label' htmlFor='theme-select'>
-                  Theme
-                </label>
-                <select
-                  id='theme-select'
-                  name='theme'
-                  className='theme-select'
-                  value={activeTheme.key}
-                  onChange={handleThemeChange}
-                  disabled={isLoadingPreferences}
-                >
-                  {THEME_OPTION_GROUPS.map((group) => (
-                    <optgroup key={group.key} label={group.label}>
-                      {group.themes.map((theme) => (
-                        <option key={theme.key} value={theme.key}>
-                          {getThemeOptionLabel(theme)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <p className='theme-vibe' aria-live='polite'>
-                  {activeTheme.vibe}
-                </p>
-                <div className='theme-swatches' aria-hidden='true'>
-                  {activeTheme.colors.map((color) => (
-                    <span
-                      key={`${activeTheme.key}-${color}`}
-                      className='theme-swatch'
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              <section className='utility-section'>
-                <div className='utility-section-head'>
-                  <p className='theme-kicker'>Hotkeys</p>
-                </div>
-                <div className='hotkey-reference'>
-                  {HOTKEY_REFERENCE_GROUPS.map((group) => (
-                    <section
-                      key={group.id}
-                      className='hotkey-group'
-                      aria-labelledby={`${group.id}-title`}
-                    >
-                      <h3
-                        id={`${group.id}-title`}
-                        className='hotkey-group-title'
-                      >
-                        {group.label}
-                      </h3>
-                      <ul className='hotkey-group-list'>
-                        {group.items.map((item) => (
-                          <li
-                            key={`${group.id}-${item.shortcut}-${item.label}`}
-                            className='hotkey-row'
-                          >
-                            <HotkeyHint
-                              label={formatHotkeyLabel(item.shortcut)}
-                            />
-                            <div className='hotkey-row-copy'>
-                              <p className='hotkey-row-label'>{item.label}</p>
-                              <p className='hotkey-row-description'>
-                                {item.description}
-                              </p>
-                              {item.note && (
-                                <p className='hotkey-row-note'>{item.note}</p>
-                              )}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  ))}
-                </div>
-              </section>
-            </div>
-          </section>
+          <CommandDesk
+            activeTheme={activeTheme}
+            closeButtonRef={utilityCloseButtonRef}
+            displayMode={displayMode}
+            drawerRef={utilityDrawerRef}
+            isLoadingPreferences={isLoadingPreferences}
+            onClose={closeUtilityDrawer}
+            onDisplayModeChange={handleDisplayModeChange}
+            onResetAppearance={handleResetAppearance}
+            onThemeChange={handleThemeChange}
+          />
         </>
       )}
 

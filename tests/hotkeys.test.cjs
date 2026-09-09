@@ -5,12 +5,14 @@ const { pathToFileURL } = require('node:url');
 
 let GLOBAL_HOTKEY_ACTIONS;
 let GLOBAL_HOTKEY_KEYS;
+let HOTKEY_DEFINITIONS;
 let HOTKEY_REFERENCE_GROUPS;
 let ROUND_CONTROL_HOTKEY;
 let formatHotkeyLabel;
 let getGlobalHotkeyAction;
 let getGlobalHotkeyLabel;
 let getNextThemeKey;
+let isGlobalHotkeyAvailable;
 let isShortcutEventEligible;
 
 function createEvent(overrides = {}) {
@@ -35,12 +37,14 @@ test.before(async () => {
   ({
     GLOBAL_HOTKEY_ACTIONS,
     GLOBAL_HOTKEY_KEYS,
+    HOTKEY_DEFINITIONS,
     HOTKEY_REFERENCE_GROUPS,
     ROUND_CONTROL_HOTKEY,
     formatHotkeyLabel,
     getGlobalHotkeyAction,
     getGlobalHotkeyLabel,
     getNextThemeKey,
+    isGlobalHotkeyAvailable,
     isShortcutEventEligible
   } = hotkeys);
 });
@@ -76,31 +80,40 @@ test('HOTKEY_REFERENCE_GROUPS exposes the full grouped shortcut reference', () =
     ['R', 'M', 'P', 'T', 'I', 'U', 'O', 'Enter']
   );
 
-  const accountGroup = HOTKEY_REFERENCE_GROUPS.find((group) => group.id === 'account');
-  const roundControlGroup = HOTKEY_REFERENCE_GROUPS.find(
-    (group) => group.id === 'round-control'
+  assert.equal(HOTKEY_DEFINITIONS.length, 8);
+  assert.equal(
+    HOTKEY_REFERENCE_GROUPS.flatMap((group) => group.items).length,
+    HOTKEY_DEFINITIONS.length
   );
+  assert.deepEqual(
+    HOTKEY_REFERENCE_GROUPS.flatMap((group) =>
+      group.items.map((item) => item.shortcut)
+    ),
+    HOTKEY_DEFINITIONS.map((definition) => definition.key)
+  );
+  assert.equal(
+    HOTKEY_REFERENCE_GROUPS.find((group) => group.id === 'round-control')
+      .items[0].shortcut,
+    ROUND_CONTROL_HOTKEY
+  );
+});
 
+test('global hotkey availability is derived from shortcut definitions', () => {
+  assert.equal(isGlobalHotkeyAvailable(GLOBAL_HOTKEY_ACTIONS.LOGIN), true);
   assert.equal(
-    accountGroup.items.find(
-      (item) => item.shortcut === GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGIN]
-    ).note,
-    'Logged out only.'
+    isGlobalHotkeyAvailable(GLOBAL_HOTKEY_ACTIONS.LOGIN, {
+      isAuthenticated: true
+    }),
+    false
   );
+  assert.equal(isGlobalHotkeyAvailable(GLOBAL_HOTKEY_ACTIONS.LOGOUT), false);
   assert.equal(
-    accountGroup.items.find(
-      (item) => item.shortcut === GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.SIGNUP]
-    ).note,
-    'Logged out only.'
+    isGlobalHotkeyAvailable(GLOBAL_HOTKEY_ACTIONS.LOGOUT, {
+      isAuthenticated: true
+    }),
+    true
   );
-  assert.equal(
-    accountGroup.items.find(
-      (item) => item.shortcut === GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGOUT]
-    ).note,
-    'Signed in only.'
-  );
-  assert.equal(roundControlGroup.items[0].shortcut, ROUND_CONTROL_HOTKEY);
-  assert.match(roundControlGroup.items[0].note, /Trainer and Mixed/);
+  assert.equal(isGlobalHotkeyAvailable('unknown'), false);
 });
 
 test('isShortcutEventEligible blocks interactive targets and modified key presses', () => {

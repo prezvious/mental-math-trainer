@@ -382,29 +382,6 @@ code {
   text-transform: uppercase;
 }
 
-.theme-select {
-  appearance: none;
-  border: 1px solid var(--header-control-border);
-  border-radius: calc(var(--layout-panel-radius) * 0.4);
-  background: var(--header-control-surface);
-  color: var(--header-text);
-  font-family: 'Syne', sans-serif;
-  font-size: 0.86rem;
-  padding: 0.4rem 0.48rem;
-}
-
-.theme-select:focus-visible {
-  outline: 2px solid var(--sand);
-  outline-offset: 1px;
-}
-
-.theme-vibe {
-  margin: 0;
-  color: var(--header-text-subtle);
-  font-size: 0.69rem;
-  line-height: 1.2;
-}
-
 .hotkey-reference {
   display: grid;
   gap: 0.75rem;
@@ -446,15 +423,7 @@ code {
   border-top: none;
 }
 
-.hotkey-row-copy {
-  min-width: 0;
-  display: grid;
-  gap: 0.12rem;
-}
-
-.hotkey-row-label,
-.hotkey-row-description,
-.hotkey-row-note {
+.hotkey-row-label {
   margin: 0;
 }
 
@@ -462,31 +431,6 @@ code {
   font-family: 'Syne', sans-serif;
   font-size: 0.86rem;
   color: var(--header-text);
-}
-
-.hotkey-row-description {
-  color: var(--header-text-subtle);
-  font-size: 0.74rem;
-  line-height: 1.35;
-}
-
-.hotkey-row-note {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.63rem;
-  letter-spacing: 0.04em;
-  color: var(--header-text-accent);
-}
-
-.theme-swatches {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.26rem;
-}
-
-.theme-swatch {
-  height: 10px;
-  border-radius: 999px;
-  border: 1px solid var(--header-control-border);
 }
 
 .status-badge {

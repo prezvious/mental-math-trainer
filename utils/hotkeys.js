@@ -8,19 +8,130 @@ export const GLOBAL_HOTKEY_ACTIONS = Object.freeze({
   LOGOUT: 'logout'
 });
 
-export const GLOBAL_HOTKEY_KEYS = Object.freeze({
-  [GLOBAL_HOTKEY_ACTIONS.TRAINER]: 'r',
-  [GLOBAL_HOTKEY_ACTIONS.MIXED]: 'm',
-  [GLOBAL_HOTKEY_ACTIONS.PROGRESS]: 'p',
-  [GLOBAL_HOTKEY_ACTIONS.THEME]: 't',
-  [GLOBAL_HOTKEY_ACTIONS.LOGIN]: 'i',
-  [GLOBAL_HOTKEY_ACTIONS.SIGNUP]: 'u',
-  [GLOBAL_HOTKEY_ACTIONS.LOGOUT]: 'o'
-});
-
 export const ROUND_CONTROL_HOTKEY = 'Enter';
 
-const INTERACTIVE_TAG_NAMES = new Set(['input', 'textarea', 'select', 'button', 'a']);
+const HOTKEY_GROUPS = Object.freeze([
+  Object.freeze({ id: 'navigation', label: 'Navigation' }),
+  Object.freeze({ id: 'appearance', label: 'Appearance' }),
+  Object.freeze({ id: 'account', label: 'Account' }),
+  Object.freeze({ id: 'round-control', label: 'Round Control' })
+]);
+
+export const HOTKEY_DEFINITIONS = Object.freeze([
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.TRAINER,
+    key: 'r',
+    group: 'navigation',
+    label: 'Open Trainer',
+    availability: 'always',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.MIXED,
+    key: 'm',
+    group: 'navigation',
+    label: 'Open Mixed',
+    availability: 'always',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.PROGRESS,
+    key: 'p',
+    group: 'navigation',
+    label: 'Open Progress',
+    availability: 'always',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.THEME,
+    key: 't',
+    group: 'appearance',
+    label: 'Cycle theme',
+    availability: 'always',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.LOGIN,
+    key: 'i',
+    group: 'account',
+    label: 'Open Log in',
+    availability: 'signed-out',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.SIGNUP,
+    key: 'u',
+    group: 'account',
+    label: 'Open Sign up',
+    availability: 'signed-out',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: GLOBAL_HOTKEY_ACTIONS.LOGOUT,
+    key: 'o',
+    group: 'account',
+    label: 'Log out',
+    availability: 'signed-in',
+    scope: 'global'
+  }),
+  Object.freeze({
+    action: 'round-primary',
+    key: ROUND_CONTROL_HOTKEY,
+    group: 'round-control',
+    label: 'Primary round action',
+    availability: 'trainer-idle',
+    scope: 'page'
+  })
+]);
+
+const GLOBAL_HOTKEY_DEFINITIONS = HOTKEY_DEFINITIONS.filter(
+  (definition) => definition.scope === 'global'
+);
+
+export const GLOBAL_HOTKEY_KEYS = Object.freeze(
+  Object.fromEntries(
+    GLOBAL_HOTKEY_DEFINITIONS.map((definition) => [
+      definition.action,
+      definition.key
+    ])
+  )
+);
+
+export const HOTKEY_REFERENCE_GROUPS = Object.freeze(
+  HOTKEY_GROUPS.map((group) =>
+    Object.freeze({
+      ...group,
+      items: Object.freeze(
+        HOTKEY_DEFINITIONS.filter(
+          (definition) => definition.group === group.id
+        ).map((definition) =>
+          Object.freeze({
+            action: definition.action,
+            shortcut: definition.key,
+            label: definition.label,
+            availability: definition.availability
+          })
+        )
+      )
+    })
+  )
+);
+
+const GLOBAL_HOTKEY_DEFINITION_BY_KEY = new Map(
+  GLOBAL_HOTKEY_DEFINITIONS.map((definition) => [definition.key, definition])
+);
+
+const GLOBAL_HOTKEY_DEFINITION_BY_ACTION = new Map(
+  GLOBAL_HOTKEY_DEFINITIONS.map((definition) => [definition.action, definition])
+);
+
+const INTERACTIVE_TAG_NAMES = new Set([
+  'input',
+  'textarea',
+  'select',
+  'button',
+  'a'
+]);
 
 function normalizeKey(key) {
   return typeof key === 'string' ? key.trim().toLowerCase() : '';
@@ -36,94 +147,40 @@ export function formatHotkeyLabel(shortcut) {
     return '';
   }
 
-  return trimmedShortcut.length === 1 ? trimmedShortcut.toUpperCase() : trimmedShortcut;
+  return trimmedShortcut.length === 1
+    ? trimmedShortcut.toUpperCase()
+    : trimmedShortcut;
 }
 
 export function getGlobalHotkeyAction(key) {
   const normalizedKey = normalizeKey(key);
 
-  return (
-    Object.entries(GLOBAL_HOTKEY_KEYS).find(
-      ([, shortcutKey]) => shortcutKey === normalizedKey
-    )?.[0] || null
-  );
+  return GLOBAL_HOTKEY_DEFINITION_BY_KEY.get(normalizedKey)?.action || null;
 }
 
 export function getGlobalHotkeyLabel(action) {
   return formatHotkeyLabel(GLOBAL_HOTKEY_KEYS[action]);
 }
 
-export const HOTKEY_REFERENCE_GROUPS = Object.freeze([
-  Object.freeze({
-    id: 'navigation',
-    label: 'Navigation',
-    items: Object.freeze([
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.TRAINER],
-        label: 'Open Trainer',
-        description: 'Jump to the main trainer page.'
-      }),
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.MIXED],
-        label: 'Open Mixed',
-        description: 'Jump to the mixed arithmetic trainer.'
-      }),
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.PROGRESS],
-        label: 'Open Progress',
-        description: 'Jump to the progress dashboard.'
-      })
-    ])
-  }),
-  Object.freeze({
-    id: 'appearance',
-    label: 'Appearance',
-    items: Object.freeze([
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.THEME],
-        label: 'Cycle theme',
-        description: 'Rotate through the available palettes instantly.',
-        note: 'Cycles the palette directly; use the utility drawer for manual theme switching.'
-      })
-    ])
-  }),
-  Object.freeze({
-    id: 'account',
-    label: 'Account',
-    items: Object.freeze([
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGIN],
-        label: 'Open Log in',
-        description: 'Go straight to the sign-in page.',
-        note: 'Logged out only.'
-      }),
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.SIGNUP],
-        label: 'Open Sign up',
-        description: 'Go straight to the account creation page.',
-        note: 'Logged out only.'
-      }),
-      Object.freeze({
-        shortcut: GLOBAL_HOTKEY_KEYS[GLOBAL_HOTKEY_ACTIONS.LOGOUT],
-        label: 'Log out',
-        description: 'Sign out and end the active synced session.',
-        note: 'Signed in only.'
-      })
-    ])
-  }),
-  Object.freeze({
-    id: 'round-control',
-    label: 'Round Control',
-    items: Object.freeze([
-      Object.freeze({
-        shortcut: ROUND_CONTROL_HOTKEY,
-        label: 'Primary round action',
-        description: 'Start the current round or restart the last finished one.',
-        note: 'Trainer and Mixed when no round is active.'
-      })
-    ])
-  })
-]);
+export function isGlobalHotkeyAvailable(
+  action,
+  { isAuthenticated = false } = {}
+) {
+  const definition = GLOBAL_HOTKEY_DEFINITION_BY_ACTION.get(action);
+  if (!definition) {
+    return false;
+  }
+
+  if (definition.availability === 'signed-in') {
+    return isAuthenticated;
+  }
+
+  if (definition.availability === 'signed-out') {
+    return !isAuthenticated;
+  }
+
+  return true;
+}
 
 export function isInteractiveHotkeyTarget(target) {
   if (!target || typeof target !== 'object') {
@@ -131,7 +188,9 @@ export function isInteractiveHotkeyTarget(target) {
   }
 
   const tagName =
-    typeof target.tagName === 'string' ? target.tagName.trim().toLowerCase() : '';
+    typeof target.tagName === 'string'
+      ? target.tagName.trim().toLowerCase()
+      : '';
 
   if (INTERACTIVE_TAG_NAMES.has(tagName)) {
     return true;
@@ -140,7 +199,10 @@ export function isInteractiveHotkeyTarget(target) {
   return Boolean(target.isContentEditable);
 }
 
-export function isShortcutEventEligible(event, { blockedContainers = [] } = {}) {
+export function isShortcutEventEligible(
+  event,
+  { blockedContainers = [] } = {}
+) {
   if (
     !event ||
     event.defaultPrevented ||
@@ -173,8 +235,11 @@ export function getNextThemeKey(currentThemeKey, themeOptions = []) {
     return currentThemeKey;
   }
 
-  const currentIndex = themeOptions.findIndex((theme) => theme.key === currentThemeKey);
-  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % themeOptions.length;
+  const currentIndex = themeOptions.findIndex(
+    (theme) => theme.key === currentThemeKey
+  );
+  const nextIndex =
+    currentIndex === -1 ? 0 : (currentIndex + 1) % themeOptions.length;
 
   return themeOptions[nextIndex].key;
 }
