@@ -986,6 +986,12 @@ th {
   padding: 0.8rem 0.95rem;
 }
 
+.settings-form select option,
+.settings-form select optgroup {
+  color: var(--text-main);
+  background: var(--surface-input);
+}
+
 .settings-form input:focus-visible,
 .settings-form select:focus-visible,
 .answer-form input:focus-visible,

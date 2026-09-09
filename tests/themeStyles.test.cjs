@@ -29,6 +29,26 @@ test('foreground colors use contrast-validated semantic text tokens', () => {
   }
 });
 
+test('settings dropdown options use theme-aware foreground and surface tokens', () => {
+  const filePath = path.resolve(__dirname, '../styles/redesign.css');
+  const css = fs.readFileSync(filePath, 'utf8');
+  const optionRule = css.match(
+    /\.settings-form\s+select\s+option,\s*\.settings-form\s+select\s+optgroup\s*\{([^}]+)\}/
+  );
+
+  assert.ok(optionRule, 'settings dropdown options should have a shared style');
+  assert.match(
+    optionRule[1],
+    /color\s*:\s*var\(--text-main\)/,
+    'settings dropdown option text should follow the active theme'
+  );
+  assert.match(
+    optionRule[1],
+    /background\s*:\s*var\(--surface-input\)/,
+    'settings dropdown option surfaces should follow the active theme'
+  );
+});
+
 test('utility drawer hotkeys use adaptive header contrast tokens', () => {
   const filePath = path.resolve(__dirname, '../styles/redesign.css');
   const css = fs.readFileSync(filePath, 'utf8');
