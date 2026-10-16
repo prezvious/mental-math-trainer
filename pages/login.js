@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import PageIntro from 'components/PageIntro.js';
 import {
   AUTH_LOGIN_HANDOFF_REASONS,
   consumeAuthLoginHandoff
@@ -68,31 +69,9 @@ export default function LoginPage() {
       </Head>
 
       <div className='auth-shell'>
-        <section className='hero-panel hero-panel-compact auth-hero appear-up'>
-          <div className='hero-layout'>
-            <div className='hero-copy'>
-              <p className='hero-tag'>Account Access</p>
-              <h1>Log In</h1>
-              <p>Rejoin your saved training desk and pick up the next round quickly.</p>
-            </div>
-            <div className='hero-sidebar'>
-              <p className='hero-sidebar-label'>Why sign in</p>
-              <ul className='hero-checklist'>
-                <li>Restore your preferred theme and trainer setup.</li>
-                <li>Keep your round history and progress snapshots.</li>
-                <li>Move from practice straight into analytics.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <PageIntro title='Log in' description='Continue with your account.' />
 
         <section className='panel paper-panel auth-panel appear-up'>
-          <p className='panel-kicker'>Welcome back</p>
-          <h2>Continue your streak</h2>
-          <p className='panel-copy'>
-            Use the same email you used for sign-up. The next round is waiting on the main trainer.
-          </p>
-
           {loginHandoffReason === AUTH_LOGIN_HANDOFF_REASONS.DUPLICATE_SIGNUP && (
             <p className='inline-warning'>
               This email is already registered. Enter your password to log in.
@@ -101,7 +80,7 @@ export default function LoginPage() {
 
           {!isConfigured && (
             <p className='inline-warning'>
-              Account features are not configured yet, so login is unavailable right now.
+              Accounts are unavailable right now. You can still practice as a guest.
             </p>
           )}
 
@@ -118,6 +97,7 @@ export default function LoginPage() {
             />
 
             <label htmlFor='login-password'>Password</label>
+            <Link href='/forgot-password' className='text-link auth-recovery-link'>Forgot password?</Link>
             <input
               id='login-password'
               type='password'
@@ -141,7 +121,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {errorMessage && <p className='feedback warning'>{errorMessage}</p>}
+          {errorMessage && <p className='feedback warning' role='alert'>{errorMessage}</p>}
 
           <p className='auth-helper'>
             Need an account?{' '}
@@ -149,6 +129,7 @@ export default function LoginPage() {
               Sign up
             </Link>
           </p>
+          {!isConfigured && <Link href='/' className='text-link'>Practice as a guest</Link>}
         </section>
       </div>
     </>

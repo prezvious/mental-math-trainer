@@ -1,3 +1,8 @@
+import {
+  acknowledgeAccountProgressRows,
+  queueAccountProgressRow
+} from './progressStorage.js';
+
 export const PROGRESS_LOG_INSERT_BATCH_SIZE = 500;
 export const PROGRESS_LOG_FETCH_PAGE_SIZE = 1000;
 export const PROGRESS_LOG_BUFFER_FLUSH_SIZE = 20;
@@ -145,7 +150,8 @@ function toLegacyProgressLogRows(rows) {
     correct_answer: row.correct_answer,
     submitted_answer: row.submitted_answer,
     is_correct: row.is_correct,
-    response_ms: row.response_ms
+    response_ms: row.response_ms,
+    ...(row.created_at ? { created_at: row.created_at } : {})
   }));
 }
 
@@ -223,7 +229,8 @@ export function buildProgressLogRow(
     correct_answer: attempt.correctAnswer.toString(),
     submitted_answer: attempt.submittedAnswer.toString(),
     is_correct: attempt.isCorrect,
-    response_ms: attempt.responseMs
+    response_ms: attempt.responseMs,
+    ...(attempt.createdAt ? { created_at: attempt.createdAt } : {})
   };
 }
 
@@ -345,6 +352,7 @@ export function createProgressLogBuffer({
   let inFlightRows = [];
   let flushTimer = null;
   let flushPromise = null;
+  let durableWrites = Promise.resolve();
 
   const cancelScheduledFlush = () => {
     if (flushTimer) {
@@ -376,6 +384,7 @@ export function createProgressLogBuffer({
 
   const flush = async ({ keepalive = false } = {}) => {
     cancelScheduledFlush();
+    await durableWrites;
 
     if (flushPromise) {
       if (keepalive) {
@@ -401,6 +410,7 @@ export function createProgressLogBuffer({
 
     flushPromise = (async () => {
       while (pendingRows.length) {
+        await durableWrites;
         const snapshot = pendingRows;
         pendingRows = [];
         inFlightRows = snapshot;
@@ -411,6 +421,9 @@ export function createProgressLogBuffer({
 
         try {
           await persistProgressLogBatches(client, snapshot, batchSize);
+          if (typeof indexedDB !== 'undefined') {
+            await acknowledgeAccountProgressRows(snapshot).catch(() => {});
+          }
           flushedCount += snapshot.length;
         } catch (error) {
           pendingRows = [...snapshot, ...pendingRows];
@@ -438,6 +451,9 @@ export function createProgressLogBuffer({
 
   const enqueue = (row) => {
     pendingRows = [...pendingRows, row];
+    if (typeof indexedDB !== 'undefined' && row.user_id) {
+      durableWrites = durableWrites.then(() => queueAccountProgressRow(row)).catch(() => {});
+    }
 
     if (pendingRows.length >= flushSize) {
       void flush();

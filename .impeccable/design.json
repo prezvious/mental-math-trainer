@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-13T22:14:43Z",
+  "title": "Design System: Körner Club",
+  "extensions": {
+    "interfaces": {
+      "kira": {
+        "document": "docs/design-kira.md",
+        "selector": ".app-shell[data-interface-style='kira']",
+        "sources": ["styles/kira.css", "components/PageIntro.js", "components/SiteLayout.js", "public/images/kira-math-pattern.svg"],
+        "artwork": "Original flashcard stack, pencil, and stopwatch characters with arithmetic marks, number tiles, tally bundles, rulers, and starbursts.",
+        "motion": "Flashcards lift 5px on intro hover with 500ms cubic-bezier(0.16, 1, 0.3, 1); reduced motion removes this.",
+        "breakpoint": "639px",
+        "focus": "3px solid var(--focus-ring), 3px offset",
+        "scope": "Optional interface; Studio remains default and all theme preferences remain independent. Existing Körner sidecar data below is preserved."
+      }
+    },
+    "scope": {
+      "document": "docs/design-korner.md",
+      "selector": ".app-shell[data-interface-style='korner']",
+      "interfaceValue": "korner",
+      "defaultInterfaceValue": "studio",
+      "mode": "Operate",
+      "sources": [
+        "styles/korner.css",
+        "components/PageIntro.js",
+        "utils/interfaceStyle.js",
+        "components/SiteLayout.js",
+        "styles/globals.css",
+        "styles/redesign.css",
+        "styles/interfaceStyles.css",
+        "utils/trainerPresentation.js",
+        "pages/index.js",
+        "pages/mixed.js"
+      ],
+      "compatibility": "Semantic colors inherit from the selected theme and resolved light/dark mode. The 59 theme definitions remain independent of interface style. This sidecar documents only Körner Club.",
+      "previewContext": "Render snippets inside the selected app shell so semantic CSS variables and the shared font resources inherit into the preview shadow DOM.",
+      "documentationGap": "The incumbent has no root PRODUCT.md or DESIGN.md. This scoped extraction does not add a global product identity.",
+      "routeExceptions": "Auth and verification intros use one column, min-height:auto, no illustration, 45ch paragraph maximum without reserved art space, and clamp(2rem, 4vw, 3rem) title sizing at every viewport. Trainer intros follow existing chrome state; active, finish and AI transition states hide the Trainer intro. Mixed intro appears only without an active or last round."
+    },
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Primary ink", "purpose": "Strong actions, active navigation, brand chip, footer and progress fills." },
+      "paper": { "role": "neutral", "displayName": "Paper", "purpose": "Theme supplied shell and header background." },
+      "ink": { "role": "neutral", "displayName": "Ink", "purpose": "Readable primary text on the selected theme's surfaces." },
+      "outline": { "role": "neutral", "displayName": "Outline", "purpose": "Visible structure and separation on flat surfaces." },
+      "lettering-ink": { "role": "primary", "displayName": "Lettering ink", "purpose": "Italic phrase, native math ornaments, caret and correct answer outline." }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Intro display", "purpose": "Uppercase idle and page introductions; mobile and account sizes are separate source overrides." },
+      "title": { "displayName": "Panel title", "purpose": "Panel and summary headings." },
+      "lettering": { "displayName": "Café lettering", "purpose": "Italic, rotated decorative Make it count. phrase." },
+      "label": { "displayName": "Field label", "purpose": "Normal case form and configuration labels." },
+      "badge": { "displayName": "Mono badge", "purpose": "Inherited compact status badge text." }
+    },
+    "shadows": [
+      { "name": "surface-shadow-soft", "value": "none", "purpose": "Körner surface variable override; panels and controls are flat." },
+      { "name": "surface-shadow-heavy", "value": "none", "purpose": "Körner surface variable override." },
+      { "name": "surface-shadow-inset", "value": "none", "purpose": "Körner field and inset surface variable override." },
+      { "name": "utility-drawer", "value": "0 14px 35px color-mix(in srgb, var(--surface-shadow) 18%, transparent)", "purpose": "Explicit elevation exception for the overlay drawer." }
+    ],
+    "motion": [
+      { "name": "control-transition", "value": "background-color 160ms ease, color 160ms ease, transform 160ms ease", "purpose": "Variant button, utility toggle, close, password toggle and keypad state transitions." },
+      { "name": "control-hover", "value": "translateY(-2px)", "purpose": "Enabled buttons, utility toggles and keypad keys." },
+      { "name": "control-active", "value": "translateY(1px)", "purpose": "Enabled buttons and keypad keys." },
+      { "name": "entry-animation", "value": "none", "purpose": "Körner disables shared appear-up and stagger animations." },
+      { "name": "reduced-motion", "value": "@media (prefers-reduced-motion: reduce)", "purpose": "Variant buttons, utility toggles and keypad keys disable transition and hover/active translation." }
+    ],
+    "breakpoints": [
+      { "name": "korner-mobile", "value": "639px", "query": "(max-width: 639px)", "purpose": "Single column intro, smaller lettering and math marks, right aligned 7rem illustration, and reduced main top padding." }
+    ],
+    "borders": [
+      { "name": "strong-outline", "value": "2px solid var(--control-border)", "purpose": "Header/footer dividers, intro divider, main panels, controls and fields." },
+      { "name": "fine-outline", "value": "1px solid var(--control-border)", "purpose": "Configuration rows, problem surfaces, badges and progress tracks." },
+      { "name": "focus-outline", "value": "2px solid var(--focus-ring)", "offset": "2px", "purpose": "Inherited shared focus; header and drawer controls use main ink for outline color." }
+    ],
+    "assets": [
+      {
+        "path": "public/images/korner-study.png",
+        "provenance": "public/images/korner-study.png.json",
+        "kind": "decorative-raster",
+        "dimensions": "1448 × 1086",
+        "behavior": "Transparent fixed color café scene rendered by Next Image; empty alt inside an aria-hidden wrapper. It does not supply theme colors.",
+        "responsiveSizes": "(max-width: 639px) 112px, 416px"
+      },
+      {
+        "path": "components/PageIntro.js",
+        "kind": "native-math-svg",
+        "behavior": "Plus and equals paths are inline currentColor SVG with rounded strokes, aria-hidden ancestor, and focusable=false. Functional arithmetic remains DOM text."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Strong action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Flat primary action with a matching foreground and visible keyboard focus.",
+      "html": "<button class=\"ds-korner-strong\">Start round</button>",
+      "css": ".ds-korner-strong { min-height: 2.75rem; padding: 0.72rem 1rem; border: 2px solid var(--accent-main); border-radius: 0.65rem; background: var(--accent-main); color: var(--button-strong-text); box-shadow: none; font: 700 0.94rem/1 'Syne', sans-serif; cursor: pointer; transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; } .ds-korner-strong:hover:not(:disabled) { transform: translateY(-2px); } .ds-korner-strong:active:not(:disabled) { transform: translateY(1px); } .ds-korner-strong:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; } .ds-korner-strong:disabled { opacity: 0.55; cursor: not-allowed; transform: none; } @media (prefers-reduced-motion: reduce) { .ds-korner-strong, .ds-korner-strong:hover:not(:disabled), .ds-korner-strong:active:not(:disabled) { transition: none; transform: none; } }"
+    },
+    {
+      "name": "Quiet action",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Flat input surface with a strong ink outline for secondary actions.",
+      "html": "<button class=\"ds-korner-quiet\">Reset</button>",
+      "css": ".ds-korner-quiet { min-height: 2.75rem; padding: 0.72rem 1rem; border: 2px solid var(--control-border); border-radius: 0.65rem; background: var(--surface-input); color: var(--text-main); box-shadow: none; font: 700 0.94rem/1 'Syne', sans-serif; cursor: pointer; transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; } .ds-korner-quiet:hover:not(:disabled) { transform: translateY(-2px); } .ds-korner-quiet:active:not(:disabled) { transform: translateY(1px); } .ds-korner-quiet:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; } .ds-korner-quiet:disabled { opacity: 0.55; cursor: not-allowed; transform: none; } @media (prefers-reduced-motion: reduce) { .ds-korner-quiet, .ds-korner-quiet:hover:not(:disabled), .ds-korner-quiet:active:not(:disabled) { transition: none; transform: none; } }"
+    },
+    {
+      "name": "Danger action",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Existing danger roles carried into the flat outlined control shape.",
+      "html": "<button class=\"ds-korner-danger\">End round</button>",
+      "css": ".ds-korner-danger { min-height: 2.75rem; padding: 0.72rem 1rem; border: 2px solid var(--accent-alert); border-radius: 0.65rem; background: var(--accent-alert); color: var(--button-danger-text); box-shadow: none; font: 700 0.94rem/1 'Syne', sans-serif; cursor: pointer; transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; } .ds-korner-danger:hover:not(:disabled) { transform: translateY(-2px); } .ds-korner-danger:active:not(:disabled) { transform: translateY(1px); } .ds-korner-danger:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; } .ds-korner-danger:disabled { opacity: 0.55; cursor: not-allowed; transform: none; } @media (prefers-reduced-motion: reduce) { .ds-korner-danger, .ds-korner-danger:hover:not(:disabled), .ds-korner-danger:active:not(:disabled) { transition: none; transform: none; } }"
+    },
+    {
+      "name": "Settings field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Standard shared form sizing with Körner's flat fill and stronger outline.",
+      "html": "<label class=\"ds-korner-field-label\" for=\"ds-korner-duration\">Round length</label><input class=\"ds-korner-field\" id=\"ds-korner-duration\" type=\"number\" value=\"60\" />",
+      "css": ".ds-korner-field-label { display: block; margin-bottom: 0.45rem; color: var(--text-main); font: 700 0.8rem 'Syne', sans-serif; letter-spacing: 0.015em; } .ds-korner-field { min-height: 3rem; padding: 0.8rem 0.95rem; border: 2px solid var(--control-border); border-radius: 0.6rem; background: var(--surface-input); color: var(--text-main); caret-color: var(--text-accent); box-shadow: none; font: 0.98rem 'Syne', sans-serif; } .ds-korner-field:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Main panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Strongly outlined flat panel containing a compact heavy title.",
+      "html": "<section class=\"ds-korner-panel\"><h2>Round settings</h2><p>Choose a round and start practicing.</p></section>",
+      "css": ".ds-korner-panel { padding: clamp(1.15rem, 1vw + 0.95rem, 1.55rem); border: 2px solid var(--control-border); border-radius: 1rem; background: var(--surface-raised-strong); color: var(--text-main); box-shadow: none; } .ds-korner-panel h2 { margin-top: 0; font-family: 'Syne', sans-serif; font-size: clamp(1.3rem, 2vw, 1.55rem); font-weight: 800; letter-spacing: -0.025em; } .ds-korner-panel p { font-family: 'Newsreader', serif; line-height: 1.55; }"
+    },
+    {
+      "name": "Route navigation",
+      "kind": "nav",
+      "refersTo": "nav-active",
+      "description": "Transparent route group with a primary filled active link and inherited focus behavior.",
+      "html": "<nav class=\"ds-korner-nav\" aria-label=\"Primary navigation\"><a class=\"ds-korner-nav-link ds-korner-nav-active\" href=\"/\" aria-current=\"page\">Trainer</a><a class=\"ds-korner-nav-link\" href=\"/mixed\">Mixed</a></nav>",
+      "css": ".ds-korner-nav { display: flex; flex-wrap: nowrap; gap: 0.35rem; padding: 0.3rem; background: transparent; border: 0; box-shadow: none; } .ds-korner-nav-link { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0.72rem 1rem; border: 1px solid transparent; border-radius: 0.65rem; color: var(--text-subtle); font: 700 0.88rem 'Syne', sans-serif; letter-spacing: 0.03em; text-transform: uppercase; text-decoration: none; transition: transform 180ms cubic-bezier(0.2, 0, 0, 1), color 180ms cubic-bezier(0.2, 0, 0, 1), background-color 180ms cubic-bezier(0.2, 0, 0, 1); } .ds-korner-nav-link:hover, .ds-korner-nav-link:focus-visible { transform: translateY(-1px); background: var(--surface-raised-strong); border-color: var(--control-border); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-main) 10%, transparent); } .ds-korner-nav-link:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; } .ds-korner-nav-active, .ds-korner-nav-active:hover, .ds-korner-nav-active:focus-visible { color: var(--button-strong-text); background: var(--accent-main); border-color: var(--control-border); box-shadow: none; }"
+    },
+    {
+      "name": "Status badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Static status text retains its mono voice on a small outlined surface.",
+      "html": "<span class=\"ds-korner-badge\">Ready</span>",
+      "css": ".ds-korner-badge { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0.55rem 0.75rem; border: 1px solid var(--control-border); border-radius: 0.45rem; background: var(--surface-raised); color: var(--text-main); box-shadow: none; font: 0.67rem 'IBM Plex Mono', monospace; letter-spacing: 0.08em; }"
+    },
+    {
+      "name": "Café lettering and math marks",
+      "kind": "custom",
+      "description": "The native decorative layer from PageIntro. The companion raster scene is recorded in extensions.assets.",
+      "html": "<span class=\"ds-korner-lettering\" aria-hidden=\"true\">Make it count.</span><svg class=\"ds-korner-math\" viewBox=\"0 0 80 80\" fill=\"none\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M40 10v60M10 40h60\" stroke=\"currentColor\" stroke-width=\"11\" stroke-linecap=\"round\" /></svg><svg class=\"ds-korner-math ds-korner-math-second\" viewBox=\"0 0 80 80\" fill=\"none\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M14 29h52M14 51h52\" stroke=\"currentColor\" stroke-width=\"11\" stroke-linecap=\"round\" /></svg>",
+      "css": ".ds-korner-lettering { display: inline-block; margin-top: 1rem; color: var(--text-accent); font: italic 700 clamp(1.6rem, 3vw, 2.65rem)/1.05 'Newsreader', serif; letter-spacing: -0.025em; transform: rotate(-5deg); } .ds-korner-math { width: 2.5rem; height: 2.5rem; color: var(--text-accent); transform: rotate(-12deg); } .ds-korner-math-second { transform: rotate(12deg); } @media (max-width: 639px) { .ds-korner-lettering { font-size: 1.6rem; } .ds-korner-math { width: 1.25rem; height: 1.25rem; } }"
+    }
+  ],
+  "narrative": {
+    "overview": "Körner Club is a selectable interface variant inspired by KÖRNER food packaging: bold ink, generous paper space, softly curved lettering, and an original café illustration. Its scope is `.app-shell[data-interface-style='korner']`; Studio remains the default and Opaline Abacus remains a separate option.\n\nThis document records the implemented variant rather than a global product identity. The arithmetic interface stays task focused: idle trainer introductions carry the illustration, while active and finish states retain the existing focused trainer presentation.",
+    "keyCharacteristics": [
+      "Heavy uppercase Syne introductions paired with italic Newsreader lettering.",
+      "Flat surfaces, visible outlines, and moderately rounded controls.",
+      "Theme supplied semantic colors in both light and dark display modes.",
+      "Decorative raster artwork paired with crisp native math SVG."
+    ],
+    "rules": [
+      { "name": "The Theme Binding Rule", "body": "Keep color assignments attached to the existing semantic variables so theme and display mode changes remain independent of interface style.", "section": "colors" }
+    ],
+    "dos": [
+      "Do scope new Körner treatments to the `korner` interface and reuse the selected theme's semantic color variables.",
+      "Do preserve the readable mathematical DOM and the existing focused trainer presentation.",
+      "Do keep the original raster scene decorative and native math ornaments responsive to theme ink."
+    ],
+    "donts": [
+      "Don't assign a fixed palette to this interface or change Studio's default through this specification.",
+      "Don't show the decorative trainer intro during active or finish states where the current presentation hides it.",
+      "Don't convert functional arithmetic, control labels, or status feedback into raster artwork."
+    ]
+  }
+}

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CommandDesk from 'components/CommandDesk.js';
+import { INTERFACE_ARTWORK } from 'components/InterfaceArtwork.js';
 import IconLabel from 'components/IconLabel.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import CommandIcon from 'images/phosphor/command-bold.svg';
@@ -20,6 +21,7 @@ import {
 } from 'utils/hotkeys.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import { DEFAULT_DISPLAY_MODE } from 'utils/displayMode.js';
+import { DEFAULT_INTERFACE_STYLE, INTERFACE_STYLE_OPTIONS } from 'utils/interfaceStyle.js';
 import {
   DEFAULT_THEME_KEY,
   getThemeByKey,
@@ -30,8 +32,8 @@ import { useResolvedDisplayMode } from 'utils/useResolvedDisplayMode.js';
 export default function SiteLayout({ children }) {
   const router = useRouter();
   const { user, isConfigured, signOut } = useSupabaseAuth();
-  const { terminateActiveSession } = useActiveSession();
-  const { themeKey, displayMode, isLoadingPreferences, upsertPreferences } =
+  const { requestActiveSessionExit, hasActiveSession } = useActiveSession();
+  const { themeKey, displayMode, interfaceStyle, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [isUtilityDrawerOpen, setIsUtilityDrawerOpen] = useState(false);
   const utilityButtonRef = useRef(null);
@@ -289,21 +291,47 @@ export default function SiteLayout({ children }) {
   ];
 
   const handleSignOut = useCallback(async () => {
-    try {
-      await terminateActiveSession('sign-out');
-    } catch (error) {
-      console.error(
-        'Failed to persist the active session before sign out.',
-        error
-      );
-    }
+    closeUtilityDrawer();
+    if (!(await requestActiveSessionExit('sign-out'))) return;
 
     const { error } = await signOut();
     if (!error) {
       closeUtilityDrawer();
       await router.push('/login');
     }
-  }, [closeUtilityDrawer, router, signOut, terminateActiveSession]);
+  }, [closeUtilityDrawer, requestActiveSessionExit, router, signOut]);
+
+  const handleInternalLinkCapture = useCallback((event) => {
+    if (!hasActiveSession || event.defaultPrevented || event.button !== 0 ||
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = event.target.closest?.('a[href]');
+    if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+    const target = new URL(anchor.href, window.location.origin);
+    if (target.origin !== window.location.origin || target.pathname === router.pathname) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeUtilityDrawer();
+    void requestActiveSessionExit('navigation').then((confirmed) => {
+      if (confirmed) void router.push(target.pathname + target.search + target.hash);
+    });
+  }, [closeUtilityDrawer, hasActiveSession, requestActiveSessionExit, router]);
+
+  useEffect(() => {
+    if (!hasActiveSession) return undefined;
+    const currentTitle = router.pathname === '/mixed'
+      ? 'Mixed Trainer - Mental Math Studio' : 'Mental Math Studio';
+    router.beforePopState(({ as }) => {
+      const current = router.asPath;
+      window.history.pushState({ ...window.history.state, as: current, url: current }, '', current);
+      closeUtilityDrawer();
+      void requestActiveSessionExit('history').then((confirmed) => {
+        if (confirmed) void router.push(as);
+        else document.title = currentTitle;
+      });
+      return false;
+    });
+    return () => router.beforePopState(() => true);
+  }, [closeUtilityDrawer, hasActiveSession, requestActiveSessionExit, router]);
 
   const handleThemeChange = useCallback(
     (nextThemeKey) => upsertPreferences({ themeKey: nextThemeKey }),
@@ -315,11 +343,17 @@ export default function SiteLayout({ children }) {
     [upsertPreferences]
   );
 
+  const handleInterfaceStyleChange = useCallback(
+    (nextInterfaceStyle) => upsertPreferences({ interfaceStyle: nextInterfaceStyle }),
+    [upsertPreferences]
+  );
+
   const handleResetAppearance = useCallback(
     () =>
       upsertPreferences({
         themeKey: DEFAULT_THEME_KEY,
-        displayMode: DEFAULT_DISPLAY_MODE
+        displayMode: DEFAULT_DISPLAY_MODE,
+        interfaceStyle: DEFAULT_INTERFACE_STYLE
       }),
     [upsertPreferences]
   );
@@ -388,12 +422,14 @@ export default function SiteLayout({ children }) {
 
       event.preventDefault();
       closeUtilityDrawer();
-      void router.push(nextRoute);
+      void requestActiveSessionExit('shortcut').then((confirmed) => {
+        if (confirmed) void router.push(nextRoute);
+      });
     };
 
     window.addEventListener('keydown', handleGlobalShortcut);
     return () => window.removeEventListener('keydown', handleGlobalShortcut);
-  }, [closeUtilityDrawer, cycleTheme, handleSignOut, router, user]);
+  }, [closeUtilityDrawer, cycleTheme, handleSignOut, requestActiveSessionExit, router, user]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -430,8 +466,12 @@ export default function SiteLayout({ children }) {
   return (
     <div
       className='app-shell'
+      onClickCapture={handleInternalLinkCapture}
       data-theme-key={activeTheme.key}
       data-display-mode={displayMode}
+      data-interface-style={interfaceStyle}
+      data-interface-collection={Boolean(INTERFACE_ARTWORK[interfaceStyle]) || undefined}
+      data-session-active={hasActiveSession || undefined}
       data-resolved-mode={resolvedDisplayMode}
       style={themeStyle}
     >
@@ -449,8 +489,29 @@ export default function SiteLayout({ children }) {
       <header className='site-header'>
         <div className='site-header-inner'>
           <Link href='/' className='brand' aria-label='Mental Math home'>
-            <span className='brand-chip'>Studio</span>
-            <span className='brand-title'>Mental Math</span>
+            {INTERFACE_ARTWORK[interfaceStyle] ? (
+              <>
+                <svg className='collection-brand-symbol' viewBox='0 0 40 40' aria-hidden='true' focusable='false'>
+                  <path d='M7 5h8v10h10V5h8v30h-8V23H15v12H7z' fill='currentColor' />
+                  <path d='M3 19h34v3H3z' fill='var(--header-surface)' />
+                </svg>
+                <span className='brand-title'>Mental Math
+                  <span className='collection-brand-edition'>{INTERFACE_STYLE_OPTIONS.find((option) => option.value === interfaceStyle)?.label}</span>
+                </span>
+              </>
+            ) : interfaceStyle === 'kira' ? (
+              <>
+                <svg className='kira-brand-icon' viewBox='0 0 100 100' aria-hidden='true' focusable='false'>
+                  <use href='/images/kira-math-pattern.svg#flashcards' />
+                </svg>
+                <span className='brand-title kira-brand-title'>Mental<span>Math</span></span>
+              </>
+            ) : (
+              <>
+                <span className='brand-chip'>Studio</span>
+                <span className='brand-title'>Mental Math</span>
+              </>
+            )}
           </Link>
 
           <nav className='site-nav' aria-label='Primary'>
@@ -465,6 +526,7 @@ export default function SiteLayout({ children }) {
                     isActive ? 'is-active' : ''
                   }`.trim()}
                   aria-keyshortcuts={link.hotkey}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <IconLabel icon={link.icon} className='icon-label-nav'>
                     {link.label}
@@ -476,7 +538,7 @@ export default function SiteLayout({ children }) {
 
           <div className={`site-actions${user ? ' has-user-session' : ''}`}>
             {!isConfigured && (
-              <span className='status-badge'>Sync offline</span>
+              <span className='status-badge'>Guest mode</span>
             )}
             {user ? (
               <div className='site-session'>
@@ -546,10 +608,12 @@ export default function SiteLayout({ children }) {
             activeTheme={activeTheme}
             closeButtonRef={utilityCloseButtonRef}
             displayMode={displayMode}
+            interfaceStyle={interfaceStyle}
             drawerRef={utilityDrawerRef}
             isLoadingPreferences={isLoadingPreferences}
             onClose={closeUtilityDrawer}
             onDisplayModeChange={handleDisplayModeChange}
+            onInterfaceStyleChange={handleInterfaceStyleChange}
             onResetAppearance={handleResetAppearance}
             onThemeChange={handleThemeChange}
           />

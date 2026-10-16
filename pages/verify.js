@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
+import PageIntro from 'components/PageIntro.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 const REDIRECT_DELAY_MS = 2000;
@@ -35,35 +36,7 @@ export default function VerifyPage() {
       </Head>
 
       <div className='verify-shell'>
-        <section className='hero-panel hero-panel-compact verify-hero appear-up'>
-          <div className='hero-layout'>
-            <div className='hero-copy'>
-              <p className='hero-tag'>Account Access</p>
-              <h1>
-                {isLoading
-                  ? 'Checking your link'
-                  : user
-                  ? 'Email confirmed'
-                  : 'Confirm your email'}
-              </h1>
-              <p>
-                {isLoading
-                  ? 'We are finishing the sign-in step from your verification email.'
-                  : user
-                  ? 'Your account is ready. We signed you in and will move you into the trainer in a moment.'
-                  : 'Open the confirmation link from your inbox. When it lands here, the site will sign you in automatically.'}
-              </p>
-            </div>
-            <div className='hero-sidebar'>
-              <p className='hero-sidebar-label'>Verification flow</p>
-              <ul className='hero-checklist'>
-                <li>Open the email link and land here.</li>
-                <li>Let the session restore automatically.</li>
-                <li>Jump straight into the trainer or progress desk.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <PageIntro title={isLoading ? 'Checking your link' : user ? 'Email confirmed' : 'Confirm your email'} />
 
         <section className='panel paper-panel auth-panel verify-panel appear-up'>
           <p className='panel-kicker'>Current status</p>

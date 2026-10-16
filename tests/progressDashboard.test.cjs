@@ -4,6 +4,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 let buildOperationBreakdown;
+let buildGuestProgressDashboard;
 let buildProgressOverview;
 let buildRecentAttempts;
 let buildRecentSessions;
@@ -22,6 +23,7 @@ test.before(async () => {
 
   ({
     buildOperationBreakdown,
+    buildGuestProgressDashboard,
     buildProgressOverview,
     buildRecentAttempts,
     buildRecentSessions,
@@ -33,6 +35,30 @@ test.before(async () => {
     normalizeProgressDashboardPayload,
     RECENT_PROGRESS_WINDOW_DAYS
   } = progressDashboard);
+});
+
+test('guest dashboard retains exact answer text, original time, and ended state', () => {
+  const history = {
+    sessions: [{ id: 'device-session', state: 'ended', kind: 'trainer' }],
+    attempts: [{
+      key: 'device-session:1', sessionId: 'device-session', questionIndex: 1,
+      createdAt: '2026-09-23T03:00:00.000Z',
+      row: {
+        operation: 'EXPONENTIATION', practice_mode: 'POSITIVE',
+        digits_left: 3, digits_right: 1, left_decimal_digits: 0,
+        right_decimal_digits: 0, left_operand: '200', right_operand: '5',
+        correct_answer: '320000000000', submitted_answer: '320000000000',
+        is_correct: true, response_ms: 900,
+        session_id: 'device-session', question_index: 1
+      }
+    }]
+  };
+  const dashboard = buildGuestProgressDashboard(history);
+  assert.equal(dashboard.overview.totalAttempts, 1);
+  assert.equal(dashboard.recentAttempts[0].submittedAnswerText, '320000000000');
+  assert.equal(dashboard.recentAttempts[0].createdAt, '2026-09-23T03:00:00.000Z');
+  assert.equal(dashboard.recentSessions[0].state, 'ended');
+  assert.equal(dashboard.recentSessions[0].modeLabel, 'Exponentiation');
 });
 
 test('mergeProgressEntries combines manual and ai data with source tags', () => {

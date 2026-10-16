@@ -2,7 +2,9 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HotkeyHint from 'components/HotkeyHint.js';
+import EndRoundDialog from 'components/EndRoundDialog.js';
 import IconLabel from 'components/IconLabel.js';
+import PageIntro from 'components/PageIntro.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import Keypad from 'components/mixed/Keypad.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
@@ -43,6 +45,7 @@ import {
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
+import { finishGuestSession, recordGuestAttempt, startGuestSession, touchGuestSession } from 'utils/progressStorage.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel(ROUND_CONTROL_HOTKEY);
@@ -72,13 +75,16 @@ function getPathnameFromUrl(url) {
   }
 }
 
-function createRoundSummary(attempts, userId, wasTerminated) {
+function createRoundSummary(attempts, settings, userId, wasTerminated, sessionId) {
   return {
     ...computeRoundStats(attempts),
     attempts,
+    settings,
+    sessionId,
+    ownerId: userId || null,
     finishedAt: new Date().toISOString(),
     wasTerminated,
-    saveState: userId ? 'saving' : 'idle',
+    saveState: 'saving',
     saveError: ''
   };
 }
@@ -94,6 +100,12 @@ function getSaveStatusMessage(lastRound) {
     return lastRound.wasTerminated
       ? 'Session ended early and progress was saved to your history.'
       : 'Round saved to your progress history.';
+  }
+
+  if (lastRound.saveState === 'device-saved') {
+    return lastRound.wasTerminated
+      ? 'Ended early. Submitted answers were saved on this device.'
+      : 'Round saved on this device.';
   }
 
   if (lastRound.saveState === 'idle') {
@@ -132,12 +144,14 @@ const SUBMISSION_FEEDBACK_MS = 400;
 
 function MixedTrainerContent() {
   const router = useRouter();
-  const { client, session, user, isConfigured } = useSupabaseAuth();
-  const { registerActiveSessionTerminator } = useActiveSession();
+  const { client, session, user } = useSupabaseAuth();
+  const { registerActiveSessionTerminator, registerActiveSessionExitHandler, requestActiveSessionExit } = useActiveSession();
   const { mixedSettings: settings, isLoadingMixedSettings, upsertMixedSettings } =
     useMixedTrainer();
 
   const [activeRound, setActiveRound] = useState(null);
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const [isEndingRound, setIsEndingRound] = useState(false);
   const [answerInput, setAnswerInput] = useState('');
   const [submissionFeedbackState, setSubmissionFeedbackState] = useState(
     MIXED_SUBMISSION_FEEDBACK_STATES.IDLE
@@ -148,12 +162,20 @@ function MixedTrainerContent() {
   const answerInputRef = useRef(null);
   const hiddenInputRef = useRef(null);
   const flashTimeoutRef = useRef(null);
+  const feedbackDueAtRef = useRef(0);
+  const feedbackRemainingRef = useRef(0);
+  const advanceFeedbackRef = useRef(null);
+  const exitPromiseRef = useRef(null);
+  const resolveExitRef = useRef(null);
+  const dialogStartedAtRef = useRef(0);
   const pendingAdvanceRef = useRef(null);
   const activeRoundRef = useRef(activeRound);
   const clientRef = useRef(client);
   const accessTokenRef = useRef(session?.access_token ?? null);
   const isMountedRef = useRef(false);
   const terminationPromiseRef = useRef(null);
+  const guestCheckpointRef = useRef(Promise.resolve());
+  const guestSaveErrorRef = useRef(null);
   const terminateSessionRef = useRef(async () => ({ handled: false }));
   const userId = user?.id ?? null;
   const previousUserIdRef = useRef(userId);
@@ -189,6 +211,12 @@ function MixedTrainerContent() {
   useEffect(() => {
     activeRoundRef.current = activeRound;
   }, [activeRound]);
+
+  useEffect(() => {
+    if (!activeRound?.sessionId || userId) return undefined;
+    const interval = window.setInterval(() => { void touchGuestSession(activeRound.sessionId).catch(() => {}); }, 20000);
+    return () => window.clearInterval(interval);
+  }, [activeRound?.sessionId, userId]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -245,23 +273,23 @@ function MixedTrainerContent() {
   const isSubmissionFeedbackActive =
     submissionFeedbackState !== MIXED_SUBMISSION_FEEDBACK_STATES.IDLE;
 
-  const markSummarySaved = useCallback(() => {
+  const markSummarySaved = useCallback((sessionId) => {
     if (!isMountedRef.current) {
       return;
     }
 
     setLastRound((summary) =>
-      summary ? { ...summary, saveState: 'saved', saveError: '' } : summary
+      summary?.sessionId === sessionId ? { ...summary, saveState: 'saved', saveError: '' } : summary
     );
   }, []);
 
-  const markSummaryError = useCallback((error, fallbackMessage) => {
+  const markSummaryError = useCallback((sessionId, error, fallbackMessage) => {
     if (!isMountedRef.current) {
       return;
     }
 
     setLastRound((summary) =>
-      summary
+      summary?.sessionId === sessionId
         ? {
             ...summary,
             saveState: 'error',
@@ -286,25 +314,42 @@ function MixedTrainerContent() {
     async (attempts, { wasTerminated, keepalive = false }) => {
       handledQuestionIdRef.current = null;
       pendingAdvanceRef.current = null;
+      const finishingRound = activeRoundRef.current;
+      const finishingSessionId = finishingRound?.sessionId;
+      activeRoundRef.current = null;
       setActiveRound(null);
       setAnswerInput('');
       setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
 
-      const summary = createRoundSummary(attempts, userId, wasTerminated);
+      const summary = createRoundSummary(attempts, finishingRound?.settings, userId, wasTerminated, finishingSessionId);
       if (isMountedRef.current) {
         setLastRound(summary);
       }
 
       if (!userId || !clientRef.current) {
-        return { saved: false, error: null };
+        try {
+          await guestCheckpointRef.current;
+          if (guestSaveErrorRef.current) throw guestSaveErrorRef.current;
+          if (finishingSessionId) {
+            await finishGuestSession(finishingSessionId, wasTerminated ? 'ended' : 'completed');
+          }
+          if (isMountedRef.current) {
+            setLastRound((current) => current?.sessionId === finishingSessionId ? { ...current, saveState: 'device-saved' } : current);
+          }
+          return { saved: true, error: null };
+        } catch (error) {
+          markSummaryError(finishingSessionId, error, 'History could not be saved on this device.');
+          return { saved: false, error };
+        }
       }
 
       try {
         await persistQueuedProgress({ keepalive });
-        markSummarySaved();
+        markSummarySaved(finishingSessionId);
         return { saved: true, error: null };
       } catch (error) {
         markSummaryError(
+          finishingSessionId,
           error,
           wasTerminated ? 'Unable to save this ended session.' : 'Unable to save this round.'
         );
@@ -351,10 +396,19 @@ function MixedTrainerContent() {
         if (!attempts.length) {
           handledQuestionIdRef.current = null;
           pendingAdvanceRef.current = null;
+          activeRoundRef.current = null;
           if (isMountedRef.current) {
             setActiveRound(null);
             setAnswerInput('');
             setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
+          }
+          if (!userId) {
+            try {
+              await guestCheckpointRef.current;
+              await finishGuestSession(roundSnapshot.sessionId, 'ended');
+            } catch (_error) {
+              // No submitted answers need saving.
+            }
           }
           return { handled: true, saved: false };
         }
@@ -378,7 +432,7 @@ function MixedTrainerContent() {
       terminationPromiseRef.current = promise;
       return promise;
     },
-    [finalizeRound, getTerminationAttempts]
+    [finalizeRound, getTerminationAttempts, userId]
   );
 
   useEffect(() => {
@@ -390,6 +444,58 @@ function MixedTrainerContent() {
       registerActiveSessionTerminator((reason) => terminateSessionRef.current(reason)),
     [registerActiveSessionTerminator]
   );
+
+  const requestRoundExit = useCallback(() => {
+    if (!activeRoundRef.current) return Promise.resolve(true);
+    if (exitPromiseRef.current) return exitPromiseRef.current;
+    dialogStartedAtRef.current = Date.now();
+    if (flashTimeoutRef.current) {
+      feedbackRemainingRef.current = Math.max(0, feedbackDueAtRef.current - Date.now());
+      clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = null;
+    }
+    exitPromiseRef.current = new Promise((resolve) => { resolveExitRef.current = resolve; });
+    setEndDialogOpen(true);
+    return exitPromiseRef.current;
+  }, []);
+
+  useEffect(() => {
+    if (!activeRound) return undefined;
+    return registerActiveSessionExitHandler(requestRoundExit);
+  }, [activeRound, registerActiveSessionExitHandler, requestRoundExit]);
+
+  const closeEndDialog = useCallback((confirmed) => {
+    if (!confirmed && activeRoundRef.current) {
+      const pausedMs = Date.now() - dialogStartedAtRef.current;
+      const nextRound = {
+        ...activeRoundRef.current,
+        questionStartedAt: activeRoundRef.current.questionStartedAt + pausedMs
+      };
+      activeRoundRef.current = nextRound;
+      setActiveRound(nextRound);
+      if (pendingAdvanceRef.current) {
+        const pending = pendingAdvanceRef.current;
+        feedbackDueAtRef.current = Date.now() + feedbackRemainingRef.current;
+        flashTimeoutRef.current = setTimeout(() => {
+          flashTimeoutRef.current = null;
+          void advanceFeedbackRef.current?.(pending);
+        }, feedbackRemainingRef.current);
+      }
+      queueMicrotask(() => (isDesktopMixedInput ? answerInputRef.current : hiddenInputRef.current)?.focus());
+    }
+    setEndDialogOpen(false);
+    setIsEndingRound(false);
+    resolveExitRef.current?.(confirmed);
+    resolveExitRef.current = null;
+    exitPromiseRef.current = null;
+  }, [isDesktopMixedInput]);
+
+  const confirmEndRound = useCallback(async () => {
+    if (isEndingRound) return;
+    setIsEndingRound(true);
+    const result = await terminateActiveRound('confirmed-end');
+    closeEndDialog(!result.error);
+  }, [closeEndDialog, isEndingRound, terminateActiveRound]);
 
   const beginRound = useCallback(() => {
     if (isLoadingMixedSettings || !canStart) {
@@ -406,15 +512,27 @@ function MixedTrainerContent() {
     const questionStartedAt = Date.now();
     const sessionId = createSessionId();
 
+    if (!userId) {
+      guestSaveErrorRef.current = null;
+      guestCheckpointRef.current = startGuestSession({
+        id: sessionId,
+        kind: 'mixed',
+        settings: sanitized,
+        requestedCount: sanitized.roundSize
+      }).catch((error) => {
+        guestSaveErrorRef.current = error;
+      });
+    }
+
     void upsertMixedSettings(sanitized);
     setLastRound(null);
     setAnswerInput('');
     setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
     handledQuestionIdRef.current = null;
-    setActiveRound(
-      createMixedActiveRound(sanitized, firstProblem, questionStartedAt, sessionId)
-    );
-  }, [canStart, isLoadingMixedSettings, settings, upsertMixedSettings]);
+    const nextRound = createMixedActiveRound(sanitized, firstProblem, questionStartedAt, sessionId);
+    activeRoundRef.current = nextRound;
+    setActiveRound(nextRound);
+  }, [canStart, isLoadingMixedSettings, settings, upsertMixedSettings, userId]);
 
   const startRound = useCallback(
     (event) => {
@@ -432,6 +550,36 @@ function MixedTrainerContent() {
     setLastRound(null);
     beginRound();
   }, [beginRound]);
+
+  const retryRoundSave = useCallback(async () => {
+    const summary = lastRound;
+    if (!summary?.sessionId || summary.saveState !== 'error') return;
+    if (summary.ownerId && summary.ownerId !== userId) return;
+    setLastRound((current) => current?.sessionId === summary.sessionId
+      ? { ...current, saveState: 'saving', saveError: '' } : current);
+    try {
+      if (summary.ownerId) {
+        await persistQueuedProgress();
+        markSummarySaved(summary.sessionId);
+      } else {
+        await startGuestSession({
+          id: summary.sessionId, kind: 'mixed', settings: summary.settings,
+          requestedCount: summary.settings.roundSize
+        });
+        for (let index = 0; index < summary.attempts.length; index += 1) {
+          const row = buildMixedProgressLogRow(summary.attempts[index], null,
+            summary.sessionId, index + 1);
+          await recordGuestAttempt(summary.sessionId, index + 1, row);
+        }
+        await finishGuestSession(summary.sessionId, summary.wasTerminated ? 'ended' : 'completed');
+        guestSaveErrorRef.current = null;
+        setLastRound((current) => current?.sessionId === summary.sessionId
+          ? { ...current, saveState: 'device-saved', saveError: '' } : current);
+      }
+    } catch (error) {
+      markSummaryError(summary.sessionId, error, 'Could not save this round.');
+    }
+  }, [lastRound, markSummaryError, markSummarySaved, persistQueuedProgress, userId]);
 
   const handlePrimaryRoundAction = useCallback(() => {
     if (lastRound) {
@@ -484,10 +632,16 @@ function MixedTrainerContent() {
     };
 
     window.addEventListener('pagehide', handlePageHide);
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
     router.events.on('routeChangeStart', handleRouteChangeStart);
 
     return () => {
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       router.events.off('routeChangeStart', handleRouteChangeStart);
     };
   }, [activeRound, router.events, router.pathname, terminateActiveRound]);
@@ -505,18 +659,22 @@ function MixedTrainerContent() {
 
       setAnswerInput('');
       setSubmissionFeedbackState(MIXED_SUBMISSION_FEEDBACK_STATES.IDLE);
-      setActiveRound({
+      const nextRound = {
         ...nextActiveRound,
         questionStartedAt: Date.now()
-      });
+      };
+      activeRoundRef.current = nextRound;
+      setActiveRound(nextRound);
     },
     [finalizeRound]
   );
 
+  useEffect(() => { advanceFeedbackRef.current = advanceAfterSubmissionFeedback; }, [advanceAfterSubmissionFeedback]);
+
   const submitAnswer = useCallback(
     (submittedAnswer, submittedAt = Date.now()) => {
       const roundSnapshot = activeRoundRef.current;
-      if (!roundSnapshot || isSubmissionFeedbackActive) {
+      if (!roundSnapshot || isSubmissionFeedbackActive || endDialogOpen) {
         return;
       }
 
@@ -542,6 +700,18 @@ function MixedTrainerContent() {
             submission.attempts.length
           )
         );
+      } else {
+        const row = buildMixedProgressLogRow(
+          submission.attempt,
+          null,
+          roundSnapshot.sessionId,
+          submission.attempts.length
+        );
+        guestCheckpointRef.current = guestCheckpointRef.current.then(() =>
+          recordGuestAttempt(roundSnapshot.sessionId, submission.attempts.length, row)
+        ).catch((error) => {
+          guestSaveErrorRef.current = error;
+        });
       }
 
       pendingAdvanceRef.current = submission;
@@ -559,8 +729,9 @@ function MixedTrainerContent() {
         flashTimeoutRef.current = null;
         void advanceAfterSubmissionFeedback(submission);
       }, SUBMISSION_FEEDBACK_MS);
+      feedbackDueAtRef.current = Date.now() + SUBMISSION_FEEDBACK_MS;
     },
-    [advanceAfterSubmissionFeedback, isSubmissionFeedbackActive, progressBuffer, userId]
+    [advanceAfterSubmissionFeedback, endDialogOpen, isSubmissionFeedbackActive, progressBuffer, userId]
   );
 
   const submitCurrentInput = useCallback(() => {
@@ -705,33 +876,9 @@ function MixedTrainerContent() {
 
       <div className={`trainer-page-shell mixed-page-shell${activeRound ? ' is-round-active' : ''}`}>
         {shouldShowHeroPanel && (
-          <section className='hero-panel hero-panel-command appear-up'>
-            <div className='hero-layout'>
-              <div className='hero-copy'>
-                <p className='hero-tag'>Discipline Through Numbers</p>
-                <h1>Mixed Trainer</h1>
-                <p>
-                  Drill across multiple operations in a single run. Configure difficulty
-                  per operation, set your target count, and go.
-                </p>
-              </div>
-              <div className='hero-sidebar'>
-                <p className='hero-sidebar-label'>How this stays sharp</p>
-                <ul className='hero-checklist'>
-                  <li>Pick only the operations you want to rehearse.</li>
-                  <li>Keep each difficulty level deliberate.</li>
-                  <li>Keep the solve surface clean and responsive on every screen.</li>
-                </ul>
-              </div>
-            </div>
-            {!isConfigured && (
-              <p className='inline-warning'>
-                Account features are not configured yet, so saved progress is currently
-                unavailable.
-              </p>
-            )}
-          </section>
+          <PageIntro title='Mixed Trainer' description='Choose operations and start a round.' />
         )}
+        {!shouldShowHeroPanel && <h1 className='visually-hidden'>Mixed round</h1>}
 
         {shouldShowMixedConfig && (
           <section className='mixed-config-layout appear-up'>
@@ -746,10 +893,17 @@ function MixedTrainerContent() {
                   </h2>
                 </div>
               </div>
-              <p className='panel-copy'>
-                Turn mixed mode into a deliberate control panel instead of a random drill.
-              </p>
               <form className='settings-form mixed-settings-form' onSubmit={startRound}>
+                <button
+                  type='submit'
+                  className='button button-strong button-full setup-start-action'
+                  aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
+                  disabled={isLoadingMixedSettings || !canStart}
+                >
+                  <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                    {isLoadingMixedSettings ? 'Loading...' : !canStart ? 'Enable at least one operation' : 'Start Mixed Training'}
+                  </IconLabel>
+                </button>
                 {MIXED_OPERATIONS.map((op) => {
                   const meta = MIXED_OPERATION_META[op];
                   const settingKey = OPERATION_SETTING_KEYS[op];
@@ -821,23 +975,6 @@ function MixedTrainerContent() {
                   </div>
                 </div>
 
-                <button
-                  type='submit'
-                  className='button button-strong button-full'
-                  aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
-                  disabled={isLoadingMixedSettings || !canStart}
-                >
-                  <span className='button-hotkey-label'>
-                    <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
-                      {isLoadingMixedSettings
-                        ? 'Loading...'
-                        : !canStart
-                          ? 'Enable at least one operation'
-                          : 'Start Mixed Training'}
-                    </IconLabel>
-                    <HotkeyHint label={PRIMARY_ACTION_HOTKEY} />
-                  </span>
-                </button>
               </form>
             </article>
           </section>
@@ -848,29 +985,37 @@ function MixedTrainerContent() {
             <article className='panel chalk-panel mixed-solving-panel mixed-solving-stage'>
               <div className='mixed-solving-head'>
                 <div>
-                  <p className='panel-kicker'>Focused Run</p>
                   <h2>
                     <IconLabel icon={SquaresFourIcon} className='icon-label-heading'>
-                      Live Stack
+                      Mixed round
                     </IconLabel>
                   </h2>
                 </div>
+                <button type='button' className='button button-danger button-inline mixed-end-action'
+                  onClick={() => void requestActiveSessionExit('end-round')}>
+                  End round
+                </button>
                 <QuestionTimer
                   startedAt={activeRound.questionStartedAt}
                   hidden={activeRound.settings.hideTimer}
-                  frozen={isSubmissionFeedbackActive}
+                  frozen={isSubmissionFeedbackActive || endDialogOpen}
                 />
               </div>
-              <ProgressBar
-                current={activeRound.attempts.length}
-                total={activeRound.settings.roundSize}
-              />
-              <StackedProblem
-                problem={activeRound.currentProblem}
-                answerDisplay={answerInput}
-                feedbackState={submissionFeedbackState}
-                showAnswerDisplay={!isDesktopMixedInput}
-              />
+              <div className='mixed-progress-region'>
+                <ProgressBar
+                  current={activeRound.attempts.length}
+                  total={activeRound.settings.roundSize}
+                />
+              </div>
+              <div className='mixed-problem-region'>
+                <StackedProblem
+                  problem={activeRound.currentProblem}
+                  answerDisplay={answerInput}
+                  feedbackState={submissionFeedbackState}
+                  showAnswerDisplay={!isDesktopMixedInput}
+                />
+              </div>
+              <div className='mixed-input-region'>
               {isDesktopMixedInput ? (
                 <form className='answer-form answer-form-inline mixed-answer-form' onSubmit={handleAnswerSubmit}>
                   <label htmlFor='mixedAnswerInput'>Your answer</label>
@@ -891,7 +1036,7 @@ function MixedTrainerContent() {
                   <button
                     type='submit'
                     className='button button-strong button-full'
-                    disabled={isSubmissionFeedbackActive}
+                    disabled={isSubmissionFeedbackActive || endDialogOpen}
                   >
                     Submit answer
                   </button>
@@ -916,10 +1061,11 @@ function MixedTrainerContent() {
                     onDelete={handleDelete}
                     onSubmit={submitCurrentInput}
                     onPointerAction={restoreHiddenInputFocus}
-                    disabled={isSubmissionFeedbackActive}
+                    disabled={isSubmissionFeedbackActive || endDialogOpen}
                   />
                 </>
               )}
+              </div>
             </article>
           </section>
         )}
@@ -932,6 +1078,8 @@ function MixedTrainerContent() {
               badgeClassName='mode-pill-manual'
               round={lastRound}
               saveStatus={getSaveStatusMessage(lastRound)}
+              retryAction={lastRound?.saveState === 'error' && lastRound?.sessionId
+                ? { label: 'Retry save', onClick: () => void retryRoundSave() } : null}
               primaryAction={{ label: 'Start Again', onClick: handleStartAgain }}
               secondaryAction={{
                 label: 'Change round setup',
@@ -940,6 +1088,11 @@ function MixedTrainerContent() {
               className='summary-panel-centered'
             />
           </section>
+        )}
+        {endDialogOpen && (
+          <EndRoundDialog count={pendingAdvanceRef.current?.attempts.length || activeRound?.attempts.length || 0}
+            isEnding={isEndingRound} onCancel={() => closeEndDialog(false)}
+            onConfirm={() => void confirmEndRound()} />
         )}
       </div>
     </>

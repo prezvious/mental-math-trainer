@@ -450,6 +450,7 @@ export function buildMixedProgressLogRow(attempt, userId, sessionId, questionInd
     correct_answer: attempt.correctAnswer.toString(),
     submitted_answer: attempt.submittedAnswer.toString(),
     is_correct: attempt.isCorrect,
-    response_ms: attempt.responseMs
+    response_ms: attempt.responseMs,
+    ...(attempt.createdAt ? { created_at: attempt.createdAt } : {})
   };
 }

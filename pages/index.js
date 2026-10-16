@@ -2,7 +2,9 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HotkeyHint from 'components/HotkeyHint.js';
+import EndRoundDialog from 'components/EndRoundDialog.js';
 import IconLabel from 'components/IconLabel.js';
+import PageIntro from 'components/PageIntro.js';
 import RoundSummaryPanel from 'components/RoundSummaryPanel.js';
 import ProgressBar from 'components/mixed/ProgressBar.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
@@ -51,6 +53,7 @@ import {
   isShortcutEventEligible
 } from 'utils/hotkeys.js';
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
+import { finishGuestSession, recordGuestAttempt, startGuestSession, touchGuestSession } from 'utils/progressStorage.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
   TRAINER_COMPLETION_STATES,
@@ -107,6 +110,8 @@ function createRoundSummary(
     ...computeRoundStats(attempts),
     attempts,
     settings,
+    sessionId: meta.sessionId || null,
+    ownerId: userId || null,
     sourceMode,
     completionState:
       meta.completionState || TRAINER_COMPLETION_STATES.COMPLETED,
@@ -114,7 +119,7 @@ function createRoundSummary(
     blueprintLabel: meta.blueprintLabel || '',
     finishedAt: new Date().toISOString(),
     wasTerminated,
-    saveState: userId ? 'saving' : 'idle',
+    saveState: 'saving',
     saveError: ''
   };
 }
@@ -130,6 +135,12 @@ function getSaveStatusMessage(lastRound) {
     return lastRound.wasTerminated
       ? 'Session ended early and progress was saved to your history.'
       : 'Round saved to your progress history.';
+  }
+
+  if (lastRound.saveState === 'device-saved') {
+    return lastRound.wasTerminated
+      ? 'Ended early. Submitted answers were saved on this device.'
+      : 'Round saved on this device.';
   }
 
   if (lastRound.saveState === 'idle') {
@@ -157,11 +168,13 @@ const PRIMARY_ACTION_HOTKEY = formatHotkeyLabel(ROUND_CONTROL_HOTKEY);
 
 export default function TrainerPage() {
   const router = useRouter();
-  const { client, session, user, isConfigured, isAdmin } = useSupabaseAuth();
-  const { registerActiveSessionTerminator } = useActiveSession();
+  const { client, session, user, isAdmin } = useSupabaseAuth();
+  const { registerActiveSessionTerminator, registerActiveSessionExitHandler, requestActiveSessionExit } = useActiveSession();
   const { trainerSettings: settings, isLoadingPreferences, upsertPreferences } =
     useAccountPreferences();
   const [activeRound, setActiveRound] = useState(null);
+  const [endDialogOpen, setEndDialogOpen] = useState(false);
+  const [isEndingRound, setIsEndingRound] = useState(false);
   const [answerInput, setAnswerInput] = useState('');
   const [lastRound, setLastRound] = useState(null);
   const [roundSizeDraft, setRoundSizeDraft] = useState(() => String(settings.roundSize));
@@ -182,6 +195,11 @@ export default function TrainerPage() {
   const accessTokenRef = useRef(session?.access_token ?? null);
   const isMountedRef = useRef(false);
   const terminationPromiseRef = useRef(null);
+  const guestCheckpointRef = useRef(Promise.resolve());
+  const guestSaveErrorRef = useRef(null);
+  const exitPromiseRef = useRef(null);
+  const resolveExitRef = useRef(null);
+  const dialogStartedAtRef = useRef(0);
   const terminateSessionRef = useRef(async () => ({ handled: false }));
   const aiSolveLockRef = useRef(false);
   const aiAutoCycleEnabledRef = useRef(aiAutoCycleEnabled);
@@ -231,6 +249,12 @@ export default function TrainerPage() {
   useEffect(() => {
     activeRoundRef.current = activeRound;
   }, [activeRound]);
+
+  useEffect(() => {
+    if (!activeRound?.sessionId || userId || activeRound.sourceMode !== TRAINER_INPUT_MODES.MANUAL) return undefined;
+    const interval = window.setInterval(() => { void touchGuestSession(activeRound.sessionId).catch(() => {}); }, 20000);
+    return () => window.clearInterval(interval);
+  }, [activeRound?.sessionId, activeRound?.sourceMode, userId]);
 
   useEffect(() => {
     aiAutoCycleEnabledRef.current = aiAutoCycleEnabled;
@@ -304,23 +328,23 @@ export default function TrainerPage() {
   );
   const practiceModeOptions = useMemo(() => getPracticeModeOptions(), []);
 
-  const markSummarySaved = useCallback(() => {
+  const markSummarySaved = useCallback((sessionId) => {
     if (!isMountedRef.current) {
       return;
     }
 
     setLastRound((summary) =>
-      summary ? { ...summary, saveState: 'saved', saveError: '' } : summary
+      summary?.sessionId === sessionId ? { ...summary, saveState: 'saved', saveError: '' } : summary
     );
   }, []);
 
-  const markSummaryError = useCallback((error, fallbackMessage) => {
+  const markSummaryError = useCallback((sessionId, error, fallbackMessage) => {
     if (!isMountedRef.current) {
       return;
     }
 
     setLastRound((summary) =>
-      summary
+      summary?.sessionId === sessionId
         ? {
             ...summary,
             saveState: 'error',
@@ -365,6 +389,8 @@ export default function TrainerPage() {
       }
     ) => {
       handledQuestionIdRef.current = null;
+      const finishingSessionId = activeRoundRef.current?.sessionId;
+      activeRoundRef.current = null;
       setActiveRound(null);
       setAnswerInput('');
 
@@ -375,6 +401,7 @@ export default function TrainerPage() {
         wasTerminated,
         sourceMode,
         {
+          sessionId: finishingSessionId,
           aiAutoCycle,
           blueprintLabel
         }
@@ -384,7 +411,20 @@ export default function TrainerPage() {
       }
 
       if (!userId || !clientRef.current) {
-        return { saved: false, error: null };
+        try {
+          await guestCheckpointRef.current;
+          if (guestSaveErrorRef.current) throw guestSaveErrorRef.current;
+          if (finishingSessionId) {
+            await finishGuestSession(finishingSessionId, wasTerminated ? 'ended' : 'completed');
+          }
+          if (isMountedRef.current) {
+            setLastRound((current) => current?.sessionId === finishingSessionId ? { ...current, saveState: 'device-saved' } : current);
+          }
+          return { saved: true, error: null };
+        } catch (error) {
+          markSummaryError(finishingSessionId, error, 'History could not be saved on this device.');
+          return { saved: false, error };
+        }
       }
 
       try {
@@ -393,10 +433,11 @@ export default function TrainerPage() {
         } else {
           await persistQueuedProgress({ keepalive });
         }
-        markSummarySaved();
+        markSummarySaved(finishingSessionId);
         return { saved: true, error: null };
       } catch (error) {
         markSummaryError(
+          finishingSessionId,
           error,
           wasTerminated ? 'Unable to save this ended session.' : 'Unable to save this round.'
         );
@@ -426,9 +467,18 @@ export default function TrainerPage() {
       const promise = (async () => {
         if (!roundSnapshot.attempts.length) {
           handledQuestionIdRef.current = null;
+          activeRoundRef.current = null;
           if (isMountedRef.current) {
             setActiveRound(null);
             setAnswerInput('');
+          }
+          if (!userId) {
+            try {
+              await guestCheckpointRef.current;
+              await finishGuestSession(roundSnapshot.sessionId, 'ended');
+            } catch (_error) {
+              // A zero-answer round has no history to preserve.
+            }
           }
           return { handled: true, saved: false };
         }
@@ -457,7 +507,7 @@ export default function TrainerPage() {
       terminationPromiseRef.current = promise;
       return promise;
     },
-    [finalizeRound]
+    [finalizeRound, userId]
   );
 
   useEffect(() => {
@@ -469,6 +519,47 @@ export default function TrainerPage() {
       registerActiveSessionTerminator((reason) => terminateSessionRef.current(reason)),
     [registerActiveSessionTerminator]
   );
+
+  const requestRoundExit = useCallback(() => {
+    if (!activeRoundRef.current || activeRoundRef.current.sourceMode !== TRAINER_INPUT_MODES.MANUAL) {
+      return Promise.resolve(true);
+    }
+    if (exitPromiseRef.current) return exitPromiseRef.current;
+    dialogStartedAtRef.current = Date.now();
+    exitPromiseRef.current = new Promise((resolve) => { resolveExitRef.current = resolve; });
+    setEndDialogOpen(true);
+    return exitPromiseRef.current;
+  }, []);
+
+  useEffect(() => {
+    if (!activeRound || activeRound.sourceMode !== TRAINER_INPUT_MODES.MANUAL) return undefined;
+    return registerActiveSessionExitHandler(requestRoundExit);
+  }, [activeRound, registerActiveSessionExitHandler, requestRoundExit]);
+
+  const closeEndDialog = useCallback((confirmed) => {
+    if (!confirmed && activeRoundRef.current) {
+      const pausedMs = Date.now() - dialogStartedAtRef.current;
+      const nextRound = {
+        ...activeRoundRef.current,
+        questionStartedAt: activeRoundRef.current.questionStartedAt + pausedMs
+      };
+      activeRoundRef.current = nextRound;
+      setActiveRound(nextRound);
+      queueMicrotask(() => answerInputRef.current?.focus());
+    }
+    setEndDialogOpen(false);
+    setIsEndingRound(false);
+    resolveExitRef.current?.(confirmed);
+    resolveExitRef.current = null;
+    exitPromiseRef.current = null;
+  }, []);
+
+  const confirmEndRound = useCallback(async () => {
+    if (isEndingRound) return;
+    setIsEndingRound(true);
+    const result = await terminateActiveRound('confirmed-end');
+    closeEndDialog(!result.error);
+  }, [closeEndDialog, isEndingRound, terminateActiveRound]);
 
   const commitRoundSizeDraft = useCallback(() => {
     const {
@@ -563,6 +654,18 @@ export default function TrainerPage() {
       const questionStartedAt = Date.now();
       const sessionId = createSessionId();
 
+      if (!userId && sourceMode === TRAINER_INPUT_MODES.MANUAL) {
+        guestSaveErrorRef.current = null;
+        guestCheckpointRef.current = startGuestSession({
+          id: sessionId,
+          kind: 'trainer',
+          settings: sanitizedSettings,
+          requestedCount: sanitizedSettings.roundSize
+        }).catch((error) => {
+          guestSaveErrorRef.current = error;
+        });
+      }
+
       if (persistSettings) {
         void upsertPreferences({ trainerSettings: sanitizedSettings });
       }
@@ -572,7 +675,7 @@ export default function TrainerPage() {
       setAiTransitionState(null);
       setAnswerInput('');
       handledQuestionIdRef.current = null;
-      setActiveRound({
+      const nextRound = {
         ...createActiveRound(
           sanitizedSettings,
           firstProblem,
@@ -582,13 +685,16 @@ export default function TrainerPage() {
         sourceMode,
         aiAutoCycleRound,
         aiCycleCursor: nextCycleCursor
-      });
+      };
+      activeRoundRef.current = nextRound;
+      setActiveRound(nextRound);
     },
     [
       isLoadingPreferences,
       showRoundGenerationError,
       terminateActiveRound,
-      upsertPreferences
+      upsertPreferences,
+      userId
     ]
   );
 
@@ -681,6 +787,40 @@ export default function TrainerPage() {
     });
   }, [lastRound, startAiAutoCycle, startRoundWithSettings]);
 
+  const retryRoundSave = useCallback(async () => {
+    const summary = lastRound;
+    if (!summary?.sessionId || summary.saveState !== 'error') return;
+    if (summary.ownerId && summary.ownerId !== userId) return;
+    setLastRound((current) => current?.sessionId === summary.sessionId
+      ? { ...current, saveState: 'saving', saveError: '' } : current);
+    try {
+      if (summary.ownerId) {
+        if (summary.sourceMode === TRAINER_INPUT_MODES.AI) await persistQueuedAiModeLogs();
+        else await persistQueuedProgress();
+        markSummarySaved(summary.sessionId);
+      } else {
+        await startGuestSession({
+          id: summary.sessionId,
+          kind: 'trainer',
+          settings: summary.settings,
+          requestedCount: summary.settings.roundSize
+        });
+        for (let index = 0; index < summary.attempts.length; index += 1) {
+          const row = buildProgressLogRow(summary.attempts[index], summary.settings,
+            null, summary.sessionId, index + 1);
+          await recordGuestAttempt(summary.sessionId, index + 1, row);
+        }
+        await finishGuestSession(summary.sessionId, summary.wasTerminated ? 'ended' : 'completed');
+        guestSaveErrorRef.current = null;
+        setLastRound((current) => current?.sessionId === summary.sessionId
+          ? { ...current, saveState: 'device-saved', saveError: '' } : current);
+      }
+    } catch (error) {
+      markSummaryError(summary.sessionId, error, 'Could not save this round.');
+    }
+  }, [lastRound, markSummaryError, markSummarySaved, persistQueuedAiModeLogs,
+    persistQueuedProgress, userId]);
+
   const handlePrimaryRoundAction = useCallback(() => {
     if (lastRound) {
       void handleStartAgain();
@@ -745,10 +885,16 @@ export default function TrainerPage() {
     };
 
     window.addEventListener('pagehide', handlePageHide);
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
     router.events.on('routeChangeStart', handleRouteChangeStart);
 
     return () => {
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       router.events.off('routeChangeStart', handleRouteChangeStart);
     };
   }, [activeRound, router.events, router.pathname, terminateActiveRound]);
@@ -756,7 +902,7 @@ export default function TrainerPage() {
   const submitAnswer = useCallback(
     async (submittedAnswer, submittedAt = Date.now()) => {
       const roundSnapshot = activeRoundRef.current;
-      if (!roundSnapshot || roundSnapshot.sourceMode === TRAINER_INPUT_MODES.AI) {
+      if (!roundSnapshot || roundSnapshot.sourceMode === TRAINER_INPUT_MODES.AI || endDialogOpen) {
         return;
       }
 
@@ -796,6 +942,19 @@ export default function TrainerPage() {
             submission.attempts.length
           )
         );
+      } else {
+        const row = buildProgressLogRow(
+          submission.attempt,
+          roundSnapshot.settings,
+          null,
+          roundSnapshot.sessionId,
+          submission.attempts.length
+        );
+        guestCheckpointRef.current = guestCheckpointRef.current.then(() =>
+          recordGuestAttempt(roundSnapshot.sessionId, submission.attempts.length, row)
+        ).catch((error) => {
+          guestSaveErrorRef.current = error;
+        });
       }
 
       const { attempts, isComplete, nextActiveRound } = submission;
@@ -809,12 +968,14 @@ export default function TrainerPage() {
       }
 
       setAnswerInput('');
-      setActiveRound({
+      const nextRound = {
         ...nextActiveRound,
         sourceMode: TRAINER_INPUT_MODES.MANUAL
-      });
+      };
+      activeRoundRef.current = nextRound;
+      setActiveRound(nextRound);
     },
-    [finalizeRound, progressBuffer, showRoundGenerationError, userId]
+    [endDialogOpen, finalizeRound, progressBuffer, showRoundGenerationError, userId]
   );
 
   useEffect(() => {
@@ -1303,33 +1464,9 @@ export default function TrainerPage() {
       </Head>
       <div className={`trainer-page-shell${isFocusedArena ? ' is-round-active' : ''}`}>
         {shouldShowHeroPanel && (
-          <section className='hero-panel hero-panel-command appear-up'>
-            <div className='hero-layout'>
-              <div className='hero-copy'>
-                <p className='hero-tag'>Discipline Through Numbers</p>
-                <h1>Mental Math Studio</h1>
-                <p>
-                  Train one operation at a time, keep every attempt, and make the next
-                  action obvious.
-                </p>
-              </div>
-              <div className='hero-sidebar'>
-                <p className='hero-sidebar-label'>Built for fast reps</p>
-                <ul className='hero-checklist'>
-                  <li>Dial in the round without hunting through the page.</li>
-                  <li>Launch instantly with Enter.</li>
-                  <li>Review pace and accuracy after every run.</li>
-                </ul>
-              </div>
-            </div>
-            {!isConfigured && (
-              <p className='inline-warning'>
-                Account features are not configured yet, so saved progress is currently
-                unavailable.
-              </p>
-            )}
-          </section>
+          <PageIntro title='Trainer' description='Choose a round and start practicing.' />
         )}
+        {!shouldShowHeroPanel && <h1 className='visually-hidden'>Trainer round</h1>}
 
         {shouldShowAdminControl && (
           <section className='panel paper-panel mode-panel appear-up'>
@@ -1390,14 +1527,21 @@ export default function TrainerPage() {
                     </div>
                     {isAiMode && <span className='mode-pill mode-pill-ai'>AI MODE</span>}
                   </div>
-                  <p className='panel-copy'>
-                    Choose the exact repetition pattern before you commit to the run.
-                  </p>
                   <form
                     ref={settingsFormRef}
                     className='settings-form settings-form-blueprint trainer-blueprint-form'
                     onSubmit={startRound}
                   >
+                    <button
+                      type='submit'
+                      className='button button-strong button-full setup-start-action'
+                      aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
+                      disabled={isLoadingPreferences}
+                    >
+                      <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
+                        {isLoadingPreferences ? 'Loading round setup...' : isAiMode ? 'Start AI round' : 'Start round'}
+                      </IconLabel>
+                    </button>
                     <fieldset className='setting-group setting-group-span'>
                       <legend>Practice mode</legend>
                       <div className='practice-mode-grid' role='radiogroup' aria-label='Practice mode'>
@@ -1596,23 +1740,6 @@ export default function TrainerPage() {
 
                     {isAiMode && renderAutoCycleToggle()}
 
-                    <button
-                      type='submit'
-                      className='button button-strong button-full'
-                      aria-keyshortcuts={PRIMARY_ACTION_HOTKEY}
-                      disabled={isLoadingPreferences}
-                    >
-                      <span className='button-hotkey-label'>
-                        <IconLabel icon={PlayCircleIcon} className='icon-label-button'>
-                          {isLoadingPreferences
-                            ? 'Loading round setup...'
-                            : isAiMode
-                            ? 'Start AI round'
-                            : 'Start round'}
-                        </IconLabel>
-                        <HotkeyHint label={PRIMARY_ACTION_HOTKEY} />
-                      </span>
-                    </button>
                   </form>
                 </article>
               )}
@@ -1628,6 +1755,12 @@ export default function TrainerPage() {
                     </h2>
                   </div>
                   <div className='panel-header-actions'>
+                    {activeRound?.sourceMode === TRAINER_INPUT_MODES.MANUAL && (
+                      <button type='button' className='button button-danger button-inline'
+                        onClick={() => void requestActiveSessionExit('end-round')}>
+                        End round
+                      </button>
+                    )}
                     {activeRound?.sourceMode === TRAINER_INPUT_MODES.AI && (
                       <span className='mode-pill mode-pill-ai'>AI MODE</span>
                     )}
@@ -1841,6 +1974,8 @@ export default function TrainerPage() {
                 badgeClassName='mode-pill-manual'
                 round={lastRound}
                 saveStatus={getSaveStatusMessage(lastRound)}
+                retryAction={lastRound?.saveState === 'error' && lastRound?.sessionId
+                  ? { label: 'Retry save', onClick: () => void retryRoundSave() } : null}
                 primaryAction={{ label: 'Start Again', onClick: () => void handleStartAgain() }}
                 secondaryAction={{
                   label: 'Change round setup',
@@ -1888,6 +2023,11 @@ export default function TrainerPage() {
               })}
             </section>
           )}
+        {endDialogOpen && (
+          <EndRoundDialog count={activeRound?.attempts.length || 0}
+            isEnding={isEndingRound} onCancel={() => closeEndDialog(false)}
+            onConfirm={() => void confirmEndRound()} />
+        )}
       </div>
     </>
   );

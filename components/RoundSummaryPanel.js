@@ -12,6 +12,7 @@ export default function RoundSummaryPanel({
   saveStatus = '',
   primaryAction = null,
   secondaryAction = null,
+  retryAction = null,
   className = '',
   children = null
 }) {
@@ -29,6 +30,9 @@ export default function RoundSummaryPanel({
         </h2>
         {badgeLabel && <span className={`mode-pill ${badgeClassName}`}>{badgeLabel}</span>}
       </div>
+      {round.wasTerminated && (
+        <p className='round-completion-note'>Ended early · {round.total} submitted {round.total === 1 ? 'answer' : 'answers'}</p>
+      )}
       <div className='summary-grid'>
         <article>
           <h3>Accuracy</h3>
@@ -53,6 +57,12 @@ export default function RoundSummaryPanel({
       </div>
       {children}
       {saveStatus && <p className='save-status'>{saveStatus}</p>}
+      {retryAction && (
+        <button type='button' className='button button-strong' onClick={retryAction.onClick}
+          disabled={retryAction.disabled}>
+          {retryAction.label || 'Retry save'}
+        </button>
+      )}
       {primaryAction && secondaryAction && (
         <div className='summary-actions'>
           <button

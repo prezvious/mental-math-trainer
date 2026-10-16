@@ -28,6 +28,8 @@ const SupabaseAuthContext = createContext({
   userEmail: '',
   user: null,
   isAdmin: false,
+  isRecoverySession: false,
+  clearRecoverySession: () => {},
   signOut: async () => ({ error: null })
 });
 
@@ -36,6 +38,15 @@ export function SupabaseAuthProvider({ children }) {
   const isConfigured = isSupabaseConfigured();
   const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(isConfigured);
+  const [isRecoverySession, setIsRecoverySession] = useState(false);
+
+  useEffect(() => {
+    try {
+      setIsRecoverySession(window.sessionStorage.getItem('mental-math-recovery') === '1');
+    } catch (_error) {
+      // Private browsing may deny session storage; the auth event still works.
+    }
+  }, []);
 
   useEffect(() => {
     if (!client) {
@@ -75,7 +86,14 @@ export function SupabaseAuthProvider({ children }) {
 
     const {
       data: { subscription }
-    } = client.auth.onAuthStateChange((_event, nextSession) => {
+    } = client.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoverySession(true);
+        try { window.sessionStorage.setItem('mental-math-recovery', '1'); } catch (_error) {}
+      } else if (event === 'SIGNED_OUT') {
+        setIsRecoverySession(false);
+        try { window.sessionStorage.removeItem('mental-math-recovery'); } catch (_error) {}
+      }
       setSession((previousSession) =>
         areSessionsEquivalent(previousSession, nextSession ?? null)
           ? previousSession
@@ -100,6 +118,11 @@ export function SupabaseAuthProvider({ children }) {
     return { error };
   };
 
+  const clearRecoverySession = () => {
+    setIsRecoverySession(false);
+    try { window.sessionStorage.removeItem('mental-math-recovery'); } catch (_error) {}
+  };
+
   const value = useMemo(
     () => {
       const userEmail = normalizeEmail(session?.user?.email ?? '');
@@ -112,10 +135,12 @@ export function SupabaseAuthProvider({ children }) {
         userEmail,
         user: session?.user ?? null,
         isAdmin: isAdminEmail(userEmail),
+        isRecoverySession,
+        clearRecoverySession,
         signOut
       };
     },
-    [client, isConfigured, isLoading, session]
+    [client, isConfigured, isLoading, isRecoverySession, session]
   );
 
   return (

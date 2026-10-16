@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import PageIntro from 'components/PageIntro.js';
 import { storeAuthLoginHandoff } from 'utils/authLoginHandoff.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 import {
@@ -134,36 +135,12 @@ export default function SignupPage() {
       </Head>
 
       <div className='auth-shell'>
-        <section className='hero-panel hero-panel-compact auth-hero appear-up'>
-          <div className='hero-layout'>
-            <div className='hero-copy'>
-              <p className='hero-tag'>Create Account</p>
-              <h1>Sign Up</h1>
-              <p>
-                Save your round history, keep your settings, and build a long-term record of speed.
-              </p>
-            </div>
-            <div className='hero-sidebar'>
-              <p className='hero-sidebar-label'>What you unlock</p>
-              <ul className='hero-checklist'>
-                <li>Saved progress across trainer and mixed sessions.</li>
-                <li>Theme and setup preferences that travel with you.</li>
-                <li>A cleaner handoff from training to analytics.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <PageIntro title='Sign up' description='Create an account for synced progress.' />
 
         <section className='panel paper-panel auth-panel appear-up'>
-          <p className='panel-kicker'>New account</p>
-          <h2>Build your practice desk</h2>
-          <p className='panel-copy'>
-            Start with a strong password, then confirm your email to unlock synced progress.
-          </p>
-
           {!isConfigured && (
             <p className='inline-warning'>
-              Account features are not configured yet, so sign-up is unavailable right now.
+              Accounts are unavailable right now. You can still practice as a guest.
             </p>
           )}
 
@@ -174,6 +151,7 @@ export default function SignupPage() {
               type='email'
               autoComplete='email'
               required
+              disabled={isSubmitting || !isConfigured}
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
@@ -190,6 +168,7 @@ export default function SignupPage() {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete='new-password'
                 required
+                disabled={isSubmitting || !isConfigured}
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -201,6 +180,7 @@ export default function SignupPage() {
               <button
                 type='button'
                 className='password-toggle'
+                disabled={isSubmitting || !isConfigured}
                 onClick={() => setShowPassword((current) => !current)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -241,6 +221,7 @@ export default function SignupPage() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 autoComplete='new-password'
                 required
+                disabled={isSubmitting || !isConfigured}
                 value={confirmPassword}
                 onChange={(event) => {
                   setConfirmPassword(event.target.value);
@@ -252,6 +233,7 @@ export default function SignupPage() {
               <button
                 type='button'
                 className='password-toggle'
+                disabled={isSubmitting || !isConfigured}
                 onClick={() => setShowConfirmPassword((current) => !current)}
                 aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
               >
@@ -279,7 +261,7 @@ export default function SignupPage() {
             </button>
           </form>
 
-          {errorMessage && <p className='feedback warning'>{errorMessage}</p>}
+          {errorMessage && <p className='feedback warning' role='alert'>{errorMessage}</p>}
           {successMessage && <p className='feedback success'>{successMessage}</p>}
 
           {duplicateEmail && (
@@ -300,6 +282,7 @@ export default function SignupPage() {
               Log in
             </Link>
           </p>
+          {!isConfigured && <Link href='/' className='text-link'>Practice as a guest</Link>}
         </section>
       </div>
     </>

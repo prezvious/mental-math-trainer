@@ -189,6 +189,16 @@ test('buildProgressLogRow maps one attempt into a persisted progress row', () =>
   });
 });
 
+test('progress rows keep their original accepted-answer timestamp', () => {
+  const row = buildProgressLogRow({
+    ...createAttempt(0),
+    createdAt: '2026-09-23T03:00:00.000Z'
+  }, {
+    practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1
+  }, 'user-123', 'session-123', 1);
+  assert.equal(row.created_at, '2026-09-23T03:00:00.000Z');
+});
+
 test('buildProgressLogRow persists decimal attempts with decimal metadata and text operands', () => {
   const row = buildProgressLogRow(
     {

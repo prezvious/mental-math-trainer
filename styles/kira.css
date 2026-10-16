@@ -1,0 +1,570 @@
+@font-face {
+  font-family: 'Kira Display';
+  src: url('/fonts/barlow-condensed-800.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Kira Sans';
+  src: url('/fonts/inter-v7-latin-regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Kira Sans';
+  src: url('/fonts/inter-v7-latin-700.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+}
+
+/* Packaging colors belong to the artwork. Functional colors retain theme roles. */
+.app-shell[data-interface-style='kira'] {
+  --kira-violet: #6525dc;
+  --kira-pink: #ffb1e9;
+  --kira-cyan: #6ff2ef;
+  --kira-lemon: #ffe640;
+  --kira-lime: #c5f76d;
+  --kira-wrapper: color-mix(in srgb, var(--kira-pink) 62%, var(--paper));
+  --kira-cool: color-mix(in srgb, var(--kira-cyan) 18%, var(--surface-raised-strong));
+  --surface-radius-lg: 1rem;
+  --surface-radius-md: 0.65rem;
+  --surface-radius-sm: 0.45rem;
+  --surface-outline: var(--control-border);
+  --surface-shadow-soft: none;
+  --surface-shadow-heavy: none;
+  --surface-shadow-inset: none;
+  --layout-card-tilt: 0deg;
+  --layout-card-lift: 0px;
+  background: var(--paper);
+  font-family: 'Kira Sans', sans-serif;
+  scrollbar-color: var(--control-border) var(--paper);
+}
+
+.app-shell[data-interface-style='kira'][data-resolved-mode='dark'] {
+  --kira-wrapper: color-mix(in srgb, var(--kira-pink) 22%, var(--paper));
+  --kira-cool: color-mix(in srgb, var(--kira-cyan) 7%, var(--surface-raised-strong));
+}
+
+.app-shell[data-interface-style='kira']::before {
+  display: none;
+}
+
+.app-shell[data-interface-style='kira'] ::selection {
+  background: var(--accent-main);
+  color: var(--button-strong-text);
+}
+
+.app-shell[data-interface-style='kira'] :is(input, textarea) {
+  caret-color: var(--text-accent);
+}
+
+.app-shell[data-interface-style='kira'] :is(h1, h2, h3, .brand-title, .utility-title) {
+  font-family: 'Kira Display', sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+}
+
+.app-shell[data-interface-style='kira'] :is(button, input, select, textarea, .button, .site-nav-link, .setting-group label) {
+  font-family: 'Kira Sans', sans-serif;
+}
+
+.app-shell[data-interface-style='kira'] .site-header {
+  --header-text: var(--text-main);
+  --header-text-subtle: var(--text-subtle);
+  --header-text-accent: var(--text-accent);
+  --header-control-surface: var(--surface-input);
+  --header-control-border: var(--control-border);
+  --header-border: var(--control-border);
+  background: var(--paper);
+  border-bottom: 2px solid var(--control-border);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.app-shell[data-interface-style='kira'] .site-header-inner {
+  padding-block: 0.8rem;
+}
+
+.app-shell[data-interface-style='kira'] .brand {
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+}
+
+.kira-brand-icon {
+  flex: 0 0 auto;
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+.app-shell[data-interface-style='kira'] .kira-brand-title {
+  display: grid;
+  color: #fffdf7;
+  font-size: 1.8rem;
+  line-height: 0.95;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  -webkit-text-stroke: 1.5px var(--kira-violet);
+  paint-order: stroke fill;
+  text-shadow: -2px 2px 0 var(--kira-cyan), -3px 3px 0 var(--kira-violet);
+}
+
+.app-shell[data-interface-style='kira'] .site-nav {
+  padding: 0;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .site-nav-link {
+  border: 2px solid transparent;
+  border-radius: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .site-nav-link.is-active {
+  color: var(--text-main);
+  border-color: var(--control-border);
+  background: var(--kira-cool);
+}
+
+.app-shell[data-interface-style='kira'] :is(.button, .site-utility-toggle, .control-drawer-close, .keypad-button, .password-toggle) {
+  border: 2px solid var(--control-border);
+  border-radius: 0.55rem;
+  background: var(--surface-input);
+  color: var(--text-main);
+  box-shadow: none;
+  font-weight: 700;
+  letter-spacing: 0;
+  transition: background-color 180ms ease, color 180ms ease;
+  transform: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.button-strong, .keypad-button.submit) {
+  border-color: var(--accent-main);
+  background: var(--accent-main);
+  color: var(--button-strong-text);
+}
+
+.app-shell[data-interface-style='kira'] .button-danger {
+  border-color: var(--accent-alert);
+  background: var(--accent-alert);
+  color: var(--button-danger-text);
+}
+
+.app-shell[data-interface-style='kira'] :is(.button, .keypad-button):hover:not(:disabled) {
+  box-shadow: none;
+  filter: brightness(0.93);
+  transform: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.button, .keypad-button):active:not(:disabled) {
+  filter: brightness(0.85);
+  transform: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.app-shell[data-interface-style='kira'] .site-main {
+  padding-top: 1.6rem;
+}
+
+.app-shell[data-interface-style='kira'] .kira-intro {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: 1rem;
+  min-height: 16rem;
+  padding: 2rem 2.5rem;
+  margin: 0 0 0.7rem;
+  border: 2px solid var(--control-border);
+  border-radius: 1rem;
+  background: var(--kira-wrapper);
+}
+
+.kira-intro::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-image: url('/images/kira-math-pattern.svg');
+  background-size: 400px 300px;
+  opacity: 0.13;
+  pointer-events: none;
+}
+
+.kira-intro-copy {
+  min-width: 0;
+  position: relative;
+}
+
+.app-shell[data-interface-style='kira'] .kira-intro h1 {
+  margin: 0;
+}
+
+.app-shell[data-interface-style='kira'] .kira-display {
+  display: block;
+  font-family: 'Kira Display', sans-serif;
+  font-weight: 800;
+  position: relative;
+  isolation: isolate;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 1rem 0.45rem;
+  font-size: clamp(3.5rem, 7.5vw, 6rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: #fffdf7;
+  -webkit-text-stroke: 4px var(--kira-violet);
+  paint-order: stroke fill;
+  overflow-wrap: anywhere;
+}
+
+.kira-display::before {
+  content: attr(data-lettering);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: translate(-7px, 6px);
+  color: transparent;
+  -webkit-text-stroke: 4px var(--kira-violet);
+  background: repeating-linear-gradient(0deg, var(--kira-cyan) 0 6px, var(--kira-violet) 6px 9px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.app-shell[data-interface-style='kira'] .kira-intro p {
+  width: fit-content;
+  max-width: 44ch;
+  padding: 0.45rem 0.7rem;
+  margin: 0;
+  border-radius: 0.4rem;
+  background: var(--surface-raised-strong);
+  color: var(--text-main);
+  font-family: 'Kira Sans', sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.kira-intro-art {
+  position: relative;
+  height: 12rem;
+  width: 100%;
+  max-width: 24rem;
+  justify-self: end;
+}
+
+.kira-character {
+  position: absolute;
+  width: 8rem;
+  height: 8rem;
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kira-character-flashcards {
+  left: 0;
+  top: 2.4rem;
+  width: 10.5rem;
+  height: 10.5rem;
+  transform: rotate(-9deg);
+}
+
+.kira-character-pencil {
+  left: 38%;
+  top: -0.5rem;
+  width: 10rem;
+  height: 10rem;
+  transform: rotate(8deg);
+}
+
+.kira-character-stopwatch {
+  right: -0.25rem;
+  bottom: -0.8rem;
+  transform: rotate(12deg);
+}
+
+.kira-intro:hover .kira-character-flashcards {
+  transform: translateY(-5px) rotate(-5deg);
+}
+
+.kira-art-spark, .kira-art-plus, .kira-art-tally, .kira-art-number {
+  position: absolute;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.kira-art-spark {
+  top: 0;
+  left: 14%;
+}
+
+.kira-art-plus {
+  color: var(--kira-violet);
+  right: 0;
+  top: 0.5rem;
+  transform: rotate(12deg);
+}
+
+.kira-art-tally {
+  left: 3%;
+  bottom: 0.1rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  transform: rotate(-12deg);
+}
+
+.kira-art-number {
+  left: 51%;
+  bottom: -0.9rem;
+  width: 2rem;
+  height: 2rem;
+  transform: rotate(12deg);
+}
+
+.app-shell[data-interface-style='kira'] :is(.hero-panel, .panel, .summary-panel, .end-round-dialog) {
+  border: 2px solid var(--control-border);
+  border-radius: 1rem;
+  background: var(--surface-raised-strong);
+  box-shadow: none;
+  transform: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.hero-panel, .panel, .summary-panel)::before,
+.app-shell[data-interface-style='kira'] .hero-panel::after,
+.app-shell[data-interface-style='kira'] .panel-kicker {
+  display: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.panel h2, .summary-panel h2) {
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.app-shell[data-interface-style='kira'] .arena-panel {
+  background: var(--kira-cool);
+}
+
+.app-shell[data-interface-style='kira'] .arena-idle-grid {
+  gap: 0;
+}
+
+.app-shell[data-interface-style='kira'] .arena-idle-grid article {
+  padding: 1.1rem 0;
+  border: 0;
+  border-top: 1px solid var(--control-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .arena-idle-grid h3 {
+  font-size: 1.45rem;
+}
+
+.app-shell[data-interface-style='kira'] :is(.settings-form select, .settings-form input, .answer-form input, .auth-form input, .mixed-answer-input, .theme-search-input) {
+  border: 2px solid var(--control-border);
+  border-radius: 0.55rem;
+  background: var(--surface-input);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .practice-mode-option {
+  border: 2px solid var(--control-border);
+  border-radius: 0.55rem;
+  background: var(--surface-input);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .practice-mode-option.is-active {
+  border-color: var(--accent-main);
+  background: var(--surface-selected);
+}
+
+.app-shell[data-interface-style='kira'] .practice-mode-option-mark {
+  border-color: var(--text-subtle);
+}
+
+.app-shell[data-interface-style='kira'] .practice-mode-option.is-active .practice-mode-option-mark {
+  border-color: var(--text-main);
+  background: var(--text-main);
+}
+
+.app-shell[data-interface-style='kira'] :is(.problem-line, .stacked-problem, .summary-count-primary, .summary-grid, .operation-grid, .question-timer) {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.app-shell[data-interface-style='kira'] :is(.problem-line, .stacked-problem) {
+  border: 0;
+  background: var(--surface-raised-strong);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.status-badge, .mode-pill, .hotkey-hint) {
+  border: 1px solid var(--control-border);
+  border-radius: 0.4rem;
+  background: var(--surface-raised-strong);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.mixed-config-row, .toggle-row, .operation-card, .summary-grid article, .attempt-list li, .table-wrap, .solver-result) {
+  border-color: var(--control-border);
+  background: var(--surface-raised);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .utility-panel {
+  border: 2px solid var(--control-border);
+  background: var(--paper);
+  border-radius: 1rem;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--surface-shadow) 20%, transparent);
+}
+
+.app-shell[data-interface-style='kira'] :is(.utility-section, .theme-summary-button, .theme-result-button, .shortcut-disclosure-button, .theme-browser-back, .interface-style-options, .display-mode-options) {
+  border-color: var(--control-border);
+  background: var(--surface-raised-strong);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='kira'] .interface-style-button.is-active,
+.app-shell[data-interface-style='kira'] .display-mode-option.is-active {
+  background: var(--accent-main);
+  color: var(--button-strong-text);
+  border-color: var(--accent-main);
+}
+
+.app-shell[data-interface-style='kira'] :is(.theme-kicker, .hero-tag) {
+  display: none;
+}
+
+.app-shell[data-interface-style='kira'] .site-footer {
+  border-top: 2px solid var(--control-border);
+  background: var(--kira-wrapper);
+  color: var(--text-main);
+  letter-spacing: 0.02em;
+  font-size: 0.8rem;
+}
+
+.app-shell[data-interface-style='kira'] :is(.auth-shell, .verify-shell) .kira-intro {
+  min-height: 0;
+  padding: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell[data-interface-style='kira'] :is(.auth-shell, .verify-shell) .kira-intro-art {
+  display: none;
+}
+
+.app-shell[data-interface-style='kira'] :is(.auth-shell, .verify-shell) .kira-display {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+.app-shell[data-interface-style='kira'] :is(.appear-up, .stagger-in) {
+  animation: none;
+}
+
+@media (max-width: 639px) {
+  .app-shell[data-interface-style='kira'] .site-main {
+    padding-top: 1rem;
+  }
+
+  .app-shell[data-interface-style='kira'] .kira-intro {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding: 1.3rem 1.2rem;
+    gap: 0.8rem;
+  }
+
+  .app-shell[data-interface-style='kira'] .kira-display {
+    font-size: clamp(3.25rem, 13vw, 4.5rem);
+    -webkit-text-stroke-width: 3px;
+  }
+
+  .kira-display::before {
+    -webkit-text-stroke-width: 3px;
+    transform: translate(-5px, 5px);
+  }
+
+  .app-shell[data-interface-style='kira'] .kira-intro p {
+    font-size: 0.85rem;
+  }
+
+  .kira-intro-art {
+    justify-self: center;
+    height: 6.5rem;
+    max-width: 17rem;
+  }
+
+  .kira-character-flashcards {
+    width: 6.3rem;
+    height: 6.3rem;
+    top: 0;
+  }
+
+  .kira-character-pencil {
+    width: 6.2rem;
+    height: 6.2rem;
+    left: 36%;
+    top: -0.2rem;
+  }
+
+  .kira-character-stopwatch {
+    width: 5.5rem;
+    height: 5.5rem;
+    bottom: 0;
+  }
+
+  .kira-art-spark, .kira-art-plus {
+    width: 1.3rem;
+    height: 1.3rem;
+    top: 0;
+  }
+
+  .kira-art-tally, .kira-art-number {
+    width: 1.25rem;
+    height: 1.25rem;
+    bottom: 0;
+  }
+
+  .kira-brand-icon {
+    width: 2.8rem;
+    height: 2.8rem;
+  }
+
+  .app-shell[data-interface-style='kira'] .kira-brand-title {
+    font-size: 1.5rem;
+  }
+
+  .app-shell[data-interface-style='kira'] :is(.auth-shell, .verify-shell) .kira-intro {
+    padding: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell[data-interface-style='kira'] *,
+  .app-shell[data-interface-style='kira'] *::before,
+  .app-shell[data-interface-style='kira'] *::after {
+    transition: none;
+    animation: none;
+  }
+
+  .kira-intro:hover .kira-character-flashcards {
+    transform: rotate(-9deg);
+  }
+}

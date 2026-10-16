@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Opaline Abacus — visual mockup</title>
+    <script>
+      const preview = new URLSearchParams(location.search);
+      document.documentElement.dataset.mode = preview.get('mode') === 'dark' ? 'dark' : 'light';
+      document.documentElement.dataset.stage = ['round', 'board'].includes(preview.get('stage')) ? preview.get('stage') : 'setup';
+      document.documentElement.dataset.capture = preview.has('capture') ? 'true' : 'false';
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,700&family=Syne:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+      :root {
+        color-scheme: light;
+        --paper: #f5f9fb;
+        --paper-deep: #edf3f7;
+        --surface: #ffffff;
+        --surface-alt: #f8fbfd;
+        --ink: #293d4c;
+        --muted: #566b79;
+        --line: #c7d5dd;
+        --line-strong: #91abb9;
+        --sky: #78c7eb;
+        --sky-deep: #267eac;
+        --sky-pale: #d8effa;
+        --peach: #f2cdbb;
+        --green: #b9e4ca;
+        --green-ink: #1f6d4c;
+        --yellow: #f7dda0;
+        --yellow-ink: #6b5318;
+        --red: #f3bdc0;
+        --red-ink: #8b3544;
+        --shadow: rgba(43, 72, 88, 0.13);
+        --shadow-soft: rgba(43, 72, 88, 0.08);
+        --edge: rgba(255, 255, 255, 0.95);
+      }
+
+      :root[data-mode='dark'] {
+        color-scheme: dark;
+        --paper: #1b2a37;
+        --paper-deep: #17242f;
+        --surface: #273a49;
+        --surface-alt: #2d4150;
+        --ink: #f1f8fb;
+        --muted: #c0d0d9;
+        --line: #536e7e;
+        --line-strong: #91aab8;
+        --sky: #86d0f0;
+        --sky-deep: #69bce4;
+        --sky-pale: #32546a;
+        --peach: #d9ab9a;
+        --green: #82c6a1;
+        --green-ink: #def8e8;
+        --yellow: #e5c474;
+        --yellow-ink: #fff1bd;
+        --red: #e797a2;
+        --red-ink: #ffe5e7;
+        --shadow: rgba(3, 12, 19, 0.32);
+        --shadow-soft: rgba(3, 12, 19, 0.22);
+        --edge: rgba(221, 242, 250, 0.15);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        font-family: 'Newsreader', Georgia, serif;
+        background: radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--sky) 9%, transparent), transparent 31%),
+          linear-gradient(160deg, var(--paper), var(--paper-deep));
+      }
+      button, input, select { font: inherit; }
+      button { cursor: pointer; }
+      .mockup-toolbar {
+        position: fixed; z-index: 10; right: 16px; bottom: 16px;
+        display: flex; gap: 6px; padding: 7px; border: 1px solid var(--line);
+        border-radius: 999px; background: var(--surface);
+        box-shadow: 0 8px 22px var(--shadow);
+        font: 600 12px 'Syne', Arial, sans-serif;
+      }
+      .mockup-toolbar a { padding: 8px 12px; color: var(--ink); text-decoration: none; border-radius: 999px; }
+      .mockup-toolbar a[aria-current='page'] { background: var(--sky-pale); }
+      :root[data-capture='true'] .mockup-toolbar { display: none; }
+      .site-header {
+        min-height: 78px;
+        display: flex; align-items: center;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, var(--sky)), var(--surface-alt));
+        border-bottom: 1px solid var(--line);
+        box-shadow: inset 0 1px 0 var(--edge), 0 7px 24px var(--shadow-soft);
+      }
+      .site-header-inner {
+        width: min(100% - 40px, 1200px); margin: auto;
+        display: flex; align-items: center; gap: 22px;
+      }
+      .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); white-space: nowrap; }
+      .brand-chip {
+        display: inline-flex; min-height: 31px; align-items: center; padding: 0 11px;
+        border: 1px solid var(--line); border-radius: 999px;
+        background: linear-gradient(155deg, var(--surface), var(--surface-alt));
+        box-shadow: inset 0 1px 0 var(--edge), 0 3px 9px var(--shadow-soft);
+        font: 600 10px 'IBM Plex Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase;
+      }
+      .brand-title { font: 700 21px 'Syne', Arial, sans-serif; letter-spacing: -0.025em; }
+      .site-nav { display: flex; justify-content: center; align-items: center; gap: 4px; flex: 1; }
+      .site-nav a {
+        padding: 9px 15px; border-radius: 999px; color: var(--muted);
+        font: 600 13px 'Syne', Arial, sans-serif; text-decoration: none;
+      }
+      .site-nav a.active { color: var(--ink); background: var(--sky-pale); box-shadow: inset 0 1px 2px var(--shadow-soft); }
+      .site-actions { display: flex; align-items: center; gap: 9px; }
+      .ghost-button, .utility-button {
+        min-height: 40px; padding: 0 18px; border: 1px solid var(--line);
+        border-radius: 999px; color: var(--ink);
+        background: linear-gradient(160deg, var(--surface), var(--surface-alt));
+        box-shadow: inset 0 1px 0 var(--edge), 0 4px 12px var(--shadow-soft);
+        font: 600 12px 'Syne', Arial, sans-serif;
+      }
+      .utility-button { display: flex; align-items: center; gap: 7px; }
+      .utility-glyph { width: 15px; height: 15px; display: inline-grid; place-items: center; }
+      .utility-glyph::before { content: ''; width: 10px; height: 10px; border: 2px solid currentColor; border-radius: 4px; box-shadow: 0 -5px 0 -3px currentColor, 0 5px 0 -3px currentColor; }
+      .page { width: min(100% - 40px, 1200px); margin: 0 auto; padding: 33px 0 54px; }
+      .page-intro { margin: 0 0 25px; }
+      .page-intro h1 { margin: 0 0 4px; font: 800 clamp(31px, 4vw, 48px)/1.08 'Syne', Arial, sans-serif; letter-spacing: -0.035em; }
+      .page-intro p { margin: 0; font-size: 18px; color: var(--muted); }
+      .setup-grid { display: grid; grid-template-columns: minmax(315px, 390px) minmax(0, 1fr); gap: 20px; align-items: start; }
+      .panel {
+        border: 1px solid var(--line); border-radius: 28px;
+        background: linear-gradient(155deg, var(--surface), var(--surface-alt));
+        box-shadow: inset 0 1px 0 var(--edge), 0 17px 36px var(--shadow), 0 2px 7px var(--shadow-soft);
+      }
+      .setup-panel { padding: 27px; }
+      .panel-kicker { margin: 0 0 6px; color: var(--muted); font: 600 10px 'IBM Plex Mono', monospace; letter-spacing: 0.14em; text-transform: uppercase; }
+      .panel-title { margin: 0; font: 700 24px 'Syne', Arial, sans-serif; letter-spacing: -0.025em; }
+      .start-button, .submit-button {
+        min-height: 58px; width: 100%; border: 1px solid color-mix(in srgb, var(--sky-deep) 55%, var(--line));
+        border-radius: 999px; color: #163849;
+        background: radial-gradient(circle at 50% 12%, color-mix(in srgb, white 55%, transparent), transparent 56%),
+          linear-gradient(180deg, #bce8fa, var(--sky) 60%, #6fbfe7);
+        box-shadow: inset 0 2px 2px rgba(255,255,255,.78), inset 0 -3px 4px rgba(40,114,152,.18),
+          0 9px 21px color-mix(in srgb, var(--sky-deep) 20%, transparent), 0 2px 5px var(--shadow-soft);
+        font: 700 14px 'Syne', Arial, sans-serif; letter-spacing: 0.005em;
+      }
+      :root[data-mode='dark'] .start-button, :root[data-mode='dark'] .submit-button {
+        color: #102936; background: linear-gradient(180deg, #caeefd, #86d0f0 53%, #65add2);
+        box-shadow: inset 0 2px 2px rgba(255,255,255,.56), inset 0 -3px 4px rgba(21,73,103,.28),
+          0 9px 21px rgba(36,129,179,.21), 0 2px 5px var(--shadow-soft);
+      }
+      .start-button { margin: 22px 0 23px; }
+      .play-icon { display: inline-block; width: 0; height: 0; margin-right: 8px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 9px solid currentColor; }
+      .field-title, .field label, .answer-form label { display: block; margin: 0 0 8px; font: 700 12px 'Syne', Arial, sans-serif; }
+      .mode-options { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 18px; }
+      .mode-choice {
+        min-height: 59px; display: flex; align-items: center; gap: 10px; padding: 0 13px;
+        border: 1px solid var(--line); border-radius: 18px; color: var(--ink);
+        background: var(--surface); box-shadow: inset 0 1px 0 var(--edge), 0 4px 10px var(--shadow-soft);
+        font: 600 12px 'Syne', Arial, sans-serif;
+      }
+      .mode-choice.active { border-color: var(--sky-deep); background: color-mix(in srgb, var(--sky-pale) 65%, var(--surface)); }
+      .choice-dot { width: 29px; height: 29px; flex: none; border: 1px solid var(--line); border-radius: 50%; background: var(--surface-alt); box-shadow: inset 0 1px 3px var(--shadow-soft); }
+      .mode-choice.active .choice-dot { border-color: var(--sky-deep); background: var(--sky); box-shadow: inset 0 2px 3px rgba(255,255,255,.64), 0 3px 8px var(--shadow-soft); }
+      .mode-choice.active .choice-dot::after { content: ''; display: block; width: 7px; height: 7px; margin: 10px; border-radius: 50%; background: #204f69; }
+      .field { margin-bottom: 15px; }
+      .field select, .answer-form input {
+        width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(--line-strong);
+        border-radius: 15px; outline: none; color: var(--ink); background: var(--surface-alt);
+        box-shadow: inset 0 2px 5px var(--shadow-soft), 0 1px 0 var(--edge);
+        font: 600 13px 'Syne', Arial, sans-serif;
+      }
+      .field input { width: 100%; min-height: 46px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 15px; color: var(--ink); background: var(--surface-alt); box-shadow: inset 0 2px 5px var(--shadow-soft), 0 1px 0 var(--edge); font: 600 13px 'Syne', Arial, sans-serif; }
+      .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .field-grid .field { margin-bottom: 15px; }
+      .idle-panel { min-height: 540px; padding: 29px; display: flex; flex-direction: column; }
+      .idle-stage { flex: 1; display: grid; place-items: center; text-align: center; }
+      .idle-center { width: min(100%, 390px); }
+      .idle-orb {
+        width: 138px; height: 138px; margin: 0 auto 24px; display: grid; place-items: center;
+        border: 1px solid var(--line); border-radius: 50%; color: var(--ink);
+        background: radial-gradient(circle at 40% 22%, var(--surface), var(--sky-pale) 72%);
+        box-shadow: inset 0 2px 3px var(--edge), inset 0 -3px 6px var(--shadow-soft),
+          0 12px 23px var(--shadow-soft);
+        font: 700 50px 'Syne', Arial, sans-serif;
+      }
+      .idle-center h3 { margin: 0 0 8px; font: 700 22px 'Syne', Arial, sans-serif; }
+      .idle-center p { margin: 0; color: var(--muted); font-size: 17px; }
+      .idle-notes { display: flex; gap: 9px; flex-wrap: wrap; }
+      .note-pill { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font: 600 10px 'IBM Plex Mono', monospace; }
+      .round-wrap { width: min(100%, 710px); margin: 54px auto 0; }
+      .round-panel { padding: 29px; }
+      .round-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+      .end-button {
+        min-height: 42px; padding: 0 17px; border: 1px solid color-mix(in srgb, var(--red-ink) 35%, var(--line));
+        border-radius: 999px; color: var(--red-ink);
+        background: color-mix(in srgb, var(--red) 38%, var(--surface));
+        box-shadow: inset 0 1px 0 var(--edge), 0 4px 10px var(--shadow-soft);
+        font: 700 12px 'Syne', Arial, sans-serif;
+      }
+      .progress-copy { display: flex; justify-content: space-between; gap: 10px; margin: 29px 0 8px; color: var(--muted); font: 600 11px 'IBM Plex Mono', monospace; }
+      .progress-track { height: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-alt); box-shadow: inset 0 2px 3px var(--shadow-soft); }
+      .progress-track span { display: block; width: 30%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sky), var(--sky-deep)); }
+      .equation {
+        min-height: 205px; margin: 22px 0 17px; display: grid; place-items: center;
+        border: 1px solid var(--line); border-radius: 22px; background: var(--surface);
+        box-shadow: inset 0 1px 0 var(--edge), 0 5px 16px var(--shadow-soft);
+        font: 700 clamp(54px, 7vw, 88px)/1 'Syne', Arial, sans-serif; letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+      }
+      .answer-form { padding: 20px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: inset 0 1px 0 var(--edge); }
+      .answer-form input { min-height: 55px; margin-bottom: 14px; font-size: 21px; }
+      .answer-form input::placeholder { color: var(--muted); font-size: 14px; }
+      .answer-form input:focus { border: 2px solid var(--sky-deep); }
+      .answer-form .submit-button { min-height: 54px; }
+      .sampler { margin-top: 21px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .sampler-panel { min-height: 240px; padding: 20px; }
+      .sampler-panel h3 { margin: 0 0 13px; font: 700 17px 'Syne', Arial, sans-serif; }
+      .sampler-label { margin: 0 0 12px; color: var(--muted); font: 600 10px 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .palette-row { display: flex; align-items: center; gap: 8px; padding: 11px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-alt); font: 600 12px 'Syne', Arial, sans-serif; }
+      .swatches { display: flex; margin-left: auto; }
+      .swatches i { width: 17px; height: 17px; margin-left: -3px; border: 1px solid var(--surface); border-radius: 50%; background: var(--sky); }
+      .swatches i:nth-child(2) { background: var(--peach); } .swatches i:nth-child(3) { background: #f7fbfd; } .swatches i:nth-child(4) { background: #293d4c; }
+      .segmented { display: flex; gap: 4px; margin-bottom: 13px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-alt); }
+      .segmented span { flex: 1; padding: 8px 4px; border-radius: 999px; color: var(--muted); text-align: center; font: 600 11px 'Syne', Arial, sans-serif; }
+      .segmented .active { color: var(--ink); background: var(--surface); box-shadow: 0 2px 5px var(--shadow-soft); }
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+      .keypad span { min-height: 39px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-alt); box-shadow: inset 0 1px 0 var(--edge), 0 3px 6px var(--shadow-soft); font: 700 15px 'Syne', Arial, sans-serif; }
+      .keypad span:last-child { grid-column: 1 / -1; color: #163849; background: var(--sky); }
+      .states { display: grid; gap: 10px; }
+      .state { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-alt); font: 600 11px 'Syne', Arial, sans-serif; }
+      .state i { width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--green); box-shadow: inset 0 1px 1px var(--edge), 0 2px 5px var(--shadow-soft); }
+      .state:nth-child(2) i { background: var(--yellow); } .state:nth-child(3) i { background: var(--red); }
+      .board { display: none; width: min(100% - 32px, 1160px); margin: 0 auto; padding: 32px 0 70px; }
+      .board h1 { margin: 0 0 5px; font: 800 clamp(28px, 4vw, 43px) 'Syne', Arial, sans-serif; letter-spacing: -.03em; }
+      .board > p { margin: 0 0 26px; color: var(--muted); font-size: 18px; }
+      .board-section { margin-bottom: 32px; }
+      .board-section h2 { margin: 0 0 12px; font: 700 21px 'Syne', Arial, sans-serif; }
+      .board-pair { display: grid; grid-template-columns: minmax(0, 1fr) 295px; gap: 18px; align-items: start; }
+      .board-card { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 8px 20px var(--shadow-soft); }
+      .board-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; font: 700 12px 'Syne', Arial, sans-serif; }
+      .board-card-head a { color: var(--sky-deep); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+      .board-frame { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+      .board-frame.desktop { width: 100%; height: 515px; }
+      .board-frame.desktop iframe { width: 1440px; height: 900px; transform: scale(.55); transform-origin: top left; }
+      .board-frame.mobile { width: 100%; height: 637px; }
+      .board-frame.mobile iframe { width: 390px; height: 844px; transform: scale(.75); transform-origin: top left; }
+      .board-frame iframe { display: block; border: 0; pointer-events: none; }
+      :root[data-stage='board'] .site-header, :root[data-stage='board'] .page, :root[data-stage='board'] .mockup-toolbar { display: none; }
+      :root[data-stage='board'] .board { display: block; }
+      :root[data-stage='setup'] .round-wrap { display: none; }
+      :root[data-stage='round'] .setup-content { display: none; }
+      :root[data-stage='round'] .page { padding-top: 0; }
+      @media (max-width: 1079px) { .site-nav, .site-actions .ghost-button { display: none; } .site-actions { margin-left: auto; } }
+      @media (max-width: 899px) { .setup-grid { grid-template-columns: 1fr; } .idle-panel { min-height: 300px; } .sampler { grid-template-columns: 1fr; } }
+      @media (max-width: 1050px) { .board-pair { grid-template-columns: 1fr; } .board-frame.desktop { width: 792px; max-width: 100%; } .board-frame.mobile { width: 295px; } }
+      @media (max-width: 600px) {
+        .site-header { min-height: 64px; }
+        .site-header-inner { width: calc(100% - 28px); gap: 8px; }
+        .brand-chip { min-height: 27px; padding: 0 8px; font-size: 8px; }
+        .brand-title { font-size: 16px; }
+        .utility-button { min-height: 39px; padding: 0 13px; font-size: 11px; }
+        .page { width: calc(100% - 28px); padding: 23px 0 35px; }
+        .page-intro { margin-bottom: 17px; }
+        .page-intro h1 { font-size: 31px; }
+        .page-intro p { font-size: 16px; }
+        .setup-panel, .idle-panel { padding: 21px; border-radius: 23px; }
+        .panel-title { font-size: 21px; }
+        .setup-grid { gap: 14px; }
+        .start-button { margin: 17px 0 19px; }
+        .idle-panel { min-height: 260px; }
+        .idle-orb { width: 88px; height: 88px; margin-bottom: 12px; font-size: 36px; }
+        .idle-center h3 { font-size: 18px; }
+        .idle-center p { font-size: 15px; }
+        .round-wrap { margin: 22px auto 0; }
+        .round-panel { padding: 19px; border-radius: 23px; }
+        .round-heading { align-items: flex-start; }
+        .round-heading .panel-title { font-size: 20px; }
+        .end-button { min-height: 39px; padding: 0 13px; font-size: 11px; }
+        .progress-copy { margin-top: 24px; }
+        .equation { min-height: 190px; margin: 18px 0 14px; font-size: 55px; }
+        .answer-form { padding: 15px; border-radius: 18px; }
+      }
+      @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <h1>Opaline Abacus</h1><p>Previewed with Powder Blue Notebook colors. The interface switch preserves any of the 59 appearance themes.</p>
+      <section class="board-section"><h2>Light · Setup</h2><div class="board-pair"><div class="board-card"><div class="board-card-head"><span>Desktop · 1440 × 900</span><a href="?mode=light&stage=setup&capture=1">Open view</a></div><div class="board-frame desktop"><iframe src="?mode=light&stage=setup&capture=1" title="Light setup desktop"></iframe></div></div><div class="board-card"><div class="board-card-head"><span>Mobile · 390 × 844</span><a href="?mode=light&stage=setup&capture=1">Open view</a></div><div class="board-frame mobile"><iframe src="?mode=light&stage=setup&capture=1" title="Light setup mobile"></iframe></div></div></div></section>
+      <section class="board-section"><h2>Light · Active round</h2><div class="board-pair"><div class="board-card"><div class="board-card-head"><span>Desktop · 1440 × 900</span><a href="?mode=light&stage=round&capture=1">Open view</a></div><div class="board-frame desktop"><iframe src="?mode=light&stage=round&capture=1" title="Light round desktop"></iframe></div></div><div class="board-card"><div class="board-card-head"><span>Mobile · 390 × 844</span><a href="?mode=light&stage=round&capture=1">Open view</a></div><div class="board-frame mobile"><iframe src="?mode=light&stage=round&capture=1" title="Light round mobile"></iframe></div></div></div></section>
+      <section class="board-section"><h2>Dark · Setup</h2><div class="board-pair"><div class="board-card"><div class="board-card-head"><span>Desktop · 1440 × 900</span><a href="?mode=dark&stage=setup&capture=1">Open view</a></div><div class="board-frame desktop"><iframe src="?mode=dark&stage=setup&capture=1" title="Dark setup desktop"></iframe></div></div><div class="board-card"><div class="board-card-head"><span>Mobile · 390 × 844</span><a href="?mode=dark&stage=setup&capture=1">Open view</a></div><div class="board-frame mobile"><iframe src="?mode=dark&stage=setup&capture=1" title="Dark setup mobile"></iframe></div></div></div></section>
+      <section class="board-section"><h2>Dark · Active round</h2><div class="board-pair"><div class="board-card"><div class="board-card-head"><span>Desktop · 1440 × 900</span><a href="?mode=dark&stage=round&capture=1">Open view</a></div><div class="board-frame desktop"><iframe src="?mode=dark&stage=round&capture=1" title="Dark round desktop"></iframe></div></div><div class="board-card"><div class="board-card-head"><span>Mobile · 390 × 844</span><a href="?mode=dark&stage=round&capture=1">Open view</a></div><div class="board-frame mobile"><iframe src="?mode=dark&stage=round&capture=1" title="Dark round mobile"></iframe></div></div></div></section>
+    </main>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a class="brand" href="#" aria-label="Mental Math home"><span class="brand-chip">Studio</span><span class="brand-title">Mental Math</span></a>
+        <nav class="site-nav" aria-label="Primary"><a class="active" href="#">Trainer</a><a href="#">Mixed</a><a href="#">Progress</a></nav>
+        <div class="site-actions"><button class="ghost-button">Log in</button><button class="ghost-button">Sign up</button><button class="utility-button"><span class="utility-glyph" aria-hidden="true"></span>Utility</button></div>
+      </div>
+    </header>
+    <main class="page">
+      <div class="setup-content">
+        <div class="page-intro"><h1>Trainer</h1><p>Choose a round and start practicing.</p></div>
+        <div class="setup-grid">
+          <section class="panel setup-panel" aria-label="Round setup">
+            <p class="panel-kicker">Blueprint</p><h2 class="panel-title">Round Setup</h2>
+            <button class="start-button"><span class="play-icon" aria-hidden="true"></span> Start round</button>
+            <div class="field-title">Practice mode</div>
+            <div class="mode-options"><button class="mode-choice active"><span class="choice-dot"></span>Positive</button><button class="mode-choice"><span class="choice-dot"></span>Decimal</button></div>
+            <div class="field"><label for="operation">Operation</label><select id="operation"><option>Multiplication</option></select></div>
+            <div class="field-grid"><div class="field"><label for="first">First number digits</label><select id="first"><option>2 digits</option></select></div><div class="field"><label for="second">Second number digits</label><select id="second"><option>2 digits</option></select></div></div>
+            <div class="field"><label for="count">Questions in this round</label><input id="count" type="number" value="10" /></div>
+          </section>
+          <section class="panel idle-panel" aria-label="Live arena preview">
+            <p class="panel-kicker">Practice Surface</p><h2 class="panel-title">Live Arena</h2>
+            <div class="idle-stage"><div class="idle-center"><div class="idle-orb" aria-hidden="true">×</div><h3>Ready when you are</h3><p>Your next problem appears here when you start the round.</p></div></div>
+            <div class="idle-notes"><span class="note-pill">10 questions</span><span class="note-pill">Keyboard ready</span><span class="note-pill">Device history</span></div>
+          </section>
+        </div>
+        <div class="sampler" aria-label="Component details">
+          <section class="panel sampler-panel"><p class="sampler-label">Command Desk</p><h3>Appearance</h3><div class="segmented"><span class="active">Light</span><span>Dark</span><span>Adaptive</span></div><div class="palette-row">Opaline Abacus<span class="swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div></section>
+          <section class="panel sampler-panel"><p class="sampler-label">Mixed Trainer</p><h3>Keypad</h3><div class="keypad" aria-hidden="true"><span>7</span><span>8</span><span>9</span><span>4</span><span>5</span><span>6</span><span>1</span><span>2</span><span>3</span><span>AC</span><span>0</span><span>DEL</span><span>Submit</span></div></section>
+          <section class="panel sampler-panel"><p class="sampler-label">Feedback</p><h3>Meaningful color</h3><div class="states"><div class="state"><i></i>Correct answer</div><div class="state"><i></i>Saving progress</div><div class="state"><i></i>End round</div></div></section>
+        </div>
+      </div>
+      <div class="round-wrap">
+        <section class="panel round-panel" aria-label="Active round">
+          <div class="round-heading"><div><p class="panel-kicker">Practice Surface</p><h2 class="panel-title">Live Arena</h2></div><button class="end-button">End round</button></div>
+          <div class="progress-copy"><span>Question 4 of 10</span><span>Correct so far: 3/3</span></div>
+          <div class="progress-track" aria-label="3 of 10 answered"><span></span></div>
+          <div class="equation" aria-label="47 times 6">47 × 6</div>
+          <form class="answer-form"><label for="answer">Your answer</label><input id="answer" type="text" placeholder="Type integer answer" /><button class="submit-button" type="button">Submit answer</button></form>
+        </section>
+      </div>
+    </main>
+    <div class="mockup-toolbar" aria-label="Mockup views">
+      <a href="?mode=light&stage=setup" id="light-link">Light</a><a href="?mode=dark&stage=setup" id="dark-link">Dark</a><a href="?mode=light&stage=setup" id="setup-link">Setup</a><a href="?mode=light&stage=round" id="round-link">Round</a>
+    </div>
+    <script>
+      const mode = document.documentElement.dataset.mode;
+      const stage = document.documentElement.dataset.stage;
+      document.getElementById('light-link').href = `?mode=light&stage=${stage}`;
+      document.getElementById('dark-link').href = `?mode=dark&stage=${stage}`;
+      document.getElementById('setup-link').href = `?mode=${mode}&stage=setup`;
+      document.getElementById('round-link').href = `?mode=${mode}&stage=round`;
+      document.getElementById(`${mode}-link`).setAttribute('aria-current', 'page');
+      if (stage !== 'board') document.getElementById(`${stage}-link`).setAttribute('aria-current', 'page');
+    </script>
+  </body>
+</html>

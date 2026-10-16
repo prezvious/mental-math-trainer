@@ -5,6 +5,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 let getAccountPreferencesRevision;
+let INTERFACE_STYLE_OPTIONS;
 let shouldApplyAccountPreferencesRow;
 let subscribeToAccountPreferenceChanges;
 
@@ -19,6 +20,9 @@ test.before(async () => {
     shouldApplyAccountPreferencesRow,
     subscribeToAccountPreferenceChanges
   } = preferenceSync);
+  ({ INTERFACE_STYLE_OPTIONS } = await import(
+    pathToFileURL(path.resolve(__dirname, '../utils/interfaceStyle.js')).href
+  ));
 });
 
 test('preference revisions reject stale Supabase rows', () => {
@@ -110,4 +114,52 @@ test('Supabase migration publishes durable theme and mode preferences', () => {
     migration,
     /alter publication supabase_realtime add table public\.user_preferences/i
   );
+});
+
+test('interface style migration defaults existing and future accounts to Studio', () => {
+  const migration = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '../supabase/migrations/20260929000000_add_interface_style.sql'
+    ),
+    'utf8'
+  );
+
+  assert.match(migration, /interface_style text not null default 'studio'/i);
+  assert.match(migration, /interface_style in \('studio', 'opaline'\)/i);
+  assert.doesNotMatch(migration, /update public\.user_preferences/i);
+});
+
+test('Körner schema rollout retains the interfaces available at its release', () => {
+  const migration = fs.readFileSync(
+    path.resolve(
+      __dirname,
+      '../supabase/migrations/20261014000000_add_korner_interface_style.sql'
+    ),
+    'utf8'
+  );
+  const styleConstraint = migration.match(/check\s*\(interface_style in \(([^)]+)\)\)/i);
+  assert.ok(styleConstraint, 'the migration must constrain supported interface values');
+  const allowedStyles = [...styleConstraint[1].matchAll(/'([a-z]+)'/g)].map(
+    (match) => match[1]
+  );
+
+  for (const style of ['studio', 'opaline', 'korner']) {
+    assert.ok(allowedStyles.includes(style), `${style} must remain valid in Supabase`);
+  }
+  assert.match(migration, /drop constraint if exists user_preferences_interface_style_check/i);
+  assert.match(migration, /add constraint user_preferences_interface_style_check/i);
+  assert.doesNotMatch(migration, /update public\.user_preferences|alter column.*default/i);
+});
+
+test('latest schema rollout accepts every selectable interface without changing saved preferences', () => {
+  const migration = fs.readFileSync(
+    path.resolve(__dirname, '../supabase/migrations/20261015000000_add_interface_collections.sql'),
+    'utf8'
+  );
+  const constraint = migration.match(/check\s*\(interface_style in \(([^)]+)\)\)/i);
+  assert.ok(constraint, 'the migration must constrain supported interface values');
+  const allowed = [...constraint[1].matchAll(/'([a-z]+)'/g)].map((match) => match[1]);
+  assert.deepEqual(allowed, INTERFACE_STYLE_OPTIONS.map(({ value }) => value));
+  assert.doesNotMatch(migration, /update public\.user_preferences|alter column.*default/i);
 });

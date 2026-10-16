@@ -328,6 +328,32 @@ export function buildRecentAttempts(entries, limit = 12) {
   return entries.slice(0, limit);
 }
 
+export function buildGuestProgressDashboard(history) {
+  const sessionsById = new Map(history.sessions.map((session) => [session.id, session]));
+  const rows = history.attempts.map((attempt) => ({
+    ...attempt.row,
+    id: attempt.key,
+    created_at: attempt.createdAt
+  }));
+  const entries = normalizeManualProgressLogs(rows)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const recentSessions = buildRecentSessions(entries, DEFAULT_RECENT_SESSION_LIMIT)
+    .map((session) => ({
+      ...session,
+      modeLabel: getSessionModeLabel(session),
+      digitsLabel: getSessionDigitsLabel(session) || '—',
+      averageResponseMs: session.attempts
+        ? Math.round(session.totalResponseMs / session.attempts) : 0,
+      state: sessionsById.get(session.sessionId)?.state || 'interrupted'
+    }));
+  return {
+    overview: buildProgressOverview(entries),
+    operationBreakdown: buildOperationBreakdown(entries),
+    recentSessions,
+    recentAttempts: buildRecentAttempts(entries, DEFAULT_RECENT_ATTEMPT_LIMIT)
+  };
+}
+
 export function getSessionModeLabel(session) {
   if (session.sourceMode === 'ai') {
     if (session.sourceKinds.has('custom')) {

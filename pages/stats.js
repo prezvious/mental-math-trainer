@@ -1,7 +1,8 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import IconLabel from 'components/IconLabel.js';
+import PageIntro from 'components/PageIntro.js';
 import ArrowsClockwiseIcon from 'images/phosphor/arrows-clockwise.svg';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import FunctionIcon from 'images/phosphor/function.svg';
@@ -9,14 +10,17 @@ import HouseIcon from 'images/phosphor/house.svg';
 import ListChecksIcon from 'images/phosphor/list-checks.svg';
 import TimerIcon from 'images/phosphor/timer.svg';
 import { AI_MODE_LOG_TABLE } from 'utils/aiModeLogs.js';
+import { persistProgressLogBatches } from 'utils/progressLogs.js';
 import { formatDuration } from 'utils/mathEngine.js';
 import {
   createEmptyProgressDashboard,
+  buildGuestProgressDashboard,
   fetchProgressDashboardData,
   getOperationDisplayLabel,
   PROGRESS_SOURCE_LABELS,
   RECENT_PROGRESS_WINDOW_DAYS
 } from 'utils/progressDashboard.js';
+import { acknowledgeAccountProgressRows, claimGuestSessionImport, clearGuestHistory, clearPendingAccountProgressRows, getGuestHistory, getPendingAccountProgressRows, markGuestSessionImported, recoverInterruptedGuestSessions, DEVICE_HISTORY_DAYS } from 'utils/progressStorage.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
 
 function formatTimestamp(isoDate) {
@@ -29,62 +33,146 @@ function formatTimestamp(isoDate) {
 }
 
 export default function StatsPage() {
-  const { client, user, isConfigured, isAdmin } = useSupabaseAuth();
+  const { client, user, isConfigured, isLoading: isCheckingAccount, isAdmin } = useSupabaseAuth();
   const userId = user?.id ?? null;
   const [dashboardData, setDashboardData] = useState(createEmptyProgressDashboard);
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [importOffer, setImportOffer] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importDismissed, setImportDismissed] = useState(false);
+  const loadSequenceRef = useRef(0);
+  const currentUserIdRef = useRef(userId);
+  currentUserIdRef.current = userId;
 
-  const loadLogs = useCallback(async () => {
-    if (!client || !userId) {
+  const replayAccountQueue = useCallback(async () => {
+    if (!client || !userId) return;
+    let pending;
+    try {
+      pending = await getPendingAccountProgressRows(userId);
+    } catch (_error) {
       return;
     }
+    for (let offset = 0; offset < pending.length; offset += 500) {
+      const { data, error } = await client.auth.getUser();
+      if (error || data?.user?.id !== userId || currentUserIdRef.current !== userId) {
+        throw new Error('Pending account progress was not synced because the account changed.');
+      }
+      const batch = pending.slice(offset, offset + 500);
+      await persistProgressLogBatches(client, batch, 500);
+      await acknowledgeAccountProgressRows(batch);
+    }
+  }, [client, userId]);
 
+  const loadLogs = useCallback(async () => {
+    const sequence = ++loadSequenceRef.current;
     setIsLoading(true);
     setErrorMessage('');
 
     try {
-      const nextDashboardData = await fetchProgressDashboardData(client);
+      if (!userId) await recoverInterruptedGuestSessions();
+      if (userId && client) await replayAccountQueue();
+      const nextDashboardData = userId && client
+        ? await fetchProgressDashboardData(client)
+        : buildGuestProgressDashboard(await getGuestHistory());
+      if (sequence !== loadSequenceRef.current) return;
       setDashboardData(nextDashboardData);
       setIsLoading(false);
     } catch (error) {
+      if (sequence !== loadSequenceRef.current) return;
       setDashboardData(createEmptyProgressDashboard());
       setErrorMessage(error?.message || 'Could not load progress data.');
       setIsLoading(false);
     }
-  }, [client, userId]);
+  }, [client, replayAccountQueue, userId]);
+
+  useEffect(() => {
+    if (isCheckingAccount) return undefined;
+    void loadLogs();
+    return () => { loadSequenceRef.current += 1; };
+  }, [isCheckingAccount, loadLogs]);
 
   useEffect(() => {
     if (!userId) {
-      setDashboardData(createEmptyProgressDashboard());
-      setIsLoading(false);
-      return;
+      setImportOffer(null);
+      setImportDismissed(false);
+      return undefined;
     }
-
-    loadLogs();
-  }, [loadLogs, userId]);
+    let cancelled = false;
+    getGuestHistory().then((history) => {
+      if (!cancelled) {
+        const sessions = history.sessions.filter((entry) => entry.state !== 'active' && entry.attemptCount > 0 &&
+          (!entry.importOwnerId || entry.importOwnerId === userId));
+        const ids = new Set(sessions.map((entry) => entry.id));
+        setImportOffer({ sessions, attempts: history.attempts.filter((entry) => ids.has(entry.sessionId)) });
+      }
+    }).catch(() => { if (!cancelled) setImportOffer(null); });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   const { overview, operationBreakdown, recentSessions, recentAttempts } = dashboardData;
 
-  const heroChecklist = useMemo(() => {
-    if (!user || isLoading || errorMessage || overview.totalAttempts === 0) {
-      return [
-        'Review accuracy and response speed together.',
-        `See sessions from the last ${RECENT_PROGRESS_WINDOW_DAYS} days.`,
-        'Spot which operation needs tighter reps next.'
-      ];
+  const handleClearGuestHistory = async () => {
+    if (!window.confirm('Clear saved device history? This does not change your theme or trainer settings.')) return;
+    setIsResetting(true);
+    try {
+      await clearGuestHistory();
+      await loadLogs();
+    } catch (error) {
+      setErrorMessage(error?.message || 'Could not clear device history.');
+    } finally {
+      setIsResetting(false);
     }
+  };
 
-    return [
-      `${overview.totalAttempts} total attempts recorded.`,
-      `${overview.accuracy.toFixed(1)}% overall accuracy.`,
-      `${formatDuration(overview.averageResponseMs)} average response time.`
-    ];
-  }, [errorMessage, isLoading, overview.accuracy, overview.averageResponseMs, overview.totalAttempts, user]);
+  const handleImport = async () => {
+    if (!client || !userId || !importOffer || isImporting) return;
+    const owner = userId;
+    setIsImporting(true);
+    setErrorMessage('');
+    const importWork = async () => {
+      for (const session of importOffer.sessions) {
+        const freshHistory = await getGuestHistory();
+        if (!freshHistory.sessions.some((entry) => entry.id === session.id && !entry.importedTo)) {
+          continue;
+        }
+        await claimGuestSessionImport(session.id, owner);
+        const source = freshHistory.attempts.filter((attempt) => attempt.sessionId === session.id)
+          .sort((a, b) => a.questionIndex - b.questionIndex);
+        for (let offset = 0; offset < source.length; offset += 500) {
+          const { data, error } = await client.auth.getUser();
+          if (error || data?.user?.id !== owner || currentUserIdRef.current !== owner) {
+            throw new Error('Import stopped because the account changed. Sign in to the original account and retry.');
+          }
+          const rows = source.slice(offset, offset + 500).map((attempt) => ({
+            ...attempt.row,
+            user_id: owner,
+            created_at: attempt.createdAt
+          }));
+          await persistProgressLogBatches(client, rows, 500);
+        }
+        if (currentUserIdRef.current !== owner) throw new Error('Import stopped because the account changed.');
+        await markGuestSessionImported(session.id, owner);
+      }
+    };
+    try {
+      if (navigator.locks?.request) {
+        await navigator.locks.request('mental-math-guest-import', importWork);
+      } else {
+        await importWork();
+      }
+      setImportOffer(null);
+      await loadLogs();
+    } catch (error) {
+      setErrorMessage(error?.message || 'Import failed. Device history is still available to retry.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleReset = async () => {
-    if (!client || !userId || isResetting) {
+    if (!client || !userId || isResetting || isImporting || isLoading) {
       return;
     }
 
@@ -97,6 +185,14 @@ export default function StatsPage() {
 
     setIsResetting(true);
     setErrorMessage('');
+
+    try {
+      await clearPendingAccountProgressRows(userId);
+    } catch (error) {
+      setIsResetting(false);
+      setErrorMessage(error?.message || 'Could not clear pending account progress.');
+      return;
+    }
 
     const [manualResponse, aiResponse] = await Promise.all([
       client.from('progress_logs').delete().eq('user_id', userId),
@@ -126,57 +222,24 @@ export default function StatsPage() {
         />
       </Head>
 
-      <section className='hero-panel hero-panel-compact stats-hero appear-up'>
-        <div className='hero-layout'>
-          <div className='hero-copy'>
-            <p className='hero-tag'>Progress Dashboard</p>
-            <h1>Session Analytics</h1>
-            <p>
-              Read your pace, consistency, and operation-level control without leaving
-              the practice desk.
-            </p>
-          </div>
-          <div className='hero-sidebar'>
-            <p className='hero-sidebar-label'>What this view tracks</p>
-            <ul className='hero-checklist'>
-              {heroChecklist.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
+      <PageIntro title='Progress' description={`Recent ${RECENT_PROGRESS_WINDOW_DAYS}-day history · ${user ? 'Account' : 'This device'}`} />
 
-      {!isConfigured && (
-        <section className='panel warning-panel appear-up empty-state-panel'>
-          <p className='panel-kicker'>Sync status</p>
-          <h2>Account setup is offline</h2>
-          <p>
-            Progress data is unavailable until account features are configured.
-          </p>
-        </section>
-      )}
+      {isCheckingAccount && <section className='panel paper-panel empty-state-panel' role='status'>Checking your account…</section>}
 
-      {!user && (
-        <section className='panel paper-panel appear-up empty-state-panel'>
-          <p className='panel-kicker'>Private analytics</p>
-          <h2>Log in to open your dashboard</h2>
-          <p>
-            Session history, averages, and recent attempts only appear after you sign in.
-          </p>
-          <div className='inline-actions'>
-            <Link href='/login' className='button button-strong'>
-              Log in
-            </Link>
-            <Link href='/signup' className='button button-quiet'>
-              Sign up
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {user && (
+      {!isCheckingAccount && (
         <>
+          {user && importOffer?.attempts.length > 0 && !importDismissed && (
+            <section className='panel paper-panel appear-up import-offer'>
+              <h2>Save this device history to your account?</h2>
+              <p>{importOffer.sessions.length} {importOffer.sessions.length === 1 ? 'session' : 'sessions'} and {importOffer.attempts.length} submitted answers can be imported to {user.email}. Nothing is uploaded until you choose Import.</p>
+              <div className='inline-actions'>
+                <button type='button' className='button button-strong' onClick={() => void handleImport()} disabled={isImporting}>
+                  {isImporting ? 'Importing…' : 'Import history'}
+                </button>
+                <button type='button' className='button button-quiet' onClick={() => setImportDismissed(true)} disabled={isImporting}>Not now</button>
+              </div>
+            </section>
+          )}
           <section className='stats-actions appear-up'>
             <button
               type='button'
@@ -190,13 +253,17 @@ export default function StatsPage() {
             </button>
             <button
               type='button'
-              onClick={handleReset}
+              onClick={user ? handleReset : handleClearGuestHistory}
               className='button button-danger'
-              disabled={isResetting}
+              disabled={isResetting || isImporting || isLoading}
             >
-              {isResetting ? 'Resetting...' : 'Reset all progress'}
+              {isResetting ? 'Clearing...' : user ? 'Reset account progress' : 'Clear device history'}
             </button>
           </section>
+
+          {!user && !isLoading && !errorMessage && (
+            <p className='save-status'>Saved on this device · Last {DEVICE_HISTORY_DAYS} days, up to 100 sessions or 10,000 attempts. Clearing browser data removes this history. {isConfigured && <Link href='/login' className='text-link'>Log in to sync it</Link>}</p>
+          )}
 
           {errorMessage && (
             <section className='panel warning-panel appear-up empty-state-panel'>
@@ -215,11 +282,10 @@ export default function StatsPage() {
 
           {!isLoading && !errorMessage && overview.totalAttempts === 0 && (
             <section className='panel paper-panel appear-up empty-state-panel'>
-              <p className='panel-kicker'>No history yet</p>
-              <h2>Finish a round to start the record</h2>
+                <p className='panel-kicker'>No history yet</p>
+              <h2>Start a round to build your history</h2>
               <p>
-                Manual attempts and AI MODE activity will appear here as soon as you
-                complete a training run.
+                Submitted answers from Trainer and Mixed rounds will appear here.
               </p>
               <div className='inline-actions'>
                 <Link href='/' className='button button-strong'>
@@ -313,6 +379,7 @@ export default function StatsPage() {
                         <th>Digits</th>
                         <th>Score</th>
                         <th>Avg Speed</th>
+                        {!user && <th>Round</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -330,6 +397,9 @@ export default function StatsPage() {
                             {session.correct}/{session.attempts}
                           </td>
                           <td>{formatDuration(session.averageResponseMs)}</td>
+                          {!user && <td>{session.state === 'ended' ? 'Ended early' :
+                            session.state === 'interrupted' ? 'Interrupted' :
+                            session.state === 'completed' ? 'Completed' : 'In progress'}</td>}
                         </tr>
                       ))}
                     </tbody>

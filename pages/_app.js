@@ -5,6 +5,10 @@ import { ActiveSessionProvider } from 'utils/activeSessionContext.js';
 import { SupabaseAuthProvider } from 'utils/supabaseAuthContext.js';
 import 'styles/globals.css';
 import 'styles/redesign.css';
+import 'styles/interfaceStyles.css';
+import 'styles/korner.css';
+import 'styles/kira.css';
+import 'styles/collections.css';
 
 export default function App({ Component, pageProps }) {
   const page = <Component {...pageProps} />;

@@ -1,0 +1,13 @@
+{
+  "asset": "korner-study.png",
+  "generator": "imagegen",
+  "tool": "image_gen.imagegen",
+  "transparent_background": true,
+  "reference_usage": "Supplied packaging photographs were inspected visually to inform an original illustration. No reference images were sent to the generation tool.",
+  "reference_photo_paths": [
+    "C:/Users/camar/Downloads/Telegram Desktop/IMG_20261014_053355_963.jpg",
+    "C:/Users/camar/Downloads/Telegram Desktop/IMG_20261014_053305_114.jpg"
+  ],
+  "generated_source_path": "C:/Users/camar/.codex/generated_images/01a13748-9ec3-72a2-896a-bc60f1fef14b/exec-9db94e40-0cf9-4307-a672-fa2ed0cab5d9.png",
+  "prompt": "Create a single original polished illustration asset for a friendly mental arithmetic web app, inspired by the spirit of retro two-ink café food packaging but WITHOUT copying a character, brand, logo, lettering, or existing illustration. Transparent PNG with genuinely transparent background. Spacious landscape composition, approximately 4:3, with generous transparent space around the entire scene. A relaxed young adult student with expressive curly warm-orange hair sits on a simple dark-green outline café chair at a small elegant oval café table. They are calmly practicing mental arithmetic with a small wooden-style abacus and open notebook on the table; a simple small cup sits to one side. Student is in three-quarter side view facing the tabletop, one hand gently on the abacus, the other near notebook, calm content expression, long softly curved limbs, pale buttery yellow loose collared shirt, solid deep green trousers, simple orange shoes. Thoughtful confident illustrative anatomy and continuous curved contour linework, a coherent illustrated scene drawn by an accomplished editorial illustrator. Main palette only deep forest green #174c38, warm burnt orange #df662f, optional very pale butter yellow #f1edba. Smooth organic outlines of consistent medium weight, bold flat spot-color shapes, charming subtly imperfect screenprint silhouette, modern retro editorial line drawing, precise readable objects with playful organic character proportions. Flat artwork with crisp antialiased contours suitable to display at 400 pixels wide; no texture, no gradients, no realistic lighting, no 3D. No lettering, no symbols, no numerals, no speech bubbles, no floating decorations, no logo. No backdrop, no surrounding badge, no border, no frame, no drop shadow. The empty area outside the student, chair, café table, notebook, abacus and cup MUST be alpha transparent. Entire chair and feet contained comfortably within the image; no cropped objects."
+}

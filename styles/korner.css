@@ -1,0 +1,410 @@
+/* Körner Club: flat ink, roomy paper, soft lettering, and café illustration.
+   Semantic colors come from the selected theme in either display mode. */
+.app-shell[data-interface-style='korner'] {
+  --surface-radius-lg: 1rem;
+  --surface-radius-md: 0.75rem;
+  --surface-radius-sm: 0.5rem;
+  --surface-outline: var(--control-border);
+  --surface-shadow-soft: none;
+  --surface-shadow-heavy: none;
+  --surface-shadow-inset: none;
+  --korner-ink: var(--text-main);
+  --korner-accent: var(--accent-warm);
+  background: var(--paper);
+  scrollbar-color: var(--control-border) var(--paper);
+}
+
+.app-shell[data-interface-style='korner']::before {
+  display: none;
+}
+
+.app-shell[data-interface-style='korner'] ::selection {
+  color: var(--button-strong-text);
+  background: var(--accent-main);
+}
+
+.app-shell[data-interface-style='korner'] :is(input, textarea) {
+  caret-color: var(--text-accent);
+}
+
+.app-shell[data-interface-style='korner'] :is(h1, h2, h3, .brand-title, .utility-title) {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.app-shell[data-interface-style='korner'] .site-header {
+  border-bottom: 2px solid var(--control-border);
+  background: var(--paper);
+  backdrop-filter: none;
+  box-shadow: none;
+  --header-text: var(--text-main);
+  --header-text-subtle: var(--text-subtle);
+  --header-text-accent: var(--text-accent);
+  --header-control-surface: var(--surface-raised-strong);
+  --header-control-border: var(--control-border);
+  --header-border: var(--control-border);
+}
+
+.app-shell[data-interface-style='korner'] .brand {
+  gap: 0.65rem;
+}
+
+.app-shell[data-interface-style='korner'] .brand-title {
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  text-transform: uppercase;
+}
+
+.app-shell[data-interface-style='korner'] .brand-chip {
+  border: 0;
+  border-radius: 0.45rem 0.85rem 0.45rem 0.15rem;
+  background: var(--accent-main);
+  color: var(--button-strong-text);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  transform: rotate(-5deg);
+}
+
+.app-shell[data-interface-style='korner'] .site-nav {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  flex-wrap: nowrap;
+}
+
+.app-shell[data-interface-style='korner'] .site-nav-link {
+  border-radius: 0.65rem;
+  font-weight: 700;
+}
+
+.app-shell[data-interface-style='korner'] .site-nav-link.is-active {
+  color: var(--button-strong-text);
+  background: var(--accent-main);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] .site-main {
+  padding-top: 1.6rem;
+}
+
+.app-shell[data-interface-style='korner'] .korner-intro {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 15rem;
+  margin: 0 0 0.75rem;
+  padding: 1rem 2rem 1.5rem;
+  border-bottom: 2px solid var(--control-border);
+}
+
+.korner-intro-copy {
+  min-width: 0;
+}
+
+.app-shell[data-interface-style='korner'] .korner-intro h1 {
+  font-size: clamp(2.4rem, 5.5vw, 4.8rem);
+  line-height: 1.04;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.app-shell[data-interface-style='korner'] .korner-intro p {
+  max-width: 45ch;
+  margin-top: 0.75rem;
+  font-size: 1rem;
+}
+
+.korner-lettering {
+  display: inline-block;
+  margin-top: 1rem;
+  color: var(--text-accent);
+  font: italic 700 clamp(1.6rem, 3vw, 2.65rem)/1.05 'Newsreader', serif;
+  letter-spacing: -0.025em;
+  transform: rotate(-5deg);
+}
+
+.korner-intro-art {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  justify-self: center;
+}
+
+.korner-intro-art img {
+  width: 100%;
+  height: 14rem;
+  object-fit: contain;
+}
+
+.korner-math-mark {
+  position: absolute;
+  top: 8%;
+  left: 1%;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--text-accent);
+  transform: rotate(-12deg);
+}
+
+.korner-math-mark-second {
+  inset: auto 1% 12% auto;
+  transform: rotate(12deg);
+}
+
+.app-shell[data-interface-style='korner'] :is(.hero-panel, .panel, .summary-panel, .end-round-dialog) {
+  border: 2px solid var(--control-border);
+  border-radius: var(--surface-radius-lg);
+  background: var(--surface-raised-strong);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.hero-panel, .panel, .summary-panel)::before,
+.app-shell[data-interface-style='korner'] .hero-panel::after {
+  display: none;
+}
+
+.app-shell[data-interface-style='korner'] .panel-kicker {
+  display: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.panel h2, .summary-panel h2) {
+  font-size: clamp(1.3rem, 2vw, 1.55rem);
+}
+
+.app-shell[data-interface-style='korner'] :is(.button, .site-utility-toggle, .control-drawer-close, .password-toggle, .keypad-button) {
+  border: 2px solid var(--control-border);
+  border-radius: 0.65rem;
+  background: var(--surface-input);
+  color: var(--text-main);
+  box-shadow: none;
+  font-weight: 700;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.app-shell[data-interface-style='korner'] :is(.button-strong, .keypad-button.submit) {
+  background: var(--accent-main);
+  color: var(--button-strong-text);
+  border-color: var(--accent-main);
+}
+
+.app-shell[data-interface-style='korner'] .button-danger {
+  background: var(--accent-alert);
+  color: var(--button-danger-text);
+  border-color: var(--accent-alert);
+}
+
+.app-shell[data-interface-style='korner'] :is(.button, .site-utility-toggle, .keypad-button):hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.app-shell[data-interface-style='korner'] :is(.button, .keypad-button):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.app-shell[data-interface-style='korner'] :is(.settings-form input, .settings-form select, .answer-form input, .auth-form input, .mixed-answer-input, .theme-search-input) {
+  border: 2px solid var(--control-border);
+  border-radius: 0.6rem;
+  background: var(--surface-input);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.settings-form label, .auth-form label, .mixed-config-row label) {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.mode-toggle, .practice-mode-option, .operation-card, .toggle-row, .mixed-config-row, .verify-status, .password-guidance, .table-wrap) {
+  border: 1px solid var(--control-border);
+  border-radius: var(--surface-radius-md);
+  background: var(--surface-raised);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.mode-toggle-button.is-active, .practice-mode-option.is-active) {
+  background: var(--surface-selected);
+  color: var(--text-main);
+  border-color: var(--control-border);
+}
+
+.app-shell[data-interface-style='korner'] .verify-status.is-success {
+  background: var(--surface-positive);
+}
+
+.app-shell[data-interface-style='korner'] .verify-status.is-pending {
+  background: var(--surface-selected);
+}
+
+.app-shell[data-interface-style='korner'] .arena-idle-grid {
+  gap: 0;
+}
+
+.app-shell[data-interface-style='korner'] .arena-idle-grid article {
+  padding: 1rem 0;
+  border: 0;
+  border-top: 1px solid var(--control-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.problem-line, .stacked-problem, .answer-form-inline, .solver-result, .summary-grid article, .attempt-list li) {
+  border: 1px solid var(--control-border);
+  background: var(--surface-input);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.problem-line, .stacked-problem, .summary-grid p, .question-timer) {
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell[data-interface-style='korner'] .stacked-problem.is-correct-flash {
+  border-color: var(--text-accent);
+  background: var(--surface-positive);
+}
+
+.app-shell[data-interface-style='korner'] .stacked-problem.is-incorrect-flash {
+  border-color: var(--text-danger);
+  background: var(--surface-danger);
+}
+
+.app-shell[data-interface-style='korner'] :is(.status-badge, .mode-pill, .hotkey-hint) {
+  border: 1px solid var(--control-border);
+  border-radius: 0.45rem;
+  background: var(--surface-raised);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.progress-track, .strength-track span) {
+  border: 1px solid var(--control-border);
+  border-radius: 0.35rem;
+  background: var(--surface-input);
+  box-shadow: none;
+}
+
+.app-shell[data-interface-style='korner'] .progress-track span {
+  border-radius: 0.2rem;
+  background: var(--accent-main);
+}
+
+.app-shell[data-interface-style='korner'] .strength-track .is-pass {
+  background: var(--accent-main);
+}
+
+.app-shell[data-interface-style='korner'] .utility-drawer-shell {
+  border: 2px solid var(--control-border);
+  border-radius: 1rem;
+  background: var(--surface-raised-strong);
+  box-shadow: 0 14px 35px color-mix(in srgb, var(--surface-shadow) 18%, transparent);
+  --header-text: var(--text-main);
+  --header-text-subtle: var(--text-subtle);
+  --header-text-accent: var(--text-accent);
+  --header-control-surface: var(--surface-input);
+  --header-control-border: var(--control-border);
+  --header-border: var(--control-border);
+  --header-surface: var(--surface-raised-strong);
+  --header-surface-alt: var(--surface-raised);
+}
+
+.app-shell[data-interface-style='korner'] .interface-style-options {
+  border: 1px solid var(--control-border);
+  border-radius: 0.7rem;
+  background: var(--surface-raised);
+}
+
+.app-shell[data-interface-style='korner'] .interface-style-button.is-active {
+  background: var(--accent-main);
+  border-color: var(--accent-main);
+  color: var(--button-strong-text);
+}
+
+.app-shell[data-interface-style='korner'] .site-footer {
+  border-top: 2px solid var(--control-border);
+  background: var(--accent-main);
+  color: var(--button-strong-text);
+  padding-block: 1.5rem;
+}
+
+.app-shell[data-interface-style='korner'] .site-footer p {
+  color: inherit;
+}
+
+.app-shell[data-interface-style='korner'] :is(.appear-up, .stagger-1, .stagger-2, .stagger-3) {
+  animation: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.auth-shell, .verify-shell) .korner-intro {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: auto;
+  padding-inline: 0;
+  gap: 1rem;
+}
+
+.app-shell[data-interface-style='korner'] :is(.auth-shell, .verify-shell) .korner-intro-art {
+  display: none;
+}
+
+.app-shell[data-interface-style='korner'] :is(.auth-shell, .verify-shell) .korner-intro p {
+  max-width: 45ch;
+}
+
+.app-shell[data-interface-style='korner'] :is(.auth-shell, .verify-shell) .korner-intro h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+@media (max-width: 639px) {
+  .app-shell[data-interface-style='korner'] .site-main {
+    padding-top: 0.75rem;
+  }
+
+  .app-shell[data-interface-style='korner'] .korner-intro {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 10rem;
+    padding: 0.75rem 0 1.25rem;
+    gap: 0.75rem;
+  }
+
+  .app-shell[data-interface-style='korner'] .korner-intro h1 {
+    font-size: clamp(2rem, 8vw, 3rem);
+    overflow-wrap: normal;
+  }
+
+  .app-shell[data-interface-style='korner'] .korner-intro p {
+    font-size: 0.9rem;
+    max-width: calc(100% - 7.5rem);
+  }
+
+  .korner-intro-art {
+    position: absolute;
+    right: 0;
+    bottom: 0.75rem;
+    width: 7rem;
+  }
+
+  .korner-intro-art img {
+    height: 7rem;
+  }
+
+  .korner-math-mark {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .korner-lettering {
+    font-size: 1.6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell[data-interface-style='korner'] :is(.button, .site-utility-toggle, .keypad-button),
+  .app-shell[data-interface-style='korner'] :is(.button, .site-utility-toggle, .keypad-button):hover:not(:disabled),
+  .app-shell[data-interface-style='korner'] :is(.button, .keypad-button):active:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+}
