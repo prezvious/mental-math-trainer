@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" fill="none">
+  <title>Slow Garden</title>
+  <desc>An original botanical daydream: a sleeping striped cat in a ceramic cup, a small bird, broad leaves, and a low afternoon sun.</desc>
+
+  <!-- Low sun and its quiet, engraved contours. -->
+  <g stroke="var(--garden-ink, #234437)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M319 162C303 123 322 69 364 49C409 27 465 47 482 88C498 129 473 173 431 186Z" fill="var(--garden-sun, #efc78a)" stroke="none" />
+    <g stroke-width="1.5" opacity=".27">
+      <path d="M334 123C346 82 390 58 431 71M333 137C349 92 395 71 440 84M340 148C359 111 399 92 447 99M351 157C374 126 411 113 451 115M367 165C387 145 416 135 448 134" />
+    </g>
+
+    <!-- An irregular pool of paper gives the objects a shared ground. -->
+    <path d="M83 330C111 306 187 308 240 312C317 318 337 304 408 311C466 316 548 316 568 342C593 374 520 392 438 390C359 388 308 405 229 395C160 385 54 378 83 330Z" fill="var(--garden-ground, #e6ece2)" stroke="none" />
+    <g stroke-width="1.6" opacity=".42">
+      <path d="M99 350C143 368 184 368 212 366M129 376C177 385 214 384 245 380M399 371C440 379 491 374 523 364M452 387C480 385 498 381 513 375" />
+    </g>
+
+    <!-- Left foliage: individually drawn, folded leaves and branching stems. -->
+    <g stroke-width="2.7">
+      <path d="M166 327C155 286 143 252 128 220C116 193 105 166 108 139" />
+      <path d="M135 239C95 239 67 217 63 183C94 184 127 200 135 239Z" fill="var(--garden-leaf, #315b43)" />
+      <path d="M120 208C88 185 80 154 93 123C116 143 129 175 120 208Z" fill="var(--garden-leaf-light, #aebfa1)" />
+      <path d="M114 170C98 144 101 111 120 89C137 119 132 148 114 170Z" fill="var(--garden-leaf, #315b43)" />
+      <path d="M141 256C135 218 150 186 181 174C189 205 175 240 141 256Z" fill="var(--garden-leaf, #315b43)" />
+      <path d="M155 295C124 297 100 281 87 256C118 251 148 266 155 295Z" fill="var(--garden-leaf-light, #aebfa1)" />
+      <path d="M159 312C154 284 169 259 193 247C201 274 185 301 159 312Z" fill="var(--garden-leaf-light, #aebfa1)" />
+    </g>
+    <g stroke-width="1.5">
+      <path d="M130 233L76 195M115 195L96 140M115 154L120 106M145 245L174 190M148 287L101 264M163 300L187 263" stroke="var(--garden-paper, #fff9e9)" />
+      <path d="M85 202L98 201M99 211L111 211M108 173L116 164M154 227L153 213M162 213L161 204M123 274L124 282" stroke="var(--garden-paper, #fff9e9)" opacity=".7" />
+    </g>
+
+    <!-- A broad, fan-shaped leaf turns toward the sun. -->
+    <g stroke-width="2.7">
+      <path d="M440 303C449 247 472 207 496 177" />
+      <path d="M480 220C458 205 434 187 432 160C431 143 439 132 450 128C451 113 462 103 476 105C483 87 499 83 510 96C524 85 541 92 543 108C561 109 572 126 566 141C584 152 582 174 566 184C562 204 530 217 502 218L489 231Z" fill="var(--garden-leaf, #315b43)" />
+    </g>
+    <g stroke="var(--garden-paper, #fff9e9)" stroke-width="1.4" opacity=".8">
+      <path d="M487 218C492 180 493 139 505 105M488 213C475 179 466 156 453 137M489 216C510 182 533 158 560 149M491 214C518 203 541 194 559 180M489 216C480 178 480 143 479 117M489 215C509 174 526 149 535 119" />
+      <path d="M474 189L463 185M506 187L519 184M492 170L487 158M518 159L530 155" />
+    </g>
+
+    <!-- Small trailing leaves balance the larger botanical silhouettes. -->
+    <g stroke-width="2.5">
+      <path d="M437 326C486 310 530 304 564 272" />
+      <path d="M488 309C486 288 500 270 523 269C522 291 507 305 488 309Z" fill="var(--garden-leaf-light, #aebfa1)" />
+      <path d="M518 297C528 311 550 315 567 305C550 292 533 289 518 297Z" fill="var(--garden-leaf, #315b43)" />
+      <path d="M546 286C538 266 546 248 564 239C575 258 563 279 546 286Z" fill="var(--garden-leaf-light, #aebfa1)" />
+      <path d="M454 320C465 335 486 340 502 330C488 317 470 314 454 320Z" fill="var(--garden-leaf, #315b43)" />
+    </g>
+    <g stroke="var(--garden-paper, #fff9e9)" stroke-width="1.4">
+      <path d="M495 301L516 277M530 300L553 305M548 277L560 251M466 324L490 330" />
+    </g>
+
+    <!-- The cup handle is a continuous ceramic loop, not a drop shadow. -->
+    <path d="M430 229C456 203 497 203 515 227C540 261 507 312 460 315L428 305L436 284C465 290 494 274 491 251C489 235 466 231 447 249Z" fill="var(--garden-cup, #f6efda)" stroke-width="3.5" />
+    <path d="M449 224C472 212 499 223 503 243C508 270 485 295 456 298" stroke-width="1.5" />
+
+    <!-- Rim, curled body, and a folded striped tail. -->
+    <ellipse cx="316" cy="231" rx="135" ry="30" fill="var(--garden-leaf, #315b43)" stroke-width="3.5" />
+    <path d="M217 204C197 164 227 112 281 104C329 97 380 114 398 153C414 188 394 219 350 232C306 245 239 235 217 204Z" fill="var(--garden-cat, #dc9969)" stroke-width="3.4" />
+    <path d="M275 116C266 128 262 141 266 154M302 111C292 124 291 135 294 142M329 116C319 125 316 137 319 145M356 128C347 134 343 142 342 152" stroke="var(--garden-stripe, #8f5339)" stroke-width="8" />
+    <path d="M245 153C251 144 260 138 272 136M253 163C264 156 275 153 286 154" stroke="var(--garden-stripe, #8f5339)" stroke-width="2" opacity=".55" />
+    <path d="M334 226C370 239 405 221 415 197C428 165 405 142 377 140C351 138 326 153 326 174C325 192 339 205 355 203C369 202 378 189 370 180C365 174 355 177 357 184C349 184 345 176 351 169C361 158 382 161 389 175C400 197 377 217 350 210Z" fill="var(--garden-cat, #dc9969)" stroke-width="3.4" />
+    <g stroke="var(--garden-stripe, #8f5339)" stroke-width="7">
+      <path d="M391 148L385 160M409 166L395 173M409 200L396 195M390 222L383 210M366 229L366 216" />
+    </g>
+    <path d="M341 221C355 223 366 221 374 217" stroke="var(--garden-stripe, #8f5339)" stroke-width="1.5" />
+
+    <!-- Ears, closed eyes, a soft muzzle, and loose, asymmetric whiskers. -->
+    <path d="M191 181L185 141C184 132 190 130 196 134L221 150C230 146 241 145 251 149L277 131C285 126 290 130 288 139L284 179C293 190 294 205 287 217C278 233 255 241 232 236C207 232 190 219 188 201C187 193 189 186 191 181Z" fill="var(--garden-cat, #dc9969)" stroke-width="3.4" />
+    <path d="M194 144L200 174L213 158Z" fill="var(--garden-stripe, #8f5339)" stroke="none" />
+    <path d="M279 141L260 158L276 171Z" fill="var(--garden-stripe, #8f5339)" stroke="none" />
+    <path d="M226 151L231 167M239 149L240 162M252 153L248 167" stroke="var(--garden-stripe, #8f5339)" stroke-width="5" />
+    <path d="M208 205C207 194 221 190 237 199C251 190 267 195 269 205C271 222 249 230 236 224C222 228 208 219 208 205Z" fill="var(--garden-cup, #f6efda)" stroke="none" />
+    <g stroke-width="2.8">
+      <path d="M207 184C212 190 219 190 225 184M251 184C257 190 264 189 268 183" />
+      <path d="M233 201L241 201L237 205Z" fill="var(--garden-ink, #234437)" />
+      <path d="M237 205V211M237 210C233 214 229 214 226 212M237 210C241 214 246 214 249 211" stroke-width="1.8" />
+      <path d="M216 201L181 194M215 207L175 207M216 213L184 221M260 201L291 191M261 208L298 205M260 214L288 221" stroke-width="1.7" />
+    </g>
+    <g fill="var(--garden-stripe, #8f5339)" stroke="none">
+      <circle cx="219" cy="201" r="1.4" /><circle cx="222" cy="207" r="1.4" />
+      <circle cx="254" cy="202" r="1.4" /><circle cx="252" cy="208" r="1.4" />
+    </g>
+
+    <!-- The cup's generous bowl and hand-painted, contour-following glaze. -->
+    <path d="M181 231C186 288 207 329 268 346C290 353 345 354 368 346C421 328 446 286 451 231C426 251 212 253 181 231Z" fill="var(--garden-cup, #f6efda)" stroke-width="3.5" />
+    <path d="M186 256C246 278 390 278 446 254L440 276C379 298 252 296 192 275Z" fill="var(--garden-leaf, #315b43)" stroke="none" />
+    <path d="M204 302C268 322 370 324 427 300L416 317C364 336 274 335 218 318Z" fill="var(--garden-cat, #dc9969)" stroke="none" />
+    <path d="M184 241C242 264 391 265 448 241M198 287C256 308 380 310 435 287" stroke-width="1.5" />
+    <path d="M266 347L264 356C290 367 345 366 370 355L367 347" fill="var(--garden-cup, #f6efda)" stroke-width="3" />
+    <path d="M276 355C302 360 335 360 359 354" stroke-width="1.3" />
+    <g stroke-width="1.2" opacity=".45">
+      <path d="M204 267L210 279M219 271L224 283M234 274L238 286M249 277L252 288M265 279L267 290M281 281L282 291M298 282L298 292M315 282L315 293M332 282L332 292M349 281L348 291M365 279L364 290M381 277L379 288M397 273L394 285M412 270L409 281M427 265L423 278" stroke="var(--garden-paper, #fff9e9)" />
+    </g>
+
+    <!-- One paw drapes over the rim, tying the figure to its resting place. -->
+    <path d="M229 225C238 222 251 225 256 231C261 237 261 250 255 254C248 261 235 257 230 252C224 245 223 232 229 225Z" fill="var(--garden-cat, #dc9969)" stroke-width="2.8" />
+    <path d="M237 245L239 253M245 244L247 254" stroke-width="1.6" />
+
+    <!-- A quiet companion resting on the cup handle. -->
+    <g stroke-width="2.5">
+      <path d="M494 231L490 239M503 232L501 240" />
+      <path d="M476 211C481 217 487 218 491 216C488 205 491 190 502 188C512 186 519 194 517 205C517 217 508 230 496 231C484 232 475 225 470 213Z" fill="var(--garden-paper, #fff9e9)" />
+      <path d="M492 209C495 200 505 202 510 209C509 218 501 223 495 220Z" fill="var(--garden-leaf-light, #aebfa1)" stroke-width="1.7" />
+      <path d="M517 197L527 202L516 205" fill="var(--garden-cat, #dc9969)" stroke-width="1.7" />
+      <circle cx="509" cy="196" r="1.8" fill="var(--garden-ink, #234437)" stroke="none" />
+    </g>
+
+    <!-- A ginkgo sprig and a fallen petal finish the foreground. -->
+    <g stroke-width="2.2">
+      <path d="M152 352C136 338 120 326 103 317" />
+      <path d="M117 328C117 308 105 296 88 299C84 287 69 287 63 296C50 291 42 302 48 313C43 325 57 333 68 329C86 339 101 340 117 328Z" fill="var(--garden-cat, #dc9969)" />
+      <path d="M115 328L68 302M112 328L56 313M111 329L72 325M113 326L91 305" stroke-width="1.2" />
+      <path d="M378 374C386 361 402 359 412 366C402 380 389 383 378 374Z" fill="var(--garden-cat, #dc9969)" />
+      <path d="M382 374L405 366" stroke-width="1.2" />
+    </g>
+    <path d="M173 365C184 360 195 361 203 365M327 386C340 382 352 382 365 383" stroke-width="1.5" opacity=".6" />
+  </g>
+</svg>

@@ -31,7 +31,8 @@
         "styles/interfaceStyles.css",
         "utils/trainerPresentation.js",
         "pages/index.js",
-        "pages/mixed.js"
+        "pages/mixed.js",
+        "public/images/korner-slow-garden.svg"
       ],
       "compatibility": "Semantic colors inherit from the selected theme and resolved light/dark mode. The 59 theme definitions remain independent of interface style. This sidecar documents only Körner Club.",
       "previewContext": "Render snippets inside the selected app shell so semantic CSS variables and the shared font resources inherit into the preview shadow DOM.",
@@ -43,7 +44,7 @@
       "paper": { "role": "neutral", "displayName": "Paper", "purpose": "Theme supplied shell and header background." },
       "ink": { "role": "neutral", "displayName": "Ink", "purpose": "Readable primary text on the selected theme's surfaces." },
       "outline": { "role": "neutral", "displayName": "Outline", "purpose": "Visible structure and separation on flat surfaces." },
-      "lettering-ink": { "role": "primary", "displayName": "Lettering ink", "purpose": "Italic phrase, native math ornaments, caret and correct answer outline." }
+      "lettering-ink": { "role": "primary", "displayName": "Lettering ink", "purpose": "Italic phrase, caret and correct answer outline." }
     },
     "typographyMeta": {
       "display": { "displayName": "Intro display", "purpose": "Uppercase idle and page introductions; mobile and account sizes are separate source overrides." },
@@ -66,7 +67,7 @@
       { "name": "reduced-motion", "value": "@media (prefers-reduced-motion: reduce)", "purpose": "Variant buttons, utility toggles and keypad keys disable transition and hover/active translation." }
     ],
     "breakpoints": [
-      { "name": "korner-mobile", "value": "639px", "query": "(max-width: 639px)", "purpose": "Single column intro, smaller lettering and math marks, right aligned 7rem illustration, and reduced main top padding." }
+      { "name": "korner-mobile", "value": "639px", "query": "(max-width: 639px)", "purpose": "Single column intro, smaller lettering, right aligned 7rem SVG container, and reduced main top padding." }
     ],
     "borders": [
       { "name": "strong-outline", "value": "2px solid var(--control-border)", "purpose": "Header/footer dividers, intro divider, main panels, controls and fields." },
@@ -75,17 +76,23 @@
     ],
     "assets": [
       {
-        "path": "public/images/korner-study.png",
-        "provenance": "public/images/korner-study.png.json",
-        "kind": "decorative-raster",
-        "dimensions": "1448 × 1086",
-        "behavior": "Transparent fixed color café scene rendered by Next Image; empty alt inside an aria-hidden wrapper. It does not supply theme colors.",
-        "responsiveSizes": "(max-width: 639px) 112px, 416px"
-      },
-      {
-        "path": "components/PageIntro.js",
-        "kind": "native-math-svg",
-        "behavior": "Plus and equals paths are inline currentColor SVG with rounded strokes, aria-hidden ancestor, and focusable=false. Functional arithmetic remains DOM text."
+        "path": "public/images/korner-slow-garden.svg",
+        "kind": "decorative-svg",
+        "viewBox": "0 0 640 420",
+        "description": "Slow Garden: an original sleeping striped cat in a ceramic cup, a small bird, broad leaves, and a low afternoon sun. Static, relaxed botanical artwork without a studying theme.",
+        "behavior": "Imported through SVGR and rendered inline by PageIntro as SlowGardenArtwork so CSS variables inherit. Transparent SVG with no bitmap, external resource, or lettering. Wrapper and SVG are aria-hidden=true; SVG is focusable=false. Separate plus and equals ornaments are no longer rendered; functional arithmetic remains DOM text.",
+        "themeRoles": {
+          "--garden-ink": "var(--text-main)",
+          "--garden-paper": "var(--surface-highlight)",
+          "--garden-leaf": "color-mix(in srgb, var(--accent-main) 78%, var(--text-main))",
+          "--garden-leaf-light": "color-mix(in srgb, var(--accent-soft) 64%, var(--paper))",
+          "--garden-cat": "color-mix(in srgb, var(--accent-warm) 72%, var(--surface-highlight))",
+          "--garden-stripe": "color-mix(in srgb, var(--accent-warm) 38%, var(--text-main))",
+          "--garden-cup": "color-mix(in srgb, var(--accent-warm) 10%, var(--surface-highlight))",
+          "--garden-sun": "color-mix(in srgb, var(--accent-warm) 28%, var(--paper))",
+          "--garden-ground": "color-mix(in srgb, var(--accent-soft) 26%, var(--paper))"
+        },
+        "responsiveSizes": "Desktop: width 100% within a 26rem (416px) maximum container, SVG height 14rem. At max-width:639px: 7rem square container and SVG height 7rem. The drawing preserves its viewBox aspect ratio."
       }
     ]
   },
@@ -147,20 +154,20 @@
       "css": ".ds-korner-badge { display: inline-flex; align-items: center; min-height: 2.5rem; padding: 0.55rem 0.75rem; border: 1px solid var(--control-border); border-radius: 0.45rem; background: var(--surface-raised); color: var(--text-main); box-shadow: none; font: 0.67rem 'IBM Plex Mono', monospace; letter-spacing: 0.08em; }"
     },
     {
-      "name": "Café lettering and math marks",
+      "name": "Café lettering",
       "kind": "custom",
-      "description": "The native decorative layer from PageIntro. The companion raster scene is recorded in extensions.assets.",
-      "html": "<span class=\"ds-korner-lettering\" aria-hidden=\"true\">Make it count.</span><svg class=\"ds-korner-math\" viewBox=\"0 0 80 80\" fill=\"none\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M40 10v60M10 40h60\" stroke=\"currentColor\" stroke-width=\"11\" stroke-linecap=\"round\" /></svg><svg class=\"ds-korner-math ds-korner-math-second\" viewBox=\"0 0 80 80\" fill=\"none\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M14 29h52M14 51h52\" stroke=\"currentColor\" stroke-width=\"11\" stroke-linecap=\"round\" /></svg>",
-      "css": ".ds-korner-lettering { display: inline-block; margin-top: 1rem; color: var(--text-accent); font: italic 700 clamp(1.6rem, 3vw, 2.65rem)/1.05 'Newsreader', serif; letter-spacing: -0.025em; transform: rotate(-5deg); } .ds-korner-math { width: 2.5rem; height: 2.5rem; color: var(--text-accent); transform: rotate(-12deg); } .ds-korner-math-second { transform: rotate(12deg); } @media (max-width: 639px) { .ds-korner-lettering { font-size: 1.6rem; } .ds-korner-math { width: 1.25rem; height: 1.25rem; } }"
+      "description": "Decorative lettering from PageIntro. The inline Slow Garden illustration is recorded in extensions.assets.",
+      "html": "<span class=\"ds-korner-lettering\" aria-hidden=\"true\">Make it count.</span>",
+      "css": ".ds-korner-lettering { display: inline-block; margin-top: 1rem; color: var(--text-accent); font: italic 700 clamp(1.6rem, 3vw, 2.65rem)/1.05 'Newsreader', serif; letter-spacing: -0.025em; transform: rotate(-5deg); } @media (max-width: 639px) { .ds-korner-lettering { font-size: 1.6rem; } }"
     }
   ],
   "narrative": {
-    "overview": "Körner Club is a selectable interface variant inspired by KÖRNER food packaging: bold ink, generous paper space, softly curved lettering, and an original café illustration. Its scope is `.app-shell[data-interface-style='korner']`; Studio remains the default and Opaline Abacus remains a separate option.\n\nThis document records the implemented variant rather than a global product identity. The arithmetic interface stays task focused: idle trainer introductions carry the illustration, while active and finish states retain the existing focused trainer presentation.",
+    "overview": "Körner Club is a selectable interface variant inspired by KÖRNER food packaging: bold ink, generous paper space, softly curved lettering, and an original Slow Garden illustration. Its scope is `.app-shell[data-interface-style='korner']`; Studio remains the default and Opaline Abacus remains a separate option.\n\nThis document records the implemented variant rather than a global product identity. The arithmetic interface stays task focused: idle trainer introductions carry the illustration, while active and finish states retain the existing focused trainer presentation.",
     "keyCharacteristics": [
       "Heavy uppercase Syne introductions paired with italic Newsreader lettering.",
       "Flat surfaces, visible outlines, and moderately rounded controls.",
       "Theme supplied semantic colors in both light and dark display modes.",
-      "Decorative raster artwork paired with crisp native math SVG."
+      "Decorative, theme-adaptive inline Slow Garden SVG."
     ],
     "rules": [
       { "name": "The Theme Binding Rule", "body": "Keep color assignments attached to the existing semantic variables so theme and display mode changes remain independent of interface style.", "section": "colors" }
@@ -168,7 +175,7 @@
     "dos": [
       "Do scope new Körner treatments to the `korner` interface and reuse the selected theme's semantic color variables.",
       "Do preserve the readable mathematical DOM and the existing focused trainer presentation.",
-      "Do keep the original raster scene decorative and native math ornaments responsive to theme ink."
+      "Do keep Slow Garden decorative, inline, and responsive to the selected theme."
     ],
     "donts": [
       "Don't assign a fixed palette to this interface or change Studio's default through this specification.",

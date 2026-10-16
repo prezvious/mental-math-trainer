@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import InterfaceArtwork, { INTERFACE_ARTWORK } from 'components/InterfaceArtwork.js';
+import SlowGardenArtwork from 'public/images/korner-slow-garden.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 
 export default function PageIntro({ title, description, className = '' }) {
@@ -66,13 +66,7 @@ export default function PageIntro({ title, description, className = '' }) {
           <span className='korner-lettering' aria-hidden='true'>Make it count.</span>
         </div>
         <div className='korner-intro-art' aria-hidden='true'>
-          <svg className='korner-math-mark' viewBox='0 0 80 80' fill='none' focusable='false'>
-            <path d='M40 10v60M10 40h60' stroke='currentColor' strokeWidth='11' strokeLinecap='round' />
-          </svg>
-          <Image src='/images/korner-study.png' alt='' width={1448} height={1086} sizes='(max-width: 639px) 112px, 416px' />
-          <svg className='korner-math-mark korner-math-mark-second' viewBox='0 0 80 80' fill='none' focusable='false'>
-            <path d='M14 29h52M14 51h52' stroke='currentColor' strokeWidth='11' strokeLinecap='round' />
-          </svg>
+          <SlowGardenArtwork className='korner-garden-art' aria-hidden='true' focusable='false' />
         </div>
       </header>
     );

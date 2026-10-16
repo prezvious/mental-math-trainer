@@ -113,7 +113,7 @@ components:
 
 ## Overview
 
-Körner Club is a selectable interface variant inspired by KÖRNER food packaging: bold ink, generous paper space, softly curved lettering, and an original café illustration. Its scope is `.app-shell[data-interface-style='korner']`; Studio remains the default and Opaline Abacus remains a separate option.
+Körner Club is a selectable interface variant inspired by KÖRNER food packaging: bold ink, generous paper space, softly curved lettering, and an original Slow Garden illustration. Its scope is `.app-shell[data-interface-style='korner']`; Studio remains the default and Opaline Abacus remains a separate option.
 
 This document records the implemented variant rather than a global product identity. The arithmetic interface stays task focused: idle trainer introductions carry the illustration, while active and finish states retain the existing focused trainer presentation.
 
@@ -122,9 +122,9 @@ This document records the implemented variant rather than a global product ident
 - Heavy uppercase Syne introductions paired with italic Newsreader lettering.
 - Flat surfaces, visible outlines, and moderately rounded controls.
 - Theme supplied semantic colors in both light and dark display modes.
-- Decorative raster artwork paired with crisp native math SVG.
+- Decorative, theme-adaptive inline Slow Garden SVG.
 
-Source authority: [variant styles](../styles/korner.css), [intro component](../components/PageIntro.js), [interface registry](../utils/interfaceStyle.js), [theme binding](../components/SiteLayout.js), and the inherited [base](../styles/globals.css), [layout](../styles/redesign.css), and [interface selector](../styles/interfaceStyles.css) styles. The matching sidecar is [.impeccable/design.json](../.impeccable/design.json). The project has no root `PRODUCT.md` or `DESIGN.md`; this scoped extraction does not introduce either.
+Source authority: [variant styles](../styles/korner.css), [intro component](../components/PageIntro.js), [Slow Garden artwork](../public/images/korner-slow-garden.svg), [interface registry](../utils/interfaceStyle.js), [theme binding](../components/SiteLayout.js), and the inherited [base](../styles/globals.css), [layout](../styles/redesign.css), and [interface selector](../styles/interfaceStyles.css) styles. The matching sidecar is [.impeccable/design.json](../.impeccable/design.json). The project has no root `PRODUCT.md` or `DESIGN.md`; this scoped extraction does not introduce either.
 
 ## Colors
 
@@ -134,7 +134,7 @@ The frontmatter binds to the existing semantic custom properties rather than fre
 
 - **Primary ink:** strong buttons, active navigation, active interface selection, brand chip, footer, and progress fills.
 - **Primary text:** the matching foreground for those filled surfaces and text selection.
-- **Lettering ink:** the rotated phrase, inline math ornaments, input caret, and correct answer outline.
+- **Lettering ink:** the rotated phrase, input caret, and correct answer outline.
 
 ### Neutral
 
@@ -153,13 +153,13 @@ Syne supplies the heavy display and interface type; Newsreader supplies body cop
 
 The frontmatter records the desktop intro hierarchy. The intro title is uppercase with tight spacing; auth and verification titles use a smaller responsive size (`clamp(2rem, 4vw, 3rem)`). Form labels use normal casing. The lettering phrase is italic and rotated slightly (`-5deg`), with its text hidden from assistive technology as decoration. Body descriptions stay short (`45ch` maximum on larger screens).
 
-Problem lines, stacked problems, summary values, and question timers use tabular numerals. Mathematical content stays real DOM text; decorative math marks are SVG paths.
+Problem lines, stacked problems, summary values, and question timers use tabular numerals. Mathematical content stays real DOM text.
 
 ## Layout
 
-The shared shell still owns container width, content gutters, page gap, trainer grids, and account form widths. Körner Club adjusts the main top padding (`1.6rem`) and gives the intro two columns (`minmax(0, 1fr) minmax(0, 0.8fr)`) with a generous gap (`1.5rem`), minimum height (`15rem`), and a bottom divider. Its artwork is contained within a maximum width (`26rem`) and image height (`14rem`). Auth and verification intros use one column with automatic minimum height, remove horizontal padding, and narrow the gap (`1rem`). Those compact forms hide the illustration and retain a paragraph maximum of `45ch`, without reserving artwork space, at every viewport size.
+The shared shell still owns container width, content gutters, page gap, trainer grids, and account form widths. Körner Club adjusts the main top padding (`1.6rem`) and gives the intro two columns (`minmax(0, 1fr) minmax(0, 0.8fr)`) with a generous gap (`1.5rem`), minimum height (`15rem`), and a bottom divider. The artwork container has a maximum width (`26rem`, `416px`); the inline SVG uses `width: 100%` and `height: 14rem`, preserving the drawing's aspect ratio within its `640 × 420` viewBox. Auth and verification intros use one column with automatic minimum height, remove horizontal padding, and narrow the gap (`1rem`). Those compact forms hide the illustration and retain a paragraph maximum of `45ch`, without reserving artwork space, at every viewport size.
 
-At the variant's mobile breakpoint (`max-width: 639px`), main top padding becomes `0.75rem`. The standard intro becomes one column, with minimum height `10rem`, padding `0.75rem 0 1.25rem`, and gap `0.75rem`. Its title uses `clamp(2rem, 8vw, 3rem)`. The illustration sits at the lower right in a `7rem` square; paragraph width reserves `7.5rem` for it and paragraph text becomes `0.9rem`. Math ornaments shrink to `1.25rem`, and lettering to `1.6rem`. The auth and verification exceptions above retain their smaller title sizing and hidden art on mobile.
+At the variant's mobile breakpoint (`max-width: 639px`), main top padding becomes `0.75rem`. The standard intro becomes one column, with minimum height `10rem`, padding `0.75rem 0 1.25rem`, and gap `0.75rem`. Its title uses `clamp(2rem, 8vw, 3rem)`. The illustration sits at the lower right in a `7rem` square container with a `7rem` SVG height, preserving the drawing's aspect ratio; paragraph width reserves `7.5rem` for it and paragraph text becomes `0.9rem`. Lettering shrinks to `1.6rem`. The auth and verification exceptions above retain their smaller title sizing and hidden art on mobile.
 
 Idle arena articles become a continuous stack separated by top rules, rather than separate raised cards. Existing shared shell and trainer responsive rules continue to apply outside these variant overrides.
 
@@ -189,11 +189,27 @@ Navigation has a transparent wrapper and rounded rectangular links, with the pri
 
 The interface selector exposes the exact registry value `korner` as “Körner Club”. Its selected button uses primary ink and primary text; selection and persistence use the existing account preference mechanism.
 
-### Intro illustration and math ornaments
+### Intro illustration
 
-`PageIntro` renders [korner-study.png](../public/images/korner-study.png) through Next Image with intrinsic dimensions (`1448 × 1086`) and responsive sizes (`112px` on mobile, `416px` otherwise). It is an original transparent raster illustration of a student practicing at a café table. Its fixed green, orange, and pale yellow artwork is decorative and does not define a new UI palette; transparency lets the current paper color remain visible. [Asset provenance](../public/images/korner-study.png.json) records generation details.
+`PageIntro` imports [korner-slow-garden.svg](../public/images/korner-slow-garden.svg) through SVGR and renders it inline as `SlowGardenArtwork`. Slow Garden is an original transparent illustration of a sleeping striped cat in a ceramic cup, a small bird, broad leaves, and a low afternoon sun. Its static botanical scene follows the user's relaxed, non-study direction. The SVG has `viewBox="0 0 640 420"` and contains no bitmap, external resource, or lettering.
 
-The plus and equals marks are separate inline SVG paths using `currentColor`, round strokes, and the lettering ink role. The artwork wrapper is `aria-hidden`, the image has empty alt text, and the SVGs are not focusable. The page title and description remain readable DOM text.
+Inline rendering lets the illustration inherit these local CSS variables from `.korner-intro-art`; the mixed tones reuse existing semantic tokens rather than defining a new palette:
+
+| Artwork role | Theme binding |
+| --- | --- |
+| `--garden-ink` | `var(--text-main)` |
+| `--garden-paper` | `var(--surface-highlight)` |
+| `--garden-leaf` | `color-mix(in srgb, var(--accent-main) 78%, var(--text-main))` |
+| `--garden-leaf-light` | `color-mix(in srgb, var(--accent-soft) 64%, var(--paper))` |
+| `--garden-cat` | `color-mix(in srgb, var(--accent-warm) 72%, var(--surface-highlight))` |
+| `--garden-stripe` | `color-mix(in srgb, var(--accent-warm) 38%, var(--text-main))` |
+| `--garden-cup` | `color-mix(in srgb, var(--accent-warm) 10%, var(--surface-highlight))` |
+| `--garden-sun` | `color-mix(in srgb, var(--accent-warm) 28%, var(--paper))` |
+| `--garden-ground` | `color-mix(in srgb, var(--accent-soft) 26%, var(--paper))` |
+
+The artwork wrapper and SVG are `aria-hidden='true'`, and the SVG is `focusable='false'`. The page title and description remain readable DOM text. The separate plus and equals ornaments are no longer rendered; the decorative “Make it count.” lettering remains outside the illustration.
+
+The former student-at-café [korner-study.png](../public/images/korner-study.png) and its [asset provenance](../public/images/korner-study.png.json) remain historical files; the live intro does not render them.
 
 On trainer pages, existing `shouldShowHeroPanel` presentation logic controls the intro. `utils/trainerPresentation.js` governs Trainer; `pages/mixed.js` shows the Mixed intro only when neither an active round nor a last round is present. Hidden intros are replaced by a visually hidden round heading. Progress and account pages use the same intro component when present.
 
@@ -201,7 +217,7 @@ On trainer pages, existing `shouldShowHeroPanel` presentation logic controls the
 
 - **Do** scope new Körner treatments to the `korner` interface and reuse the selected theme's semantic color variables.
 - **Do** preserve the readable mathematical DOM and the existing focused trainer presentation.
-- **Do** keep the original raster scene decorative and native math ornaments responsive to theme ink.
+- **Do** keep Slow Garden decorative, inline, and responsive to the selected theme.
 - **Don't** assign a fixed palette to this interface or change Studio's default through this specification.
 - **Don't** show the decorative trainer intro during active or finish states where the current presentation hides it.
 - **Don't** convert functional arithmetic, control labels, or status feedback into raster artwork.
