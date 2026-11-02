@@ -198,7 +198,16 @@ export async function recoverInterruptedGuestSessions() {
   await pruneGuestHistory();
 }
 
-async function deleteSessions(sessionIds) {
+export async function getGuestHistoryForImport(userId) {
+  await recoverInterruptedGuestSessions();
+  const history = await getGuestHistory();
+  const sessions = history.sessions.filter((entry) => entry.state !== 'active' &&
+    entry.attemptCount > 0 && (!entry.importOwnerId || entry.importOwnerId === userId));
+  const ids = new Set(sessions.map((entry) => entry.id));
+  return { sessions, attempts: history.attempts.filter((entry) => ids.has(entry.sessionId)) };
+}
+
+async function deleteSessions(sessionIds, { keepMetadata = false } = {}) {
   if (!sessionIds.length) return;
   const database = await openDatabase();
   const transaction = database.transaction([SESSION_STORE, ATTEMPT_STORE], 'readwrite');
@@ -206,7 +215,7 @@ async function deleteSessions(sessionIds) {
   const sessions = transaction.objectStore(SESSION_STORE);
   const attempts = transaction.objectStore(ATTEMPT_STORE);
   for (const id of sessionIds) {
-    sessions.delete(id);
+    if (!keepMetadata) sessions.delete(id);
     const keys = await requestResult(attempts.index('sessionId').getAllKeys(id));
     for (const key of keys) attempts.delete(key);
   }
@@ -220,12 +229,20 @@ export async function pruneGuestHistory() {
   const all = await requestResult(transaction.objectStore(SESSION_STORE).getAll());
   await done;
   const cutoff = Date.now() - DEVICE_HISTORY_DAYS * DAY_MS;
-  const inactive = all.filter((session) => session.owner === 'guest' && session.state !== 'active' && !session.importedTo)
+  const inactive = all.filter((session) => session.owner === 'guest' && session.state !== 'active')
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   let keptSessions = 0;
   let keptAttempts = 0;
+  let keptImportMarkers = 0;
   const expired = [];
   for (const session of inactive) {
+    // Retired ownership markers must not consume the guest answer retention budget.
+    if (session.importedTo) {
+      if (new Date(session.updatedAt).getTime() < cutoff ||
+        keptImportMarkers >= DEVICE_HISTORY_SESSION_LIMIT) expired.push(session.id);
+      else keptImportMarkers += 1;
+      continue;
+    }
     if (new Date(session.updatedAt).getTime() < cutoff ||
       keptSessions >= DEVICE_HISTORY_SESSION_LIMIT ||
       keptAttempts + session.attemptCount > DEVICE_HISTORY_ATTEMPT_LIMIT) {
@@ -236,6 +253,9 @@ export async function pruneGuestHistory() {
     }
   }
   await deleteSessions(expired);
+  // Keep bounded ownership markers, but remove acknowledged imported answer payloads.
+  await deleteSessions(inactive.filter((session) => session.importedTo).map((session) => session.id),
+    { keepMetadata: true });
 }
 
 export async function clearGuestHistory() {
@@ -257,6 +277,7 @@ export async function markGuestSessionImported(sessionId, userId) {
     sessions.put({ ...session, importedTo: userId });
   }
   await done;
+  await pruneGuestHistory();
 }
 
 export async function claimGuestSessionImport(sessionId, userId) {

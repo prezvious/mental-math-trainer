@@ -27,24 +27,25 @@ test.before(async () => {
 
 test('preference revisions reject stale Supabase rows', () => {
   const latestRevision = getAccountPreferencesRevision({
-    updated_at: '2026-09-09T02:00:00.000Z'
+    revision: 12, updated_at: '2099-09-09T02:00:00.000Z'
   });
 
   assert.equal(
     shouldApplyAccountPreferencesRow(
-      { updated_at: '2026-09-09T01:59:59.999Z' },
+      { revision: 11, updated_at: '2099-09-10T01:59:59.999Z' },
       latestRevision
     ),
     false
   );
   assert.equal(
     shouldApplyAccountPreferencesRow(
-      { updated_at: '2026-09-09T02:00:00.001Z' },
+      { revision: 13, updated_at: '2026-09-09T02:00:00.001Z' },
       latestRevision
     ),
     true
   );
-  assert.equal(getAccountPreferencesRevision({ updated_at: 'invalid' }), 0);
+  assert.equal(getAccountPreferencesRevision({ revision: 'invalid' }), 0n);
+  assert.equal(getAccountPreferencesRevision({ revision: '9223372036854775807' }), 9223372036854775807n);
 });
 
 test('signed-in preference subscription filters the user row and cleans up', () => {

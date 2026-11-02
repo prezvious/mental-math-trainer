@@ -1,13 +1,17 @@
 import { USER_PREFERENCES_TABLE } from './accountPreferences.js';
 
 export function getAccountPreferencesRevision(input = {}) {
-  const revision = Date.parse(input.updatedAt ?? input.updated_at ?? '');
-  return Number.isFinite(revision) ? revision : 0;
+  try {
+    const revision = BigInt(input.revision ?? 0);
+    return revision >= 0n ? revision : 0n;
+  } catch (_error) {
+    return 0n;
+  }
 }
 
 export function shouldApplyAccountPreferencesRow(
   incomingRow,
-  latestRevision = 0
+  latestRevision = 0n
 ) {
   return getAccountPreferencesRevision(incomingRow) >= latestRevision;
 }

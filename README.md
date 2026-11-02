@@ -15,7 +15,7 @@ through Supabase when account features are configured.
 - Configurable round length, timer visibility, and digit direction.
 - Twelve interface styles and 59 color themes, with independent Light, Dark, and
   system-adaptive display modes.
-- Round summaries with time, accuracy, fastest response, and per-operation stats.
+- Round summaries with accuracy, correct-answer counts, average response, and total time.
 - Device history and a 90-day Progress view for guests; account progress and
   optional guest-history import after signing in.
 - End-round confirmation that keeps submitted answers and pauses the timer while
@@ -112,7 +112,11 @@ also need the interface-style migrations:
 - `20261014010000_add_kira_interface_style.sql`
 - `20261015000000_add_interface_collections.sql`
 
-The final migration enables account sync for all twelve interface styles.
+The interface-collection migration enables account sync for all twelve styles.
+
+Apply `20261102055520_add_user_preferences_revision.sql` before deploying this
+version. Preference saves and Realtime updates use a database-generated revision
+to preserve their order across devices with different clocks.
 
 For password recovery, add each environment's `/reset-password` URL to the
 Supabase Auth redirect URL allowlist, including
@@ -120,9 +124,19 @@ Supabase Auth redirect URL allowlist, including
 delivery and verify the reset-link flow. Users request a link at
 `/forgot-password` and choose a new password at `/reset-password`.
 
+## Android release
+
+The GitHub-distributed Android app has a separate native packaging source archive.
+The signed [Android 1.0.4 release](https://github.com/prezvious/mental-math-trainer/releases/tag/android-v1.0.4)
+includes the Android 10 updater compatibility fix, update manifest, and full source
+archive. See [updater compatibility and recovery](docs/android-update-compatibility.md)
+for the cause, instructions, and verification limits. If the old updater rejects
+the APK, install the downloaded 1.0.4 APK manually over the existing app once.
+Do not uninstall or clear storage.
+
 ## Tech Stack
 
-- Next.js 14
+- Next.js 15
 - React 18
 - Tailwind CSS 3
 - mathjs for high-precision calculations

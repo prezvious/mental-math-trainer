@@ -8,11 +8,11 @@ function resolveSessionStorage(storage) {
     return storage;
   }
 
-  if (typeof window === 'undefined' || !window.sessionStorage) {
+  try {
+    return typeof window === 'undefined' ? null : window.sessionStorage;
+  } catch (_error) {
     return null;
   }
-
-  return window.sessionStorage;
 }
 
 function sanitizeAuthLoginHandoff(input = {}) {

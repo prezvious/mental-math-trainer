@@ -1,3 +1,5 @@
+import { getProgressWriteGeneration, registerProgressBuffer, withAccountProgressWrite } from './progressWriteCoordinator.js';
+
 export const AI_MODE_LOG_TABLE = 'ai_mode_logs';
 export const AI_MODE_LOG_INSERT_BATCH_SIZE = 500;
 export const AI_MODE_LOG_FETCH_PAGE_SIZE = 1000;
@@ -176,6 +178,8 @@ export function createAiModeLogBuffer({
   let inFlightRows = [];
   let flushTimer = null;
   let flushPromise = null;
+  const generations = new WeakMap();
+  const isCurrent = row => generations.get(row) === getProgressWriteGeneration(row.user_id);
 
   const cancelScheduledFlush = () => {
     if (flushTimer) {
@@ -196,11 +200,9 @@ export function createAiModeLogBuffer({
       return false;
     }
 
-    void persistAiModeLogRowsKeepalive(rows, {
-      accessToken,
-      restConfig,
-      fetchImpl
-    }).catch(() => {});
+    void withAccountProgressWrite(rows[0].user_id, () => persistAiModeLogRowsKeepalive(
+      rows.filter(isCurrent), { accessToken, restConfig, fetchImpl }
+    ), generations.get(rows[0])).catch(() => {});
 
     return true;
   };
@@ -241,10 +243,13 @@ export function createAiModeLogBuffer({
         }
 
         try {
-          await persistAiModeLogBatches(client, snapshot, batchSize);
-          flushedCount += snapshot.length;
+          await withAccountProgressWrite(snapshot[0].user_id, async () => {
+            const current = snapshot.filter(isCurrent);
+            await persistAiModeLogBatches(client, current, batchSize);
+            flushedCount += current.length;
+          }, generations.get(snapshot[0]));
         } catch (error) {
-          pendingRows = [...snapshot, ...pendingRows];
+          pendingRows = [...snapshot.filter(isCurrent), ...pendingRows];
           throw error;
         } finally {
           inFlightRows = [];
@@ -263,15 +268,16 @@ export function createAiModeLogBuffer({
     cancelScheduledFlush();
     flushTimer = setTimeoutImpl(() => {
       flushTimer = null;
-      void flush();
+      void flush().catch(() => {});
     }, flushDelayMs);
   };
 
   const enqueue = (row) => {
+    generations.set(row, getProgressWriteGeneration(row.user_id));
     pendingRows = [...pendingRows, row];
 
     if (pendingRows.length >= flushSize) {
-      void flush();
+      void flush().catch(() => {});
       return;
     }
 
@@ -283,11 +289,16 @@ export function createAiModeLogBuffer({
     cancelScheduledFlush();
   };
 
+  const unregister = registerProgressBuffer(userId => {
+    pendingRows = pendingRows.filter(row => row.user_id !== userId);
+    if (!pendingRows.length) cancelScheduledFlush();
+  });
+
   return {
     enqueue,
     flush,
     clear,
-    dispose: cancelScheduledFlush,
+    dispose: () => { cancelScheduledFlush(); unregister(); },
     getPendingRows: () => pendingRows.slice(),
     getPendingCount: () => pendingRows.length,
     getInFlightRows: () => inFlightRows.slice()

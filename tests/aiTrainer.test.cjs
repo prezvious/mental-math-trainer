@@ -139,6 +139,21 @@ test('solveTrainerProblem normalizes terminating decimal results for decimal pra
   assert.equal(solved.resultDecimalText, '0.7');
 });
 
+test('high-precision decimal AI submissions and saved answers agree with the trainer', () => {
+  const problem = {
+    practiceMode: 'DECIMAL', operation: 'MULTIPLICATION',
+    leftOperand: '1.12345678', rightOperand: '1.87654321',
+    correctAnswer: '2.1082151922374638'
+  };
+  const solved = solveTrainerProblem(problem);
+  const round = createActiveRound({ practiceMode: 'DECIMAL', roundSize: 1 }, problem, 1000, 'exact-decimal');
+  const submission = processRoundSubmission(round, solved.submittedAnswer, 1001, null);
+  const row = buildAiModeTrainerLogRow(problem, solved, 'account-a', 'exact-decimal', 1);
+  assert.equal(submission.attempt.isCorrect, true);
+  assert.equal(row.result_exact_text, '2.1082151922374638');
+  assert.equal(row.result_decimal_text, '2.1082151922374638');
+});
+
 test('buildAiModeCustomLogRow stores custom solves as one-question custom sessions', () => {
   const row = buildAiModeCustomLogRow(
     {

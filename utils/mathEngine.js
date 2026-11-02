@@ -696,8 +696,9 @@ export function sanitizeSettings(settings = {}) {
 }
 
 export function resolveRoundSizeDraft(settings, roundSizeDraft) {
-  const parsedRoundSize = Number.parseInt(roundSizeDraft, 10);
-  if (!Number.isInteger(parsedRoundSize)) {
+  const draft = String(roundSizeDraft ?? '').trim();
+  const parsedRoundSize = Number(draft);
+  if (!draft || !Number.isInteger(parsedRoundSize)) {
     return {
       nextSettings: settings,
       nextRoundSizeDraft: String(settings.roundSize),

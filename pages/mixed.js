@@ -243,10 +243,26 @@ function MixedTrainerContent() {
     const previousUserId = previousUserIdRef.current;
     previousUserIdRef.current = userId;
 
-    if (previousUserId === null || previousUserId === userId) {
+    if (previousUserId === userId) {
       return;
     }
 
+    if (flashTimeoutRef.current) {
+      clearTimeout(flashTimeoutRef.current);
+      flashTimeoutRef.current = null;
+    }
+    const previousRound = activeRoundRef.current;
+    activeRoundRef.current = null;
+    if (previousUserId === null && previousRound) {
+      guestCheckpointRef.current = guestCheckpointRef.current.then(() =>
+        finishGuestSession(previousRound.sessionId, 'ended')
+      ).catch((error) => { guestSaveErrorRef.current = error; });
+    }
+    resolveExitRef.current?.(false);
+    resolveExitRef.current = null;
+    exitPromiseRef.current = null;
+    setEndDialogOpen(false);
+    setIsEndingRound(false);
     progressBuffer.clear();
     pendingAdvanceRef.current = null;
     setActiveRound(null);
@@ -648,6 +664,8 @@ function MixedTrainerContent() {
 
   const advanceAfterSubmissionFeedback = useCallback(
     async (submission) => {
+      if (!activeRoundRef.current || pendingAdvanceRef.current !== submission ||
+        activeRoundRef.current.questionId !== submission.handledQuestionId) return;
       pendingAdvanceRef.current = null;
 
       const { attempts, isComplete, nextActiveRound } = submission;

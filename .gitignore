@@ -39,6 +39,7 @@ coverage/
 .netlify/
 .playwright-mcp/
 output/
+android-release/
 
 # Local planning and audit notes
 STORAGE_AUDIT.md

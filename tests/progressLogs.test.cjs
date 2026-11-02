@@ -481,8 +481,7 @@ test('createProgressLogBuffer flushes immediately at the queue threshold', async
   buffer.enqueue(buildProgressLogRow(createAttempt(0), { practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1, leftDecimalDigits: 2, rightDecimalDigits: 2 }, 'user-1', 'session-1', 1));
   buffer.enqueue(buildProgressLogRow(createAttempt(1), { practiceMode: 'POSITIVE', leftDigits: 2, rightDigits: 1, leftDecimalDigits: 2, rightDecimalDigits: 2 }, 'user-1', 'session-1', 2));
 
-  await Promise.resolve();
-  await Promise.resolve();
+  await new Promise(setImmediate);
 
   assert.equal(client.upsertCalls.length, 1);
   assert.equal(client.upsertCalls[0].rows.length, 2);
@@ -505,8 +504,7 @@ test('createProgressLogBuffer flushes buffered rows after the inactivity timer',
 
   assert.equal(timeoutHarness.pendingCount(), 1);
   assert.equal(timeoutHarness.runNext(), true);
-  await Promise.resolve();
-  await Promise.resolve();
+  await new Promise(setImmediate);
 
   assert.equal(client.upsertCalls.length, 1);
   assert.equal(client.upsertCalls[0].rows.length, 1);
@@ -643,8 +641,7 @@ test('createProgressLogBuffer keepalive includes in-flight and pending rows duri
   buffer.enqueue(secondRow);
   const keepaliveFlushPromise = buffer.flush({ keepalive: true });
 
-  await Promise.resolve();
-  await Promise.resolve();
+  await new Promise(setImmediate);
 
   assert.equal(keepaliveBodies.length, 1);
   assert.deepEqual(

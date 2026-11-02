@@ -30,8 +30,7 @@ export function MixedTrainerProvider({ children }) {
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_MIXED_SETTINGS }));
   const [isLoading, setIsLoading] = useState(true);
   const latestRef = useRef(settings);
-  const pendingRef = useRef(null);
-  const flushPromiseRef = useRef(null);
+  const saveScopeRef = useRef(null);
 
   useEffect(() => {
     latestRef.current = settings;
@@ -39,15 +38,16 @@ export function MixedTrainerProvider({ children }) {
 
   useEffect(() => {
     let isMounted = true;
-
-    pendingRef.current = null;
-    flushPromiseRef.current = null;
+    const scope = { userId, client, pending: null, promise: null };
+    saveScopeRef.current = scope;
+    const cancelScope = () => {
+      isMounted = false;
+      if (saveScopeRef.current === scope) saveScopeRef.current = null;
+    };
 
     if (isAuthLoading) {
       setIsLoading(true);
-      return () => {
-        isMounted = false;
-      };
+      return cancelScope;
     }
 
     if (!client || !userId) {
@@ -55,9 +55,7 @@ export function MixedTrainerProvider({ children }) {
       latestRef.current = guestSettings;
       setSettings(guestSettings);
       setIsLoading(false);
-      return () => {
-        isMounted = false;
-      };
+      return cancelScope;
     }
 
     setIsLoading(true);
@@ -87,9 +85,7 @@ export function MixedTrainerProvider({ children }) {
         setIsLoading(false);
       });
 
-    return () => {
-      isMounted = false;
-    };
+    return cancelScope;
   }, [client, isAuthLoading, userId]);
 
   const flushPending = useCallback(async () => {
@@ -97,35 +93,42 @@ export function MixedTrainerProvider({ children }) {
       return;
     }
 
-    if (flushPromiseRef.current) {
-      return flushPromiseRef.current;
+    const scope = saveScopeRef.current;
+    if (!scope || scope.userId !== userId || scope.client !== client) return;
+    if (scope.promise) {
+      return scope.promise;
     }
 
-    flushPromiseRef.current = (async () => {
-      while (pendingRef.current) {
-        const snapshot = pendingRef.current;
-        pendingRef.current = null;
+    scope.promise = (async () => {
+      while (saveScopeRef.current === scope && scope.pending) {
+        const snapshot = scope.pending;
+        scope.pending = null;
 
         const { error } = await client
           .from(MIXED_PREFERENCES_TABLE)
-          .upsert(buildMixedPreferencesRow(userId, snapshot), {
+          .upsert(snapshot, {
             onConflict: 'user_id'
           });
 
+        if (saveScopeRef.current !== scope) return;
         if (error) {
-          pendingRef.current = snapshot;
+          scope.pending = scope.pending || snapshot;
           throw error;
         }
       }
     })().finally(() => {
-      flushPromiseRef.current = null;
+      scope.promise = null;
     });
 
-    return flushPromiseRef.current;
+    return scope.promise;
   }, [client, userId]);
 
   const upsertMixedSettings = useCallback(
     async (patch = {}) => {
+      const scope = saveScopeRef.current;
+      if (!scope || scope.userId !== userId || scope.client !== client) {
+        return { error: new Error('The account changed before preferences could be saved.') };
+      }
       const next = sanitizeMixedSettings({
         ...latestRef.current,
         ...patch
@@ -139,7 +142,7 @@ export function MixedTrainerProvider({ children }) {
         return { error: null };
       }
 
-      pendingRef.current = next;
+      scope.pending = buildMixedPreferencesRow(userId, next);
 
       try {
         await flushPending();

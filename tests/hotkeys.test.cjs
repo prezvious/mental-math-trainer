@@ -117,6 +117,7 @@ test('global hotkey availability is derived from shortcut definitions', () => {
 });
 
 test('isShortcutEventEligible blocks interactive targets and modified key presses', () => {
+  assert.equal(isShortcutEventEligible(createEvent({ key: 'Enter', target: { tagName: 'SUMMARY' } })), false);
   assert.equal(
     isShortcutEventEligible(createEvent({ target: { tagName: 'INPUT' } })),
     false

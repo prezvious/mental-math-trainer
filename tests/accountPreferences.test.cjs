@@ -179,8 +179,7 @@ test('buildUserPreferencesRow produces the expected database payload', () => {
         rightDecimalDigits: 1,
         roundSize: 250
       }
-    },
-    '2026-03-30T00:00:00.000Z'
+    }
   );
 
   assert.deepEqual(row, {
@@ -195,8 +194,7 @@ test('buildUserPreferencesRow produces the expected database payload', () => {
     trainer_left_decimal_digits: 3,
     trainer_right_decimal_digits: 1,
     trainer_max_base: 10,
-    trainer_round_size: 250,
-    updated_at: '2026-03-30T00:00:00.000Z'
+    trainer_round_size: 250
   });
 });
 
@@ -346,8 +344,7 @@ test('every theme, display mode, and interface style serializes for Supabase syn
       for (const interfaceStyle of ['studio', 'opaline', 'korner', 'kira']) {
         const row = buildUserPreferencesRow(
           'user-123',
-          { themeKey: theme.key, displayMode, interfaceStyle },
-          '2026-09-09T00:00:00.000Z'
+          { themeKey: theme.key, displayMode, interfaceStyle }
         );
         const restored = sanitizeAccountPreferences(row);
 

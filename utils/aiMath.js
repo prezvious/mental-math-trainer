@@ -24,7 +24,8 @@ import {
   subtractDependencies,
   tanDependencies,
   typeOfDependencies,
-  unaryMinusDependencies
+  unaryMinusDependencies,
+  unaryPlusDependencies
 } from 'mathjs';
 
 const MATHJS_DEPENDENCIES = {
@@ -52,7 +53,8 @@ const MATHJS_DEPENDENCIES = {
   subtractDependencies,
   tanDependencies,
   typeOfDependencies,
-  unaryMinusDependencies
+  unaryMinusDependencies,
+  unaryPlusDependencies
 };
 
 const fractionMath = create(MATHJS_DEPENDENCIES, {
@@ -89,7 +91,11 @@ function isNumericConstantNode(node) {
 }
 
 function getNodeExpression(node) {
-  return node.toString().replace(/\s+/g, ' ').trim();
+  // Fraction's literal parser does not accept scientific notation.
+  return node.toString({
+    handler: child => child.type === 'ConstantNode'
+      ? decimalMath.format(child.value, { notation: 'fixed' }) : undefined
+  }).replace(/\s+/g, ' ').trim();
 }
 
 function normalizeSupportedAliases(expression) {
@@ -192,12 +198,37 @@ function formatBigNumber(value) {
   });
 }
 
-function buildExactResult(expressionText) {
-  const value = fractionMath.evaluate(expressionText);
+function formatExactFractionDecimal(value) {
+  let denominator = BigInt(value.d);
+  let twos = 0;
+  let fives = 0;
+  while (denominator % 2n === 0n) {
+    denominator /= 2n;
+    twos += 1;
+  }
+  while (denominator % 5n === 0n) {
+    denominator /= 5n;
+    fives += 1;
+  }
+  if (denominator !== 1n) {
+    return fractionMath.format(value, { fraction: 'decimal' });
+  }
+
+  const scale = Math.max(twos, fives);
+  const numerator = BigInt(value.n) *
+    2n ** BigInt(scale - twos) * 5n ** BigInt(scale - fives);
+  const sign = BigInt(value.s) < 0n && numerator !== 0n ? '-' : '';
+  if (!scale) return `${sign}${numerator}`;
+  const digits = numerator.toString().padStart(scale + 1, '0');
+  return `${sign}${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
+}
+
+function buildExactResult(parsedNode) {
+  const value = fractionMath.evaluate(getNodeExpression(parsedNode));
   assertSupportedScalar(value, fractionMath);
 
   const exactRatioText = fractionMath.format(value, { fraction: 'ratio' });
-  const decimalText = fractionMath.format(value, { fraction: 'decimal' });
+  const decimalText = formatExactFractionDecimal(value);
   const isInteger = isIntegerFractionValue(value);
   const exactText = isInteger ? decimalText : exactRatioText;
 
@@ -239,7 +270,7 @@ export function solveAiExpression(expression) {
   validateExpressionNode(parsedNode);
 
   const result = isExactCapable(parsedNode)
-    ? buildExactResult(normalizedExpression)
+    ? buildExactResult(parsedNode)
     : buildDecimalResult(normalizedExpression);
 
   return {

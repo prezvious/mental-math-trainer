@@ -130,6 +130,7 @@ const INTERACTIVE_TAG_NAMES = new Set([
   'textarea',
   'select',
   'button',
+  'summary',
   'a'
 ]);
 

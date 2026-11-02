@@ -23,6 +23,7 @@ export const USER_PREFERENCES_COLUMNS = [
   'trainer_right_decimal_digits',
   'trainer_max_base',
   'trainer_round_size',
+  'revision',
   'updated_at'
 ].join(', ');
 
@@ -119,8 +120,7 @@ export function mergeAccountPreferences(currentPreferences, patch = {}) {
 
 export function buildUserPreferencesRow(
   userId,
-  preferences,
-  updatedAt = new Date().toISOString()
+  preferences
 ) {
   const sanitized = sanitizeAccountPreferences(preferences);
 
@@ -136,8 +136,7 @@ export function buildUserPreferencesRow(
     trainer_left_decimal_digits: sanitized.trainerSettings.leftDecimalDigits,
     trainer_right_decimal_digits: sanitized.trainerSettings.rightDecimalDigits,
     trainer_max_base: sanitized.trainerSettings.maxBase,
-    trainer_round_size: sanitized.trainerSettings.roundSize,
-    updated_at: updatedAt
+    trainer_round_size: sanitized.trainerSettings.roundSize
   };
 }
 

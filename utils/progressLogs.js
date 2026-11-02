@@ -1,7 +1,9 @@
 import {
   acknowledgeAccountProgressRows,
+  getPendingAccountProgressRows,
   queueAccountProgressRow
 } from './progressStorage.js';
+import { getProgressWriteGeneration, registerProgressBuffer, withAccountProgressWrite } from './progressWriteCoordinator.js';
 
 export const PROGRESS_LOG_INSERT_BATCH_SIZE = 500;
 export const PROGRESS_LOG_FETCH_PAGE_SIZE = 1000;
@@ -353,6 +355,25 @@ export function createProgressLogBuffer({
   let flushTimer = null;
   let flushPromise = null;
   let durableWrites = Promise.resolve();
+  const generations = new WeakMap();
+  const nonDurableRows = new WeakSet();
+  const isCurrent = row => generations.get(row) === getProgressWriteGeneration(row.user_id);
+
+  const retainedRows = async rows => {
+    const current = rows.filter(isCurrent);
+    if (typeof indexedDB === 'undefined') return current;
+    const pendingByOwner = new Map();
+    for (const row of current) {
+      if (!pendingByOwner.has(row.user_id)) {
+        try {
+          const pending = await getPendingAccountProgressRows(row.user_id);
+          pendingByOwner.set(row.user_id, new Set(pending.map(entry => `${entry.session_id}:${entry.question_index}`)));
+        } catch (_error) { pendingByOwner.set(row.user_id, null); }
+      }
+    }
+    return current.filter(row => nonDurableRows.has(row) || !pendingByOwner.get(row.user_id) ||
+      pendingByOwner.get(row.user_id).has(`${row.session_id}:${row.question_index}`));
+  };
 
   const cancelScheduledFlush = () => {
     if (flushTimer) {
@@ -373,11 +394,11 @@ export function createProgressLogBuffer({
       return false;
     }
 
-    void persistProgressLogRowsKeepalive(rows, {
-      accessToken,
-      restConfig,
-      fetchImpl
-    }).catch(() => {});
+    const generation = generations.get(rows[0]);
+    void withAccountProgressWrite(rows[0].user_id, async () => {
+      const retained = await retainedRows(rows);
+      return persistProgressLogRowsKeepalive(retained, { accessToken, restConfig, fetchImpl });
+    }, generation).catch(() => {});
 
     return true;
   };
@@ -420,13 +441,16 @@ export function createProgressLogBuffer({
         }
 
         try {
-          await persistProgressLogBatches(client, snapshot, batchSize);
-          if (typeof indexedDB !== 'undefined') {
-            await acknowledgeAccountProgressRows(snapshot).catch(() => {});
-          }
-          flushedCount += snapshot.length;
+          await withAccountProgressWrite(snapshot[0].user_id, async () => {
+            const retained = await retainedRows(snapshot);
+            await persistProgressLogBatches(client, retained, batchSize);
+            if (typeof indexedDB !== 'undefined') {
+              await acknowledgeAccountProgressRows(retained).catch(() => {});
+            }
+            flushedCount += retained.length;
+          }, generations.get(snapshot[0]));
         } catch (error) {
-          pendingRows = [...snapshot, ...pendingRows];
+          pendingRows = [...snapshot.filter(isCurrent), ...pendingRows];
           throw error;
         } finally {
           inFlightRows = [];
@@ -445,18 +469,19 @@ export function createProgressLogBuffer({
     cancelScheduledFlush();
     flushTimer = setTimeoutImpl(() => {
       flushTimer = null;
-      void flush();
+      void flush().catch(() => {});
     }, flushDelayMs);
   };
 
   const enqueue = (row) => {
+    generations.set(row, getProgressWriteGeneration(row.user_id));
     pendingRows = [...pendingRows, row];
     if (typeof indexedDB !== 'undefined' && row.user_id) {
-      durableWrites = durableWrites.then(() => queueAccountProgressRow(row)).catch(() => {});
+      durableWrites = durableWrites.then(() => queueAccountProgressRow(row)).catch(() => { nonDurableRows.add(row); });
     }
 
     if (pendingRows.length >= flushSize) {
-      void flush();
+      void flush().catch(() => {});
       return;
     }
 
@@ -468,11 +493,17 @@ export function createProgressLogBuffer({
     cancelScheduledFlush();
   };
 
+  const unregister = registerProgressBuffer(userId => {
+    pendingRows = pendingRows.filter(row => row.user_id !== userId);
+    if (!pendingRows.length) cancelScheduledFlush();
+    return durableWrites;
+  });
+
   return {
     enqueue,
     flush,
     clear,
-    dispose: cancelScheduledFlush,
+    dispose: () => { cancelScheduledFlush(); unregister(); },
     getPendingRows: () => pendingRows.slice(),
     getPendingCount: () => pendingRows.length,
     getInFlightRows: () => inFlightRows.slice()

@@ -55,6 +55,7 @@ import {
 import { getSupabaseRestConfig } from 'utils/supabaseClient.js';
 import { finishGuestSession, recordGuestAttempt, startGuestSession, touchGuestSession } from 'utils/progressStorage.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
+import { withAccountProgressWrite } from 'utils/progressWriteCoordinator.js';
 import {
   TRAINER_COMPLETION_STATES,
   TRAINER_FINISH_VIEWS,
@@ -284,10 +285,22 @@ export default function TrainerPage() {
     const previousUserId = previousUserIdRef.current;
     previousUserIdRef.current = userId;
 
-    if (previousUserId === null || previousUserId === userId) {
+    if (previousUserId === userId) {
       return;
     }
 
+    const previousRound = activeRoundRef.current;
+    activeRoundRef.current = null;
+    if (previousUserId === null && previousRound) {
+      guestCheckpointRef.current = guestCheckpointRef.current.then(() =>
+        finishGuestSession(previousRound.sessionId, 'ended')
+      ).catch((error) => { guestSaveErrorRef.current = error; });
+    }
+    resolveExitRef.current?.(false);
+    resolveExitRef.current = null;
+    exitPromiseRef.current = null;
+    setEndDialogOpen(false);
+    setIsEndingRound(false);
     progressBuffer.clear();
     aiModeBuffer.clear();
     setActiveRound(null);
@@ -1255,14 +1268,14 @@ export default function TrainerPage() {
         promptText
       };
 
-      await persistAiModeLogBatches(clientRef.current, [
+      await withAccountProgressWrite(userId, () => persistAiModeLogBatches(clientRef.current, [
         buildAiModeCustomLogRow(
           persistedResult,
           promptText,
           userId,
           createSessionId()
         )
-      ]);
+      ]));
 
       setCustomSolverState({
         status: 'success',

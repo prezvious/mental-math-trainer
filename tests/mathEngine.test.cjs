@@ -64,6 +64,18 @@ test.before(async () => {
   } = mathEngine);
 });
 
+test('round-size drafts parse complete numeric values and reject trailing junk', () => {
+  const settings = sanitizeSettings({ roundSize: 10 });
+  for (const [draft, expected] of [['1e3', 1000], ['3e3', 3000], ['1e9', 10000], ['25', 25]]) {
+    assert.equal(resolveRoundSizeDraft(settings, draft).nextSettings.roundSize, expected);
+  }
+  for (const draft of ['', ' ', '25questions', '2.5', 'Infinity']) {
+    const resolved = resolveRoundSizeDraft(settings, draft);
+    assert.equal(resolved.nextSettings.roundSize, 10);
+    assert.equal(resolved.nextRoundSizeDraft, '10');
+  }
+});
+
 test('sanitizeSettings clamps digit counts and round size within allowed bounds', () => {
   const settings = sanitizeSettings({
     practiceMode: PRACTICE_MODES.POSITIVE,

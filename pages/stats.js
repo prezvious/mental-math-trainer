@@ -20,8 +20,9 @@ import {
   PROGRESS_SOURCE_LABELS,
   RECENT_PROGRESS_WINDOW_DAYS
 } from 'utils/progressDashboard.js';
-import { acknowledgeAccountProgressRows, claimGuestSessionImport, clearGuestHistory, clearPendingAccountProgressRows, getGuestHistory, getPendingAccountProgressRows, markGuestSessionImported, recoverInterruptedGuestSessions, DEVICE_HISTORY_DAYS } from 'utils/progressStorage.js';
+import { acknowledgeAccountProgressRows, claimGuestSessionImport, clearGuestHistory, clearPendingAccountProgressRows, getGuestHistory, getGuestHistoryForImport, getPendingAccountProgressRows, markGuestSessionImported, recoverInterruptedGuestSessions, DEVICE_HISTORY_DAYS } from 'utils/progressStorage.js';
 import { useSupabaseAuth } from 'utils/supabaseAuthContext.js';
+import { resetAccountProgress, withAccountProgressWrite } from 'utils/progressWriteCoordinator.js';
 
 function formatTimestamp(isoDate) {
   return new Intl.DateTimeFormat('en-US', {
@@ -48,21 +49,23 @@ export default function StatsPage() {
 
   const replayAccountQueue = useCallback(async () => {
     if (!client || !userId) return;
-    let pending;
-    try {
-      pending = await getPendingAccountProgressRows(userId);
-    } catch (_error) {
-      return;
-    }
-    for (let offset = 0; offset < pending.length; offset += 500) {
-      const { data, error } = await client.auth.getUser();
-      if (error || data?.user?.id !== userId || currentUserIdRef.current !== userId) {
-        throw new Error('Pending account progress was not synced because the account changed.');
+    return withAccountProgressWrite(userId, async () => {
+      let pending;
+      try {
+        pending = await getPendingAccountProgressRows(userId);
+      } catch (_error) {
+        return;
       }
-      const batch = pending.slice(offset, offset + 500);
-      await persistProgressLogBatches(client, batch, 500);
-      await acknowledgeAccountProgressRows(batch);
-    }
+      for (let offset = 0; offset < pending.length; offset += 500) {
+        const { data, error } = await client.auth.getUser();
+        if (error || data?.user?.id !== userId || currentUserIdRef.current !== userId) {
+          throw new Error('Pending account progress was not synced because the account changed.');
+        }
+        const batch = pending.slice(offset, offset + 500);
+        await persistProgressLogBatches(client, batch, 500);
+        await acknowledgeAccountProgressRows(batch);
+      }
+    });
   }, [client, userId]);
 
   const loadLogs = useCallback(async () => {
@@ -100,12 +103,9 @@ export default function StatsPage() {
       return undefined;
     }
     let cancelled = false;
-    getGuestHistory().then((history) => {
+    getGuestHistoryForImport(userId).then((history) => {
       if (!cancelled) {
-        const sessions = history.sessions.filter((entry) => entry.state !== 'active' && entry.attemptCount > 0 &&
-          (!entry.importOwnerId || entry.importOwnerId === userId));
-        const ids = new Set(sessions.map((entry) => entry.id));
-        setImportOffer({ sessions, attempts: history.attempts.filter((entry) => ids.has(entry.sessionId)) });
+        setImportOffer(history);
       }
     }).catch(() => { if (!cancelled) setImportOffer(null); });
     return () => { cancelled = true; };
@@ -131,7 +131,7 @@ export default function StatsPage() {
     const owner = userId;
     setIsImporting(true);
     setErrorMessage('');
-    const importWork = async () => {
+    const importWork = () => withAccountProgressWrite(owner, async () => {
       for (const session of importOffer.sessions) {
         const freshHistory = await getGuestHistory();
         if (!freshHistory.sessions.some((entry) => entry.id === session.id && !entry.importedTo)) {
@@ -155,7 +155,7 @@ export default function StatsPage() {
         if (currentUserIdRef.current !== owner) throw new Error('Import stopped because the account changed.');
         await markGuestSessionImported(session.id, owner);
       }
-    };
+    });
     try {
       if (navigator.locks?.request) {
         await navigator.locks.request('mental-math-guest-import', importWork);
@@ -187,29 +187,27 @@ export default function StatsPage() {
     setErrorMessage('');
 
     try {
-      await clearPendingAccountProgressRows(userId);
+      await resetAccountProgress(userId, async () => {
+        if (currentUserIdRef.current !== userId) throw new Error('Reset stopped because the account changed.');
+        await clearPendingAccountProgressRows(userId);
+        const [manualResponse, aiResponse] = await Promise.all([
+          client.from('progress_logs').delete().eq('user_id', userId),
+          isAdmin
+            ? client.from(AI_MODE_LOG_TABLE).delete().eq('user_id', userId)
+            : Promise.resolve({ error: null })
+        ]);
+        const resetError = manualResponse.error || aiResponse.error;
+        if (resetError) throw resetError;
+      });
+      if (currentUserIdRef.current === userId) {
+        loadSequenceRef.current += 1;
+        setDashboardData(createEmptyProgressDashboard());
+      }
     } catch (error) {
+      if (currentUserIdRef.current === userId) setErrorMessage(error?.message || 'Could not reset account progress.');
+    } finally {
       setIsResetting(false);
-      setErrorMessage(error?.message || 'Could not clear pending account progress.');
-      return;
     }
-
-    const [manualResponse, aiResponse] = await Promise.all([
-      client.from('progress_logs').delete().eq('user_id', userId),
-      isAdmin
-        ? client.from(AI_MODE_LOG_TABLE).delete().eq('user_id', userId)
-        : Promise.resolve({ error: null })
-    ]);
-
-    setIsResetting(false);
-
-    const resetError = manualResponse.error || aiResponse.error;
-    if (resetError) {
-      setErrorMessage(resetError.message);
-      return;
-    }
-
-    setDashboardData(createEmptyProgressDashboard());
   };
 
   return (
@@ -245,7 +243,7 @@ export default function StatsPage() {
               type='button'
               onClick={loadLogs}
               className='button button-quiet'
-              disabled={isLoading}
+              disabled={isLoading || isResetting || isImporting}
             >
               <IconLabel icon={ArrowsClockwiseIcon} className='icon-label-button'>
                 {isLoading ? 'Refreshing...' : 'Refresh data'}

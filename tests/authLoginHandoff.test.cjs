@@ -90,3 +90,17 @@ test('consumeAuthLoginHandoff ignores malformed stored payloads', () => {
   assert.equal(consumeAuthLoginHandoff(invalidPayloadStorage), null);
   assert.equal(invalidPayloadStorage.getItem(AUTH_LOGIN_HANDOFF_STORAGE_KEY), null);
 });
+
+test('storage denial does not prevent login or the duplicate-signup handoff', t => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { get sessionStorage() { throw new Error('Storage access denied'); } }
+  });
+  t.after(() => {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else delete globalThis.window;
+  });
+  assert.equal(consumeAuthLoginHandoff(), null);
+  assert.equal(storeAuthLoginHandoff('learner@example.com'), false);
+});

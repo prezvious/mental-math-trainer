@@ -8,6 +8,7 @@ import IconLabel from 'components/IconLabel.js';
 import ChartLineUpIcon from 'images/phosphor/chart-line-up.svg';
 import CommandIcon from 'images/phosphor/command-bold.svg';
 import HouseIcon from 'images/phosphor/house.svg';
+import ListChecksIcon from 'images/phosphor/list-checks.svg';
 import SquaresFourIcon from 'images/phosphor/squares-four.svg';
 import { useAccountPreferences } from 'utils/accountPreferencesContext.js';
 import { useActiveSession } from 'utils/activeSessionContext.js';
@@ -40,9 +41,33 @@ export default function SiteLayout({ children }) {
   const utilityCloseButtonRef = useRef(null);
   const utilityDrawerRef = useRef(null);
   const wasUtilityDrawerOpenRef = useRef(false);
+  const mobileMenuRef = useRef(null);
 
   const closeUtilityDrawer = useCallback(() => {
     setIsUtilityDrawerOpen(false);
+    if (mobileMenuRef.current) mobileMenuRef.current.open = false;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const closeOutside = event => {
+      const menu = mobileMenuRef.current;
+      if (menu?.open && !menu.contains(event.target)) menu.open = false;
+    };
+    const closeOnEscape = event => {
+      const menu = mobileMenuRef.current;
+      if (event.key === 'Escape' && menu?.open) {
+        event.preventDefault();
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+      }
+    };
+    window.addEventListener('pointerdown', closeOutside);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('pointerdown', closeOutside);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -537,6 +562,38 @@ export default function SiteLayout({ children }) {
           </nav>
 
           <div className={`site-actions${user ? ' has-user-session' : ''}`}>
+            <details ref={mobileMenuRef} className='mobile-navigation'>
+              <summary className='site-utility-toggle mobile-navigation-toggle' aria-label='Navigation menu'
+                onClick={() => setIsUtilityDrawerOpen(false)}>
+                <IconLabel icon={ListChecksIcon} className='icon-label-button'>Menu</IconLabel>
+              </summary>
+              <div className='mobile-navigation-panel'>
+                <nav aria-label='Mobile primary'>
+                  {navLinks.map(link => (
+                    <Link key={link.href} href={link.href}
+                      className={`mobile-navigation-link${router.pathname === link.href ? ' is-active' : ''}`}
+                      aria-current={router.pathname === link.href ? 'page' : undefined}
+                      onClick={closeUtilityDrawer}>
+                      <IconLabel icon={link.icon} className='icon-label-nav'>{link.label}</IconLabel>
+                    </Link>
+                  ))}
+                </nav>
+                <div className='mobile-account-actions'>
+                  {user ? (
+                    <>
+                      <p className='mobile-account-email'>{user.email}</p>
+                      <button type='button' className='button button-quiet button-full' onClick={handleSignOut}>Log out</button>
+                    </>
+                  ) : (
+                    <>
+                      {!isConfigured && <p className='mobile-account-email'>Guest mode · Accounts unavailable</p>}
+                      <Link href='/login' className='button button-quiet' onClick={closeUtilityDrawer}>Log in</Link>
+                      <Link href='/signup' className='button button-strong' onClick={closeUtilityDrawer}>Sign up</Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </details>
             {!isConfigured && (
               <span className='status-badge'>Guest mode</span>
             )}

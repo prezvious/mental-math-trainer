@@ -43,9 +43,8 @@ export function AccountPreferencesProvider({ children }) {
   );
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
   const latestPreferencesRef = useRef(preferences);
-  const latestPreferencesRevisionRef = useRef(0);
-  const pendingPreferencesRef = useRef(null);
-  const flushPromiseRef = useRef(null);
+  const latestPreferencesRevisionRef = useRef(0n);
+  const saveScopeRef = useRef(null);
 
   useEffect(() => {
     latestPreferencesRef.current = preferences;
@@ -61,8 +60,13 @@ export function AccountPreferencesProvider({ children }) {
       return false;
     }
 
-    const nextPreferences = sanitizeAccountPreferences(row || {});
     latestPreferencesRevisionRef.current = getAccountPreferencesRevision(row);
+    const scope = saveScopeRef.current;
+    if (!scope) return false;
+    scope.serverRow = row;
+    if (scope.pending || scope.inFlight) return true;
+
+    const nextPreferences = sanitizeAccountPreferences(row || {});
     latestPreferencesRef.current = nextPreferences;
     setPreferences(nextPreferences);
     return true;
@@ -71,15 +75,17 @@ export function AccountPreferencesProvider({ children }) {
   useEffect(() => {
     let isMounted = true;
 
-    pendingPreferencesRef.current = null;
-    flushPromiseRef.current = null;
-    latestPreferencesRevisionRef.current = 0;
+    const scope = { userId, client, pending: null, promise: null, inFlight: false, serverRow: null };
+    saveScopeRef.current = scope;
+    latestPreferencesRevisionRef.current = 0n;
+    const cancelScope = () => {
+      isMounted = false;
+      if (saveScopeRef.current === scope) saveScopeRef.current = null;
+    };
 
     if (isAuthLoading) {
       setIsLoadingPreferences(true);
-      return () => {
-        isMounted = false;
-      };
+      return cancelScope;
     }
 
     if (!client || !userId) {
@@ -87,9 +93,7 @@ export function AccountPreferencesProvider({ children }) {
       latestPreferencesRef.current = guestPreferences;
       setPreferences(guestPreferences);
       setIsLoadingPreferences(false);
-      return () => {
-        isMounted = false;
-      };
+      return cancelScope;
     }
 
     setIsLoadingPreferences(true);
@@ -116,7 +120,7 @@ export function AccountPreferencesProvider({ children }) {
 
       if (error) {
         console.error('Failed to load account preferences.', error);
-        if (latestPreferencesRevisionRef.current === 0) {
+        if (latestPreferencesRevisionRef.current === 0n) {
           const defaultPreferences = createDefaultAccountPreferences();
           latestPreferencesRef.current = defaultPreferences;
           setPreferences(defaultPreferences);
@@ -127,6 +131,11 @@ export function AccountPreferencesProvider({ children }) {
 
       if (data) {
         applySyncedPreferences(data);
+        setIsLoadingPreferences(false);
+        return;
+      }
+
+      if (latestPreferencesRevisionRef.current > 0n) {
         setIsLoadingPreferences(false);
         return;
       }
@@ -160,7 +169,7 @@ export function AccountPreferencesProvider({ children }) {
     void loadPreferences();
 
     return () => {
-      isMounted = false;
+      cancelScope();
       unsubscribeFromPreferenceChanges();
     };
   }, [applySyncedPreferences, client, isAuthLoading, userId]);
@@ -170,35 +179,49 @@ export function AccountPreferencesProvider({ children }) {
       return;
     }
 
-    if (flushPromiseRef.current) {
-      return flushPromiseRef.current;
+    const scope = saveScopeRef.current;
+    if (!scope || scope.userId !== userId || scope.client !== client) return;
+    if (scope.promise) {
+      return scope.promise;
     }
 
-    flushPromiseRef.current = (async () => {
-      while (pendingPreferencesRef.current) {
-        const snapshot = pendingPreferencesRef.current;
-        pendingPreferencesRef.current = null;
+    scope.promise = (async () => {
+      while (saveScopeRef.current === scope && scope.pending) {
+        const snapshot = scope.pending;
+        scope.pending = null;
+        scope.inFlight = true;
 
-        const { error } = await client
+        const { data, error } = await client
           .from(USER_PREFERENCES_TABLE)
           .upsert(snapshot, {
             onConflict: 'user_id'
-          });
+          })
+          .select(USER_PREFERENCES_COLUMNS)
+          .single();
 
+        scope.inFlight = false;
+        if (saveScopeRef.current !== scope) return;
         if (error) {
-          pendingPreferencesRef.current = snapshot;
+          scope.pending = scope.pending || snapshot;
           throw error;
         }
+        if (data) applySyncedPreferences(data);
+        if (!scope.pending && scope.serverRow) applySyncedPreferences(scope.serverRow);
       }
     })().finally(() => {
-      flushPromiseRef.current = null;
+      scope.inFlight = false;
+      scope.promise = null;
     });
 
-    return flushPromiseRef.current;
-  }, [client, userId]);
+    return scope.promise;
+  }, [applySyncedPreferences, client, userId]);
 
   const upsertPreferences = useCallback(
     async (patch = {}) => {
+      const scope = saveScopeRef.current;
+      if (!scope || scope.userId !== userId || scope.client !== client) {
+        return { error: new Error('The account changed before preferences could be saved.') };
+      }
       const nextPreferences = mergeAccountPreferences(
         latestPreferencesRef.current,
         patch
@@ -213,11 +236,7 @@ export function AccountPreferencesProvider({ children }) {
       }
 
       const nextRow = buildUserPreferencesRow(userId, nextPreferences);
-      latestPreferencesRevisionRef.current = Math.max(
-        latestPreferencesRevisionRef.current,
-        getAccountPreferencesRevision(nextRow)
-      );
-      pendingPreferencesRef.current = nextRow;
+      scope.pending = nextRow;
 
       try {
         await flushPendingPreferences();

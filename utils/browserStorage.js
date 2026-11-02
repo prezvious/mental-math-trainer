@@ -3,11 +3,11 @@ function resolveStorage(storage) {
     return storage;
   }
 
-  if (typeof window === 'undefined' || !window.localStorage) {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch (_error) {
     return null;
   }
-
-  return window.localStorage;
 }
 
 export function readStorageJson(key, storage = null) {
